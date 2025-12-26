@@ -1,65 +1,139 @@
-import Image from "next/image";
+// web/app/page.tsx
+import Link from "next/link";
+import BtcClpChart from "@/components/landing/BtcClpChart";
 
-export default function Home() {
+async function getPrice(pair: "BTC_CLP" | "USDT_CLP") {
+  try {
+    const base = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const res = await fetch(`${base}/api/prices/current?pair=${pair}`, { cache: "no-store" });
+    const json = await res.json().catch(() => ({}));
+    return Number(json?.price) || null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function LandingPage() {
+  const [btcClp, usdtClp] = await Promise.all([getPrice("BTC_CLP"), getPrice("USDT_CLP")]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="min-h-screen bg-neutral-950 text-neutral-100">
+      {/* Top bar */}
+      <div className="mx-auto max-w-6xl px-6 py-6">
+        <div className="flex items-center justify-between">
+          {/* mañana esto será el logo */}
+          <div className="text-lg font-semibold tracking-tight">Kapa</div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/auth/login"
+              className="text-sm rounded-lg border border-neutral-800 px-3 py-2 hover:bg-neutral-900"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              Entrar
+            </Link>
+            <Link
+              href="/auth/register"
+              className="text-sm rounded-lg bg-white text-black px-3 py-2 font-medium hover:opacity-90"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Crear cuenta
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+
+      {/* Hero */}
+      <div className="mx-auto max-w-6xl px-6 pb-12">
+        <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
+          <header className="lg:col-span-6">
+            <h1 className="text-5xl font-semibold tracking-tight">Kapa</h1>
+
+            <p className="mt-4 text-neutral-300 text-lg max-w-xl">
+              Compra, vende y gestiona tu tesorería en Bitcoin.
+            </p>
+
+            {/* Spot cards */}
+            <div className="mt-7 grid gap-3 sm:grid-cols-2 max-w-xl">
+              <div className="rounded-2xl border border-neutral-800 bg-black/40 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-neutral-400">BTC/CLP</div>
+                  <div className="text-xs text-neutral-500">spot</div>
+                </div>
+                <div className="mt-2 text-3xl font-semibold">
+                  {btcClp ? `$${Math.round(btcClp).toLocaleString("es-CL")}` : "—"}
+                  <span className="text-base font-normal text-neutral-400"> CLP</span>
+                </div>
+                <div className="mt-2 text-xs text-neutral-500">Fuente: Buda</div>
+              </div>
+
+              <div className="rounded-2xl border border-neutral-800 bg-black/40 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-neutral-400">USDT/CLP</div>
+                  <div className="text-xs text-neutral-500">spot</div>
+                </div>
+                <div className="mt-2 text-3xl font-semibold">
+                  {usdtClp ? `$${Math.round(usdtClp).toLocaleString("es-CL")}` : "—"}
+                  <span className="text-base font-normal text-neutral-400"> CLP</span>
+                </div>
+                <div className="mt-2 text-xs text-neutral-500">Fuente: Buda</div>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <Link
+                href="/auth/register"
+                className="inline-flex rounded-xl bg-white text-black px-5 py-3 font-medium hover:opacity-90"
+              >
+                Crear cuenta
+              </Link>
+            </div>
+          </header>
+
+          {/* Chart card */}
+          <section className="lg:col-span-6">
+            <div className="rounded-3xl border border-neutral-800 bg-black/30 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-neutral-200">BTC / CLP</div>
+                  <div className="text-xs text-neutral-500">Gráfico (últimos trades)</div>
+                </div>
+                <div className="text-xs text-neutral-500">Landing MVP</div>
+              </div>
+
+              <BtcClpChart />
+            </div>
+          </section>
         </div>
-      </main>
-    </div>
+
+        {/* Benefits */}
+        <section className="mt-10 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-neutral-800 bg-black/20 p-4">
+            <div className="text-sm font-medium">Bitcoin-first</div>
+            <div className="mt-1 text-sm text-neutral-400">
+              Todo gira en torno a BTC, no a “cripto” genérico.
+            </div>
+          </div>
+          <div className="rounded-2xl border border-neutral-800 bg-black/20 p-4">
+            <div className="text-sm font-medium">Simple</div>
+            <div className="mt-1 text-sm text-neutral-400">
+              Compra y venta con una experiencia limpia.
+            </div>
+          </div>
+          <div className="rounded-2xl border border-neutral-800 bg-black/20 p-4">
+            <div className="text-sm font-medium">Listo para tesorería</div>
+            <div className="mt-1 text-sm text-neutral-400">
+              Personas hoy, empresas mañana, sin rehacer todo.
+            </div>
+          </div>
+        </section>
+
+        <footer className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-900 pt-6 text-xs text-neutral-500">
+          <div>© {new Date().getFullYear()} Kapa</div>
+          <div className="flex items-center gap-3">
+            <Link className="hover:text-neutral-300" href="/auth/login">Login</Link>
+            <Link className="hover:text-neutral-300" href="/auth/register">Registro</Link>
+          </div>
+        </footer>
+      </div>
+    </main>
   );
 }

@@ -1,0 +1,228 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum CompanyKind {
+  PERSONAL
+  BUSINESS
+}
+
+/**
+ * ✅ Multi-asset real
+ * - BTC: satoshis/bitcoin (tu lógica actual vive acá)
+ * - CLP/USD: se habilitan en la fase siguiente (saldo, movimientos, pricing)
+ */
+enum AssetCode {
+  BTC
+  CLP
+  USD
+}
+
+enum InternalMovementState {
+  NONE
+  WAITING_LIQUIDITY
+  WAITING_BANK_TOPUP
+  WAITING_MIN_SIZE_AGGREGATION
+  RETRYING_BUDA
+  MANUAL_REVIEW
+  FAILED_TEMPORARY
+}
+
+enum InternalMovementReason {
+  NONE
+  BELOW_BUDA_MIN
+  BUDA_INSUFFICIENT_FUNDS
+  BUDA_API_ERROR
+  PRICE_MISSING
+  UNKNOWN
+}
+
+/**
+ * ✅ Fase 2: workflow de aprobación
+ */
+enum TreasuryMovementStatus {
+  PENDING
+  PROCESSING 
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  // empresa/cuenta activa (opcional)
+  activeCompanyId String?
+  activeCompany   Company? @relation("ActiveCompany", fields: [activeCompanyId], references: [id], onDelete: SetNull)
+
+  // relación inversa: "mi cuenta personal"
+  personalCompany Company? @relation("PersonalCompany")
+
+  sessions      Session[]
+  companyUsers  CompanyUser[]
+  personProfile PersonProfile?
+
+  onboarding UserOnboarding?
+
+  // ✅ Fase 2: auditoría de movimientos
+  createdTreasuryMovements  TreasuryMovement[] @relation("TreasuryMovementCreatedBy")
+  approvedTreasuryMovements TreasuryMovement[] @relation("TreasuryMovementApprovedBy")
+}
+
+model PersonProfile {
+  userId    String   @id
+  fullName  String?
+  rut       String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([rut])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Company {
+  id   String @id @default(cuid())
+  name String
+
+  // ✅ Company ahora es "Cuenta" (PERSONAL o BUSINESS)
+  kind CompanyKind @default(BUSINESS)
+
+  // ✅ Para asegurar 1 cuenta PERSONAL por usuario
+  personalOwnerId String? @unique
+  personalOwner   User?   @relation("PersonalCompany", fields: [personalOwnerId], references: [id], onDelete: Cascade)
+
+  members     CompanyUser[]
+  treasury    TreasuryAccount[]
+  movements   TreasuryMovement[]
+  activeUsers User[]             @relation("ActiveCompany")
+
+  // ✅ Onboarding / legales (van dentro del model, no fuera)
+  onboardingCompleted Boolean   @default(false)
+  companyRut          String?
+  termsAcceptedAt     DateTime?
+  privacyAcceptedAt   DateTime?
+  fundsDeclAcceptedAt DateTime?
+}
+
+model CompanyUser {
+  userId    String
+  companyId String
+  role      String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+}
+
+/**
+ * ✅ Antes: 1 cuenta por company (companyId unique)
+ * ✅ Ahora: 1 cuenta por (companyId, assetCode)
+ */
+model TreasuryAccount {
+  id        String    @id @default(cuid())
+  companyId String
+  assetCode AssetCode @default(BTC)
+  balance   Decimal   @default(0)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, assetCode])
+  @@index([companyId])
+}
+
+/**
+ * ✅ Movimientos multi-asset + approvals (Fase 2)
+ */
+model TreasuryMovement {
+  id        String    @id @default(cuid())
+  companyId String
+  assetCode AssetCode @default(BTC)
+  amount    Decimal
+  type      String // deposit | withdraw | adjust (por ahora)
+  note      String?
+  createdAt DateTime  @default(now())
+
+  // ✅ Fase 2: approval workflow
+  status        TreasuryMovementStatus @default(PENDING)
+  attachmentUrl String?
+
+    // ✅ Fase 2A: ejecución externa (Buda)
+  externalVenue   String?   // "buda"
+  externalOrderId String?   // id de la orden en buda
+
+  // ✅ Fill real (para contabilidad)
+  executedBaseAmount  Decimal? // BTC o USDT realmente comprados/vendidos
+  executedQuoteAmount Decimal? // CLP realmente gastados/recibidos
+  executedFeeAmount   Decimal?
+  executedFeeCode     AssetCode?
+
+  // quién lo creó (normalmente member o admin)
+  createdByUserId String?
+  createdBy       User?   @relation("TreasuryMovementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  // quién lo aprobó/rechazó (admin/owner)
+  approvedByUserId String?
+  approvedBy       User?     @relation("TreasuryMovementApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedAt       DateTime?
+
+  // ✅ Fase 3: precio congelado al aprobar (PriceSnapshot)
+  executedPrice     Decimal? // precio usado para valorizar este movimiento
+  executedQuoteCode AssetCode? // normalmente CLP (podría ser USD más adelante)
+  executedSource    String? // "manual", "buda", "buda-usdt", etc.
+  executedAt        DateTime? // timestamp de congelamiento
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, assetCode, createdAt])
+  // ✅ útil para panel de pendientes
+  @@index([companyId, status, createdAt])
+
+  internalState   InternalMovementState  @default(NONE)
+  internalReason  InternalMovementReason @default(NONE)
+
+  internalNote    String?   // para logs internos (no cliente)
+  lastError       String?   // error raw
+  retryCount      Int       @default(0)
+  nextRetryAt     DateTime?
+}
+
+model PriceSnapshot {
+  id        String    @id @default(cuid())
+  assetCode AssetCode // BTC, USD
+  quoteCode AssetCode // USD, CLP
+  price     Decimal // precio directo
+  source    String // "coingecko", "manual"
+  createdAt DateTime  @default(now())
+
+  @@index([assetCode, quoteCode, createdAt])
+}
+model UserOnboarding {
+  userId          String   @id
+  termsAcceptedAt DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_onboarding")
+}
