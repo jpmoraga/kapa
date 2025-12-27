@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { AssetCode, Prisma, TreasuryMovementStatus } from "@prisma/client";
 import { requireCanOperate } from "@/lib/guards/requireCanOperate";

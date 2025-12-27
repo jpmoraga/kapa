@@ -7,8 +7,8 @@ import { syncSystemWalletFromBuda } from "@/lib/syncSystemWallet";
 
 async function getBestPriceSnapshot(
   tx: Prisma.TransactionClient,
-  assetCode: AssetCode.BTC | AssetCode.USD,
-  quoteCode: AssetCode.CLP
+  assetCode: AssetCode,
+  quoteCode: AssetCode
 ) {
   const manual = await tx.priceSnapshot.findFirst({
     where: { assetCode, quoteCode, source: { contains: "manual", mode: "insensitive" } },

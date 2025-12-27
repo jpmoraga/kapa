@@ -7,6 +7,7 @@ import {
   CrosshairMode,
   type IChartApi,
   type ISeriesApi,
+  type UTCTimestamp,
 } from "lightweight-charts";
 
 type TF = "1H" | "6H" | "24H" | "7D";
@@ -17,7 +18,7 @@ const TF_SECONDS: Record<TF, number> = {
   "7D": 7 * 24 * 60 * 60,
 };
 
-type Point = { time: number; value: number };
+type Point = { time: UTCTimestamp; value: number };
 
 export default function BtcClpChart() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -58,9 +59,11 @@ export default function BtcClpChart() {
         return;
       }
 
-      const pts: Point[] = json.points;
-
-      // limpiar: (1) finitos (2) ordenar ASC (3) eliminar duplicados por time
+      const pts: Point[] = (json.points as any[]).map((p) => ({
+        time: Number(p.time) as UTCTimestamp,
+        value: Number(p.value),
+      }));
+      
       const usable = pts
         .filter((p) => Number.isFinite(p.time) && Number.isFinite(p.value))
         .sort((a, b) => a.time - b.time)

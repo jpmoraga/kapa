@@ -46,7 +46,7 @@ enum InternalMovementReason {
  */
 enum TreasuryMovementStatus {
   PENDING
-  PROCESSING 
+  PROCESSING
   APPROVED
   REJECTED
 }

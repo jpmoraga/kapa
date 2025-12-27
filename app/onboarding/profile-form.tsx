@@ -37,7 +37,7 @@ export default function OnboardingProfileForm() {
       const data = (await res.json().catch(() => ({}))) as ApiResp;
 
       if (!res.ok) {
-        setMsg(data?.error ?? "No se pudo guardar.");
+        setMsg(("error" in data ? (data as any).error : null) ?? "No se pudo guardar.");
         return;
       }
 

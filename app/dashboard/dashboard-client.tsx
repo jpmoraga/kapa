@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import type { TreasuryMovementStatus } from "@prisma/client";
 
 
 type Unit = "BTC" | "sats";
 type AssetCode = "BTC" | "CLP" | "USD";
-type MovementStatus = "PENDING" | "APPROVED" | "REJECTED";
+type MovementStatus = TreasuryMovementStatus;
 
 type Movement = {
   id: string;
