@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const marketId = searchParams.get("market_id") ?? "btc-clp";
+    const marketId =
+      searchParams.get("marketId") ?? searchParams.get("market_id") ?? "btc-clp";
 
     const budaUrl = `https://www.buda.com/api/v2/markets/${marketId}/ticker`;
 
