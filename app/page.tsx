@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import BtcClpChart from "@/components/landing/BtcClpChart";
 
+const COMING_SOON = true;
+
 async function fetchTicker(marketId: "btc-clp" | "usdt-clp") {
   const res = await fetch(`/api/buda/ticker?marketId=${marketId}`, {
     cache: "no-store",
@@ -58,21 +60,51 @@ export default function LandingPage() {
           <div className="text-lg font-semibold tracking-tight">Kapa21</div>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/auth/login"
-              className="text-sm rounded-lg border border-neutral-800 px-3 py-2 hover:bg-neutral-900"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/auth/register"
-              className="text-sm rounded-lg bg-white text-black px-3 py-2 font-medium hover:opacity-90"
-            >
-              Crear cuenta
-            </Link>
+            {COMING_SOON ? (
+              <>
+                <button
+                  title="Sitio en construcción"
+                  disabled
+                  className="text-sm rounded-lg border border-neutral-800 px-3 py-2 opacity-50 cursor-not-allowed"
+                >
+                  Entrar
+                </button>
+
+                <button
+                  title="Sitio en construcción"
+                  disabled
+                  className="text-sm rounded-lg bg-white text-black px-3 py-2 font-medium opacity-50 cursor-not-allowed"
+                >
+                  Crear cuenta
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="text-sm rounded-lg border border-neutral-800 px-3 py-2 hover:bg-neutral-900"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/auth/register"
+                  className="text-sm rounded-lg bg-white text-black px-3 py-2 font-medium hover:opacity-90"
+                >
+                  Crear cuenta
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {COMING_SOON && (
+        <div className="mx-auto max-w-6xl px-6 -mt-2 pb-4">
+          <div className="rounded-2xl border border-neutral-800 bg-black/40 px-4 py-3 text-sm text-neutral-200">
+            🚧 Sitio en construcción — estamos afinando la experiencia. Vuelve pronto.
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto max-w-6xl px-6 pb-12">
         <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
@@ -110,12 +142,22 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-6">
-              <Link
-                href="/auth/register"
-                className="inline-flex rounded-xl bg-white text-black px-5 py-3 font-medium hover:opacity-90"
-              >
-                Crear cuenta
-              </Link>
+              {COMING_SOON ? (
+                <button
+                  title="Sitio en construcción"
+                  disabled
+                  className="inline-flex rounded-xl bg-white text-black px-5 py-3 font-medium opacity-50 cursor-not-allowed"
+                >
+                  Crear cuenta
+                </button>
+              ) : (
+                <Link
+                  href="/auth/register"
+                  className="inline-flex rounded-xl bg-white text-black px-5 py-3 font-medium hover:opacity-90"
+                >
+                  Crear cuenta
+                </Link>
+              )}
             </div>
           </header>
 
@@ -157,13 +199,33 @@ export default function LandingPage() {
 
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-900 pt-6 text-xs text-neutral-500">
           <div>© {new Date().getFullYear()} Kapa21</div>
+
           <div className="flex items-center gap-3">
-            <Link className="hover:text-neutral-300" href="/auth/login">
-              Login
-            </Link>
-            <Link className="hover:text-neutral-300" href="/auth/register">
-              Registro
-            </Link>
+            {COMING_SOON ? (
+              <>
+                <span
+                  title="Sitio en construcción"
+                  className="opacity-50 cursor-not-allowed"
+                >
+                  Login
+                </span>
+                <span
+                  title="Sitio en construcción"
+                  className="opacity-50 cursor-not-allowed"
+                >
+                  Registro
+                </span>
+              </>
+            ) : (
+              <>
+                <Link className="hover:text-neutral-300" href="/auth/login">
+                  Login
+                </Link>
+                <Link className="hover:text-neutral-300" href="/auth/register">
+                  Registro
+                </Link>
+              </>
+            )}
           </div>
         </footer>
       </div>
