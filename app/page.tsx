@@ -1,24 +1,16 @@
 // app/page.tsx
 import Link from "next/link";
-import { headers } from "next/headers";
 import BtcClpChart from "@/components/landing/BtcClpChart";
 
 
-async function getBaseUrl() {
-  const h = await headers();
-  const host = h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  return `${proto}://${host}`;
-}
 
-async function getPrice(pair: "BTC_CLP" | "USDT_CLP") {
+async function getPrice(marketId: "btc-clp" | "usdt-clp") {
   try {
-    const base = await getBaseUrl();
-    const res = await fetch(`${base}/api/prices/current?pair=${pair}`, {
+    const res = await fetch(`/api/buda/ticker?marketId=${marketId}`, {
       cache: "no-store",
     });
     const json = await res.json().catch(() => ({}));
-    return Number(json?.price) || null;
+    return Number(json?.last_price) || null;
   } catch {
     return null;
   }
@@ -26,8 +18,8 @@ async function getPrice(pair: "BTC_CLP" | "USDT_CLP") {
 
 export default async function LandingPage() {
   const [btcClp, usdtClp] = await Promise.all([
-    getPrice("BTC_CLP"),
-    getPrice("USDT_CLP"),
+    getPrice("btc-clp"),
+    getPrice("usdt-clp"),
   ]);
 
   return (
