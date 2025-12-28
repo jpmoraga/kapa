@@ -1,11 +1,22 @@
-// web/app/page.tsx
+// app/page.tsx
 import Link from "next/link";
+import { headers } from "next/headers";
 import BtcClpChart from "@/components/landing/BtcClpChart";
+
+
+async function getBaseUrl() {
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
 
 async function getPrice(pair: "BTC_CLP" | "USDT_CLP") {
   try {
-    const base = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const res = await fetch(`${base}/api/prices/current?pair=${pair}`, { cache: "no-store" });
+    const base = await getBaseUrl();
+    const res = await fetch(`${base}/api/prices/current?pair=${pair}`, {
+      cache: "no-store",
+    });
     const json = await res.json().catch(() => ({}));
     return Number(json?.price) || null;
   } catch {
@@ -14,14 +25,16 @@ async function getPrice(pair: "BTC_CLP" | "USDT_CLP") {
 }
 
 export default async function LandingPage() {
-  const [btcClp, usdtClp] = await Promise.all([getPrice("BTC_CLP"), getPrice("USDT_CLP")]);
+  const [btcClp, usdtClp] = await Promise.all([
+    getPrice("BTC_CLP"),
+    getPrice("USDT_CLP"),
+  ]);
 
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
       {/* Top bar */}
       <div className="mx-auto max-w-6xl px-6 py-6">
         <div className="flex items-center justify-between">
-          {/* mañana esto será el logo */}
           <div className="text-lg font-semibold tracking-tight">Kapa</div>
 
           <div className="flex items-center gap-2">
@@ -129,8 +142,12 @@ export default async function LandingPage() {
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-900 pt-6 text-xs text-neutral-500">
           <div>© {new Date().getFullYear()} Kapa</div>
           <div className="flex items-center gap-3">
-            <Link className="hover:text-neutral-300" href="/auth/login">Login</Link>
-            <Link className="hover:text-neutral-300" href="/auth/register">Registro</Link>
+            <Link className="hover:text-neutral-300" href="/auth/login">
+              Login
+            </Link>
+            <Link className="hover:text-neutral-300" href="/auth/register">
+              Registro
+            </Link>
           </div>
         </footer>
       </div>
