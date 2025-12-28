@@ -1,40 +1,51 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const marketId = (searchParams.get("marketId") ?? "btc-clp").toLowerCase();
-
-    // MVP: traer últimos N trades (esto define cuánta historia hay)
-    // Puedes subir a 2000/5000 si Buda lo acepta sin problemas.
     const limit = Number(searchParams.get("limit") ?? "500");
 
-    const url = `https://www.buda.com/api/v2/markets/${marketId}/trades?limit=${limit}`;
-    const res = await fetch(url, { cache: "no-store", headers: { accept: "application/json" } });
+    // 1) best-effort: sincroniza un lote (no falla si Buda falla)
+    try {
+      const url = `https://www.buda.com/api/v2/markets/${marketId}/trades?limit=500`;
+      const res = await fetch(url, { cache: "no-store", headers: { accept: "application/json" } });
+      const json = await res.json();
+      const entries = json?.trades?.entries ?? [];
 
-    const text = await res.text();
-    if (text.trim().startsWith("<")) {
-      console.log("BUDA_TRADES_HTML_SAMPLE", text.slice(0, 200));
-      return NextResponse.json({ ok: false, points: [] }, { status: 200 });
-    }
+      const data = entries
+        .map((e: any[]) => ({
+          marketId,
+          timeMs: BigInt(e[0]),
+          amount: e[1],
+          price: e[2],
+          direction: String(e[3] ?? ""),
+        }))
+        .filter((t: any) => t.direction === "buy" || t.direction === "sell");
 
-    const json = JSON.parse(text);
+      if (data.length) {
+        await prisma.marketTrade.createMany({ data, skipDuplicates: true });
+      }
+    } catch {}
 
-    const entries = json?.trades?.entries ?? [];
+    // 2) ahora servimos desde DB
+    const rows = await prisma.marketTrade.findMany({
+      where: { marketId },
+      orderBy: { timeMs: "desc" },
+      take: limit,
+    });
 
-    // entries: [ [timestamp(ms), amount, price, direction], ... ]
-    const points = entries
-      .map((e: any[]) => ({
-        time: Math.floor(Number(e[0]) / 1000), // ms -> sec
-        value: Number(e[2]),                  // ✅ precio
+    const points = rows
+      .map((r) => ({
+        time: Math.floor(Number(r.timeMs) / 1000), // ms -> sec
+        value: Number(r.price),
       }))
-      .filter((p: any) => Number.isFinite(p.time) && Number.isFinite(p.value))
-      .sort((a: any, b: any) => a.time - b.time)
-      .filter((p: any, i: number, arr: any[]) => i === 0 || p.time !== arr[i - 1].time);
+      .sort((a, b) => a.time - b.time);
 
     return NextResponse.json({ ok: true, points }, { status: 200 });
   } catch (e) {
-    console.error("LINE_API_ERROR", e);
+    console.error("LINE_DB_API_ERROR", e);
     return NextResponse.json({ ok: false, points: [] }, { status: 200 });
   }
 }

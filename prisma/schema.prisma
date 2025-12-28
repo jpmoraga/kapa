@@ -226,3 +226,25 @@ model UserOnboarding {
 
   @@map("user_onboarding")
 }
+
+model MarketTrade {
+  id        String   @id @default(cuid())
+
+  // ej: "btc-clp", "usdt-clp"
+  marketId  String
+
+  // timestamp del trade en milisegundos (como viene de Buda)
+  timeMs    BigInt
+
+  // precio y monto (Buda los manda como string numérico)
+  price     Decimal
+  amount    Decimal
+
+  // "buy" o "sell" (como viene de Buda)
+  direction String
+
+  createdAt DateTime @default(now())
+
+  @@index([marketId, timeMs])
+  @@unique([marketId, timeMs, price, amount, direction])
+}
