@@ -8,6 +8,7 @@ import BtcClpChart from "@/components/landing/BtcClpChart";
 async function fetchTicker(marketId: "btc-clp" | "usdt-clp") {
   const res = await fetch(`/api/buda/ticker?marketId=${marketId}`, {
     cache: "no-store",
+    headers: { "cache-control": "no-cache" },
   });
   if (!res.ok) return null;
   return res.json();
@@ -19,16 +20,16 @@ export default function LandingPage() {
 
   useEffect(() => {
     let alive = true;
-
-    (async () => {
+  
+    const loadPrices = async () => {
       try {
         const [btc, usdt] = await Promise.all([
           fetchTicker("btc-clp"),
           fetchTicker("usdt-clp"),
         ]);
-
+  
         if (!alive) return;
-
+  
         setBtcClp(Number(btc?.last_price) || null);
         setUsdtClp(Number(usdt?.last_price) || null);
       } catch {
@@ -36,10 +37,17 @@ export default function LandingPage() {
         setBtcClp(null);
         setUsdtClp(null);
       }
-    })();
-
+    };
+  
+    // carga inicial
+    loadPrices();
+  
+    // vuelve a cargar cada 15 segundos
+    const intervalId = setInterval(loadPrices, 15000);
+  
     return () => {
       alive = false;
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -47,7 +55,7 @@ export default function LandingPage() {
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
       <div className="mx-auto max-w-6xl px-6 py-6">
         <div className="flex items-center justify-between">
-          <div className="text-lg font-semibold tracking-tight">Kapa</div>
+          <div className="text-lg font-semibold tracking-tight">Kapa21</div>
 
           <div className="flex items-center gap-2">
             <Link
@@ -69,7 +77,7 @@ export default function LandingPage() {
       <div className="mx-auto max-w-6xl px-6 pb-12">
         <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
           <header className="lg:col-span-6">
-            <h1 className="text-5xl font-semibold tracking-tight">Kapa</h1>
+            <h1 className="text-5xl font-semibold tracking-tight">Kapa21</h1>
 
             <p className="mt-4 text-neutral-300 text-lg max-w-xl">
               Compra, vende y gestiona tu tesorería en Bitcoin.
@@ -148,7 +156,7 @@ export default function LandingPage() {
         </section>
 
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-900 pt-6 text-xs text-neutral-500">
-          <div>© {new Date().getFullYear()} Kapa</div>
+          <div>© {new Date().getFullYear()} Kapa21</div>
           <div className="flex items-center gap-3">
             <Link className="hover:text-neutral-300" href="/auth/login">
               Login
