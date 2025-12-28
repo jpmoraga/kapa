@@ -21,10 +21,10 @@ const TF_SECONDS: Record<TF, number> = {
 
 // ✅ intervalo de vela por ventana (puedes ajustar después)
 const TF_CANDLE_INTERVAL_SEC: Record<TF, number> = {
-  "1H": 60,        // velas de 1m
-  "6H": 5 * 60,    // velas de 5m
-  "24H": 15 * 60,  // velas de 15m
-  "7D": 60 * 60,   // velas de 1h
+  "1H": 10 * 60,     // 10m
+  "6H": 15 * 60,     // 15m
+  "24H": 60 * 60,    // 1h
+  "7D": 4 * 60 * 60, // 4h
 };
 
 type Point = { time: UTCTimestamp; value: number };
@@ -204,7 +204,12 @@ export default function BtcClpChart() {
         });
 
         candleRef.current = chart.addSeries(CandlestickSeries, {
-          // no fijamos colores acá para no pelear con estilos, pero puedes después
+          upColor: "#16a34a",
+          downColor: "#dc2626",
+          borderUpColor: "#16a34a",
+          borderDownColor: "#dc2626",
+          wickUpColor: "#16a34a",
+          wickDownColor: "#dc2626",
           priceFormat: { type: "price", precision: 0, minMove: 1 },
         });
 
@@ -217,10 +222,17 @@ export default function BtcClpChart() {
       chartRef.current?.applyOptions({ rightPriceScale: { mode: log ? 1 : 0 } });
 
       // set data inicial (según view actual)
+      // data inicial usando lo que realmente acabamos de bajar (usable)
+      const end = usable.length ? usable[usable.length - 1].time : 0;
+      const start = end - TF_SECONDS[tf];
+      const windowPts = usable.filter((p) => p.time >= start && p.time <= end);
+      const initialPoints = windowPts.length > 1 ? windowPts : usable;
+
       if (view === "line") {
-        lineRef.current?.setData(effectivePoints);
+        lineRef.current?.setData(initialPoints);
       } else {
-        candleRef.current?.setData(candlesForTf);
+        const interval = TF_CANDLE_INTERVAL_SEC[tf];
+        candleRef.current?.setData(buildCandles(initialPoints, interval));
       }
 
       chartRef.current?.timeScale().fitContent();
