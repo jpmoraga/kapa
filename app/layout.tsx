@@ -1,5 +1,4 @@
-
-import { GoogleAnalytics } from "@next/third-parties/google";
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -16,23 +15,40 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Kapa21",
-  description: "Compra, vende y gestiona tu tesorería en Bitcoin.",
+  description: "Compra, vende y gestiona tu tesorería en Bitcoin",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="es">
+      <head>
+        {/* Google Analytics */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-EM8JHBDSDD"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-EM8JHBDSDD', {
+                anonymize_ip: true,
+              });
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>
-
-      <GoogleAnalytics gaId="G-EM8JHBDSDD" />
     </html>
   );
 }
