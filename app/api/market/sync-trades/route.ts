@@ -35,8 +35,16 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json({ ok: true, inserted: r.count });
-  } catch (e) {
+    } catch (e: any) {
     console.error("SYNC_TRADES_ERROR", e);
-    return NextResponse.json({ ok: false, inserted: 0 }, { status: 200 });
+  
+    return NextResponse.json(
+      {
+        ok: false,
+        inserted: 0,
+        error: e?.message ?? String(e),
+      },
+      { status: 200 }
+    );
   }
 }
