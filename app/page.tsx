@@ -1,30 +1,50 @@
 // app/page.tsx
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import BtcClpChart from "@/components/landing/BtcClpChart";
 
-
-
-async function getPrice(marketId: "btc-clp" | "usdt-clp") {
-  try {
-    const res = await fetch(`/api/buda/ticker?marketId=${marketId}`, {
-      cache: "no-store",
-    });
-    const json = await res.json().catch(() => ({}));
-    return Number(json?.last_price) || null;
-  } catch {
-    return null;
-  }
+async function fetchTicker(marketId: "btc-clp" | "usdt-clp") {
+  const res = await fetch(`/api/buda/ticker?marketId=${marketId}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return res.json();
 }
 
-export default async function LandingPage() {
-  const [btcClp, usdtClp] = await Promise.all([
-    getPrice("btc-clp"),
-    getPrice("usdt-clp"),
-  ]);
+export default function LandingPage() {
+  const [btcClp, setBtcClp] = useState<number | null>(null);
+  const [usdtClp, setUsdtClp] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const [btc, usdt] = await Promise.all([
+          fetchTicker("btc-clp"),
+          fetchTicker("usdt-clp"),
+        ]);
+
+        if (!alive) return;
+
+        setBtcClp(Number(btc?.last_price) || null);
+        setUsdtClp(Number(usdt?.last_price) || null);
+      } catch {
+        if (!alive) return;
+        setBtcClp(null);
+        setUsdtClp(null);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <main className="min-h-screen bg-neutral-950 text-neutral-100">
-      {/* Top bar */}
       <div className="mx-auto max-w-6xl px-6 py-6">
         <div className="flex items-center justify-between">
           <div className="text-lg font-semibold tracking-tight">Kapa</div>
@@ -46,7 +66,6 @@ export default async function LandingPage() {
         </div>
       </div>
 
-      {/* Hero */}
       <div className="mx-auto max-w-6xl px-6 pb-12">
         <div className="grid gap-8 lg:grid-cols-12 lg:items-start">
           <header className="lg:col-span-6">
@@ -56,7 +75,6 @@ export default async function LandingPage() {
               Compra, vende y gestiona tu tesorería en Bitcoin.
             </p>
 
-            {/* Spot cards */}
             <div className="mt-7 grid gap-3 sm:grid-cols-2 max-w-xl">
               <div className="rounded-2xl border border-neutral-800 bg-black/40 p-4">
                 <div className="flex items-center justify-between">
@@ -93,7 +111,6 @@ export default async function LandingPage() {
             </div>
           </header>
 
-          {/* Chart card */}
           <section className="lg:col-span-6">
             <div className="rounded-3xl border border-neutral-800 bg-black/30 p-4">
               <div className="mb-3 flex items-center justify-between">
@@ -109,7 +126,6 @@ export default async function LandingPage() {
           </section>
         </div>
 
-        {/* Benefits */}
         <section className="mt-10 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-neutral-800 bg-black/20 p-4">
             <div className="text-sm font-medium">Bitcoin-first</div>
