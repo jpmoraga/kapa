@@ -248,3 +248,19 @@ model MarketTrade {
   @@index([marketId, timeMs])
   @@unique([marketId, timeMs, price, amount, direction])
 }
+
+model CronRun {
+  id         String   @id @default(cuid())
+  job        String
+  marketId   String
+  ok         Boolean
+  inserted   Int
+  error      String?
+  startedAt  DateTime
+  finishedAt DateTime
+
+  createdAt  DateTime @default(now())
+
+  @@index([job, createdAt])
+  @@index([marketId, createdAt])
+}
