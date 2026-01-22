@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import OnboardingShell from "../_components/OnboardingShell";
+import { onboardingCopy as copy } from "../_copy";
 
-export default function PersonalOnboardingPage() {
+export default function PersonalPage() {
   const router = useRouter();
 
   const [fullName, setFullName] = useState("");
@@ -12,84 +14,98 @@ export default function PersonalOnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  async function onContinue() {
+    const normalizedPhone = phone.trim();
+    const normalizedFullName = fullName.trim();
+    const normalizedRut = rut.trim();
 
-    const res = await fetch("/api/onboarding/personal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, rut, phone }),
-    });
-
-    setLoading(false);
-
-    if (!res.ok) {
-      setError("No pudimos guardar tus datos. Intenta nuevamente.");
+    if (!normalizedFullName || !normalizedRut || !normalizedPhone) {
+      setError("Completa nombre, RUT y teléfono para continuar.");
       return;
     }
 
-    router.push("/dashboard");
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/onboarding/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: normalizedFullName,
+          rut: normalizedRut,
+          phone: normalizedPhone,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error ?? "No pude guardar tu información.");
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError("Error de red. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-100 p-6">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow">
-        <h1 className="text-2xl font-semibold mb-2">
-          Completa tu perfil personal
-        </h1>
-        <p className="text-sm text-neutral-600 mb-6">
-          Necesitamos estos datos para habilitar funciones financieras.
-        </p>
+    <OnboardingShell title={copy.personal.title} subtitle={copy.personal.subtitle}>
+      <div className="grid gap-3">
+        <div>
+          <label className="text-xs text-neutral-400">Nombre completo</label>
+          <input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-neutral-100 placeholder:text-neutral-500 outline-none focus:ring-2 focus:ring-white/10"
+            placeholder="Tu nombre"
+          />
+        </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm">Nombre completo</label>
-            <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-            />
-          </div>
+        <div>
+          <label className="text-xs text-neutral-400">RUT</label>
+          <input
+            value={rut}
+            onChange={(e) => setRut(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-neutral-100 placeholder:text-neutral-500 outline-none focus:ring-2 focus:ring-white/10"
+            placeholder="12.345.678-9"
+          />
+        </div>
 
-          <div>
-            <label className="text-sm">RUT</label>
-            <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              value={rut}
-              onChange={(e) => setRut(e.target.value)}
-              placeholder="12.345.678-9"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="text-sm">Teléfono</label>
-            <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+56 9 1234 5678"
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="rounded-xl bg-red-100 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <button
-            disabled={loading}
-            className="w-full rounded-xl bg-black py-2 text-white disabled:opacity-60"
-          >
-            {loading ? "Guardando..." : "Guardar y continuar"}
-          </button>
-        </form>
+        <div>
+          <label className="text-xs text-neutral-400">{copy.personal.phoneLabel}</label>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-neutral-100 placeholder:text-neutral-500 outline-none focus:ring-2 focus:ring-white/10"
+            placeholder={copy.personal.phonePlaceholder}
+          />
+        </div>
       </div>
-    </div>
+
+      <div className="mt-5 k21-badge">{copy.personal.badge}</div>
+
+      {error && (
+        <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {error}
+        </div>
+      )}
+
+      <div className="mt-6 flex gap-3">
+        <button onClick={() => router.back()} className="k21-btn-secondary flex-1 h-11">
+          {copy.personal.btnBack}
+        </button>
+        <button
+          onClick={onContinue}
+          disabled={loading || !fullName.trim() || !rut.trim() || !phone.trim()}
+          className="k21-btn-primary flex-1 h-11 disabled:opacity-60"
+        >
+          {loading ? "Guardando..." : copy.personal.btnContinue}
+        </button>
+      </div>
+    </OnboardingShell>
   );
 }

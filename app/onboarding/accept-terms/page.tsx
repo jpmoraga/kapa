@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import OnboardingShell from "../_components/OnboardingShell";
+import { onboardingCopy as copy } from "../_copy";
 
 export default function AcceptTermsPage() {
   const router = useRouter();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,54 +34,43 @@ export default function AcceptTermsPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/onboarding/accept-terms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
+      const res = await fetch("/api/onboarding/accept-terms", { method: "POST" });
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data?.error ?? "No se pudo aceptar términos");
-        setLoading(false);
+        setError((data as any)?.error ?? copy.terms.defaultError);
         return;
       }
 
-      router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("Error de red");
+      setError(copy.terms.networkError);
+    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
-      <h1 className="text-2xl font-semibold">Términos y condiciones</h1>
-
+    <OnboardingShell title={copy.terms.title} subtitle={copy.terms.subtitle}>
       <div
         ref={termsRef}
-        className="mt-4 max-h-64 overflow-y-auto rounded-lg border border-white/10 bg-white/5 p-4 text-sm leading-6"
+        className="max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-neutral-200"
       >
-        <p className="opacity-80">
-          Para operar en la plataforma debes aceptar los términos.
-        </p>
+        <p className="text-neutral-300">{copy.terms.intro}</p>
 
-        <ul className="mt-3 list-disc pl-5 opacity-80">
-          <li>Entiendo que esta es una plataforma de prueba/MVP.</li>
-          <li>Entiendo que los movimientos pueden requerir aprobación.</li>
-          <li>Acepto el uso de mis datos para fines operacionales.</li>
+        <ul className="mt-3 list-disc pl-5 text-neutral-300">
+          {copy.terms.bullets.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
         </ul>
       </div>
 
       {!hasScrolledToBottom && (
-        <div className="mt-2 text-xs text-white/50">
-          Desliza hasta el final para habilitar “Aceptar términos”.
-        </div>
+        <div className="mt-2 text-xs text-neutral-500">{copy.terms.scrollHint}</div>
       )}
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm">
+        <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
           {error}
         </div>
       )}
@@ -87,19 +79,16 @@ export default function AcceptTermsPage() {
         <button
           onClick={onAccept}
           disabled={loading || !hasScrolledToBottom}
-          title={!hasScrolledToBottom ? "Desliza hasta el final para habilitar" : undefined}
-          className="rounded-lg bg-white px-4 py-2 text-black disabled:opacity-60"
+          title={!hasScrolledToBottom ? copy.terms.scrollHint : undefined}
+          className="k21-btn-primary flex-1 h-11 disabled:opacity-60"
         >
-          {loading ? "Guardando..." : "Aceptar términos"}
+          {loading ? copy.terms.saving : copy.terms.btnAccept}
         </button>
 
-        <button
-          onClick={() => router.back()}
-          className="rounded-lg border border-white/15 px-4 py-2"
-        >
-          Volver
+        <button onClick={() => router.back()} className="k21-btn-secondary flex-1 h-11">
+          {copy.terms.btnBack}
         </button>
       </div>
-    </div>
+    </OnboardingShell>
   );
 }

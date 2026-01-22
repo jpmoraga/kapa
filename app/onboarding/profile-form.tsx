@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type ApiResp =
   | { ok: true; onboarding?: any }
@@ -9,13 +9,6 @@ type ApiResp =
 
 export default function OnboardingProfileForm() {
   const router = useRouter();
-  const sp = useSearchParams();
-
-  const returnTo = useMemo(() => {
-    const r = sp.get("returnTo");
-    return r && r.startsWith("/") ? r : "/dashboard";
-  }, [sp]);
-
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [rut, setRut] = useState("");
@@ -41,8 +34,6 @@ export default function OnboardingProfileForm() {
         return;
       }
 
-      // si guardó bien: volvemos a donde venías
-      router.push(returnTo);
       router.refresh();
     } finally {
       setSaving(false);

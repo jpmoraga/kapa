@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import type { TreasuryMovementStatus } from "@prisma/client";
 
 
+
 type Unit = "BTC" | "sats";
 type AssetCode = "BTC" | "CLP" | "USD";
 type MovementStatus = TreasuryMovementStatus;
@@ -153,7 +154,7 @@ function OnboardingStatusBanner({ onboarding }: { onboarding: OnboardingStatus }
   return (
     <div
       className={[
-        "rounded-xl border px-4 py-3 text-sm",
+        "k21-card px-4 py-3 text-sm",
         ok
           ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
           : "border-yellow-500/20 bg-yellow-500/10 text-yellow-200",
@@ -165,9 +166,7 @@ function OnboardingStatusBanner({ onboarding }: { onboarding: OnboardingStatus }
         </div>
 
         {!ok ? (
-          <div className="text-xs opacity-90">
-            Falta: {missing.join(" · ")}
-          </div>
+          <div className="text-xs opacity-90">Falta: {missing.join(" · ")}</div>
         ) : (
           <div className="text-xs opacity-90">Puedes operar</div>
         )}
@@ -188,6 +187,7 @@ export default function DashboardClient({
   onboarding: OnboardingStatus;
 }) {
   const router = useRouter();
+  
 
   
 
@@ -199,15 +199,8 @@ export default function DashboardClient({
   const needsTerms = !onboarding?.termsAccepted;
 
   function onboardingCtaHref() {
-    if (needsProfile) return "/onboarding/profile";
-    if (needsTerms) return "/onboarding/accept-terms";
+    if (needsProfile || needsTerms) return "/onboarding";
     return "/dashboard";
-  }
-
-  function onboardingCtaLabel() {
-    if (needsProfile) return "Completar perfil";
-    if (needsTerms) return "Aceptar términos";
-    return "OK";
   }
 
   // ✅ defaults SSR-safe
@@ -289,7 +282,8 @@ export default function DashboardClient({
   }
 
   function newMovementHref(type: "deposit" | "withdraw") {
-    return `/treasury/new-movement?type=${type}&assetCode=${activeAsset}${unitParamForAsset(activeAsset)}`;
+    const mode = type === "deposit" ? "buy" : "sell";
+    return `/treasury/new-movement?mode=${mode}&assetCode=${activeAsset}${unitParamForAsset(activeAsset)}`;
   }
 
   function adjustHref() {
@@ -475,7 +469,7 @@ export default function DashboardClient({
       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
       : isStale
       ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-200"
-      : "border-neutral-700 bg-neutral-900 text-neutral-200";
+      : "border-white/10 bg-white/5 text-neutral-200";
 
     return (
       <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${cls}`}>
@@ -601,19 +595,19 @@ export default function DashboardClient({
                 {!onboarding.canOperate && (
                   <OnboardingGateModal
                   onboarding={onboarding}
-                  onGoProfile={() => router.push("/onboarding/profile")}
-                  onGoTerms={() => router.push("/onboarding/accept-terms")}
+                  onGoProfile={() => router.push("/onboarding")}
+                  onGoTerms={() => router.push("/onboarding")}
                   onAccepted={async () => {
                     await refreshAll();
                   }}
                 />
                 )}
       {/* LEFT: PORTFOLIO + ACCIONES */}
-      <section className="rounded-2xl bg-black p-6 shadow-lg lg:col-span-1 border border-neutral-800">
+      <section className="k21-card p-6 lg:col-span-1">
       <OnboardingStatusBanner onboarding={onboarding} />
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm text-neutral-400">Valor total total{totalLabelSuffix()}</p>
+            <p className="text-sm text-neutral-400">Valor total{totalLabelSuffix()}</p>
             <div className="mt-2 text-3xl font-semibold tracking-tight">{renderTotal()}</div>
 
             {totals.missingPrices && (
@@ -629,10 +623,7 @@ export default function DashboardClient({
                   key={q}
                   type="button"
                   onClick={() => setQuote(q)}
-                  className={[
-                    "rounded-lg border px-2 py-1 text-xs",
-                    quote === q ? "border-neutral-600 bg-neutral-900" : "border-neutral-800 bg-neutral-950 hover:bg-neutral-900",
-                  ].join(" ")}
+                  className={quote === q ? "k21-toggle-active" : "k21-toggle"}
                 >
                   {q}
                 </button>
@@ -641,7 +632,7 @@ export default function DashboardClient({
               <button
                 type="button"
                 onClick={refreshAll}
-                className="ml-auto text-xs rounded-lg border border-neutral-700 px-2 py-1 hover:bg-neutral-800 disabled:opacity-50"
+                className="k21-toggle ml-auto disabled:opacity-50"
                 disabled={priceLoading || pendingLoading}
                 title="Refresca precios + pendientes + dashboard"
               >
@@ -682,7 +673,7 @@ export default function DashboardClient({
           {hydrated && activeAsset === "BTC" && (
             <button
               onClick={toggleUnit}
-              className="text-xs rounded-lg border border-neutral-700 px-2 py-1 hover:bg-neutral-800"
+              className="k21-toggle"
               type="button"
               title="Cambiar unidad BTC/sats"
             >
@@ -704,9 +695,9 @@ export default function DashboardClient({
                 disabled={!enabled}
                 onClick={() => setActiveAsset(a)}
                 className={[
-                  "rounded-xl border px-3 py-2 text-left transition",
-                  enabled ? "hover:bg-neutral-900" : "opacity-40 cursor-not-allowed",
-                  active ? "border-neutral-600 bg-neutral-900" : "border-neutral-800 bg-neutral-950",
+                  "k21-row !justify-start flex-col items-start gap-0",
+                  enabled ? "hover:bg-white/5" : "opacity-40 cursor-not-allowed",
+                  active ? "border-white/10 bg-white/5" : "",
                 ].join(" ")}
               >
                 <div className="text-xs text-neutral-400">{uiAsset(a)}</div>
@@ -717,7 +708,7 @@ export default function DashboardClient({
         </div>
 
         {/* Balance principal */}
-        <div className="mt-5 rounded-2xl border border-neutral-800 bg-neutral-950 p-4">
+        <div className="k21-card mt-5 p-4">
           <div className="text-xs text-neutral-400">Balance {uiAsset(activeAsset)}</div>
 
           <div className="mt-2 text-2xl font-semibold tracking-tight">
@@ -730,7 +721,7 @@ export default function DashboardClient({
         </div>
 
         {/* DESGLOSE POR ASSET (en moneda quote) */}
-        <div className="mt-5 rounded-2xl border border-neutral-800 bg-neutral-950 p-4">
+        <div className="k21-card mt-5 p-4">
           <div className="flex items-center justify-between">
             <div className="text-xs text-neutral-400">Desglose por asset</div>
             <div className="text-[11px] text-neutral-500">en {quote}</div>
@@ -764,12 +755,7 @@ export default function DashboardClient({
         <div className="mt-6 flex flex-col gap-3">
         <a
             href={onboarding.canOperate ? newMovementHref("deposit") : onboardingCtaHref()}
-            className={[
-              "rounded-xl px-4 py-2 font-medium",
-              onboarding.canOperate
-                ? "bg-white text-black hover:opacity-90"
-                : "bg-white/40 text-black/70 cursor-not-allowed",
-            ].join(" ")}
+            className={onboarding.canOperate ? "k21-btn-primary" : "k21-btn-disabled"}
             onPointerDown={rememberActiveAsset}
             onClick={rememberActiveAsset}
             title={onboarding.canOperate ? "" : "Completa el onboarding para operar"}
@@ -779,12 +765,7 @@ export default function DashboardClient({
 
           <a
             href={onboarding.canOperate ? newMovementHref("withdraw") : onboardingCtaHref()}
-            className={[
-              "rounded-xl border px-4 py-2",
-              onboarding.canOperate
-                ? "border-red-500/30 text-red-400 hover:bg-red-500/10"
-                : "border-red-500/20 text-red-300/50 cursor-not-allowed",
-            ].join(" ")}
+            className={onboarding.canOperate ? "k21-btn-secondary" : "k21-btn-disabled"}
             onPointerDown={rememberActiveAsset}
             onClick={rememberActiveAsset}
             title={onboarding.canOperate ? "" : "Completa el onboarding para operar"}
@@ -795,12 +776,7 @@ export default function DashboardClient({
           {isAdmin && (
           <a
             href={onboarding.canOperate ? adjustHref() : onboardingCtaHref()}
-            className={[
-              "rounded-xl border px-4 py-2 text-sm",
-              onboarding.canOperate
-                ? "border-neutral-700 hover:bg-neutral-800"
-                : "border-neutral-800 text-neutral-400 cursor-not-allowed",
-            ].join(" ")}
+            className={onboarding.canOperate ? "k21-btn-secondary" : "k21-btn-disabled"}
             onPointerDown={rememberActiveAsset}
             onClick={rememberActiveAsset}
             title={onboarding.canOperate ? "" : "Completa el onboarding para operar"}
@@ -809,14 +785,14 @@ export default function DashboardClient({
           </a>
         )}
 
-        <a href="/select-company" className="rounded-xl border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800">
+        <a href="/select-company" className="k21-btn-secondary">
           Cambiar empresa
         </a>
 
         <button
           type="button"
           onClick={handleSignOut}
-          className="rounded-xl border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+          className="k21-btn-secondary"
         >
           Sign out
         </button>
@@ -824,7 +800,7 @@ export default function DashboardClient({
       </section>
 
       {/* RIGHT: MOVIMIENTOS + PENDIENTES */}
-      <section className="rounded-2xl bg-neutral-950 p-6 shadow-lg lg:col-span-2 border border-neutral-800">
+      <section className="k21-card p-6 lg:col-span-2">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="text-sm text-neutral-400">Movimientos ({uiAsset(activeAsset)})</h2>
           <div className="text-xs text-neutral-500 flex items-center gap-3 flex-wrap justify-end">
@@ -844,7 +820,7 @@ export default function DashboardClient({
 
         {/* PENDIENTES (solo admin) */}
         {isAdmin && (
-          <div className="mt-4 rounded-2xl border border-neutral-800 bg-black/40 p-4">
+          <div className="k21-card mt-4 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs text-neutral-400">Pendientes de aprobación</div>
@@ -854,7 +830,7 @@ export default function DashboardClient({
               <button
                 type="button"
                 onClick={loadPending}
-                className="text-xs rounded-lg border border-neutral-700 px-2 py-1 hover:bg-neutral-800 disabled:opacity-50"
+                className="k21-btn-secondary text-xs !px-2 !py-1 disabled:opacity-50"
                 disabled={pendingLoading}
               >
                 {pendingLoading ? "Actualizando…" : "Actualizar"}
@@ -862,7 +838,7 @@ export default function DashboardClient({
             </div>
 
             {pendingError && (
-              <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+              <div className="mt-3 k21-card p-3 text-sm text-red-200 border-red-500/30 bg-red-500/10">
                 {pendingError}
               </div>
             )}
@@ -886,11 +862,11 @@ export default function DashboardClient({
                   return (
                     <div
                       key={p.id}
-                      className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 flex items-center justify-between gap-3"
+                      className="k21-row"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`rounded-full border px-2 py-1 text-xs ${badgeClass(t)}`}>
+                        <span className={`k21-pill ${badgeClass(t)}`}>
                             {labelType(t)} {uiAsset(p.assetCode)}
                           </span>
                           <span className="text-xs text-neutral-500">{formatDateCL(p.createdAt)}</span>
@@ -921,7 +897,7 @@ export default function DashboardClient({
                           type="button"
                           onClick={() => reject(p.id)}
                           disabled={actingId === p.id}
-                          className="rounded-lg border border-red-500/30 px-3 py-1 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                          className="k21-btn-secondary"
                         >
                           {actingId === p.id ? "…" : "Rechazar"}
                         </button>
@@ -930,7 +906,7 @@ export default function DashboardClient({
                           type="button"
                           onClick={() => approve(p.id)}
                           disabled={actingId === p.id}
-                          className="rounded-lg bg-white px-3 py-1 text-xs font-medium text-black hover:opacity-90 disabled:opacity-50"
+                          className={actingId === p.id ? "k21-btn-disabled" : "k21-btn-primary"}
                         >
                           {actingId === p.id ? "…" : "Aprobar"}
                         </button>
@@ -946,7 +922,7 @@ export default function DashboardClient({
         {/* ÚLTIMOS MOVIMIENTOS */}
         <div className="mt-5 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-neutral-500 border-b border-neutral-800">
+            <thead className="text-neutral-500 border-b border-white/10">
               <tr>
                 <th className="py-2 text-left">Fecha</th>
                 <th className="py-2 text-left">Tipo</th>
@@ -975,7 +951,7 @@ export default function DashboardClient({
                       : formatFiat(m.amount, "USD");
 
                   return (
-                    <tr key={m.id} className="border-b border-neutral-900 last:border-0">
+                    <tr key={m.id} className="border-b border-white/10 last:border-0">
                       <td className="py-3">{formatDateCL(m.createdAt)}</td>
 
                       <td className="py-3">
@@ -992,7 +968,7 @@ export default function DashboardClient({
                       <td className="py-3 text-right">
                         {missingPriceReason(m) ? (
                           <span
-                            className="inline-flex items-center rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-1 text-xs text-yellow-200"
+                            className="k21-pill-pending"
                             title={missingPriceReason(m) ?? ""}
                           >
                             Sin precio
@@ -1005,7 +981,7 @@ export default function DashboardClient({
                       <td className="py-3 text-neutral-400">{m.note || "—"}</td>
 
                       <td className="py-3">
-                        <span className={`rounded-full border px-2 py-1 text-xs ${statusPill(m.status)}`}>
+                        <span className={`k21-pill ${statusPill(m.status)}`}>
                           {statusLabel(m.status)}
                         </span>
                       </td>
@@ -1036,29 +1012,6 @@ function OnboardingGateModal({
   onGoTerms: () => void;
   onAccepted: () => Promise<void>;
 }) {
-  const [loadingTerms, setLoadingTerms] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function acceptTerms() {
-    setLoadingTerms(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/onboarding/accept-terms", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data?.error ?? "No se pudo aceptar términos");
-        return;
-      }
-
-      await onAccepted();
-    } catch {
-      setError("Error de red");
-    } finally {
-      setLoadingTerms(false);
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -1066,7 +1019,7 @@ function OnboardingGateModal({
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-neutral-950 p-6 shadow-xl">
+      <div className="relative w-full max-w-lg k21-card p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-white">Completa tu onboarding</h2>
         <p className="mt-1 text-sm text-white/60">
           Para operar necesitas completar estos pasos.
@@ -1074,7 +1027,7 @@ function OnboardingGateModal({
 
         <div className="mt-5 space-y-3">
           {/* Paso perfil */}
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="k21-card p-4 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-medium text-white">Perfil personal</div>
               <div className="text-xs text-white/60">
@@ -1085,7 +1038,7 @@ function OnboardingGateModal({
             {!onboarding.hasProfile ? (
               <button
                 onClick={onGoProfile}
-                className="rounded-lg bg-white px-3 py-2 text-black text-sm"
+                className="k21-btn-primary"
               >
                 Completar
               </button>
@@ -1095,8 +1048,7 @@ function OnboardingGateModal({
           </div>
 
           {/* Paso términos */}
-          {/* Paso términos */}
-<div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+<div className="k21-card p-4 flex items-center justify-between gap-3">
   <div>
     <div className="text-sm font-medium text-white">Términos y condiciones</div>
     <div className="text-xs text-white/60">
@@ -1109,7 +1061,7 @@ function OnboardingGateModal({
     <button
       type="button"
       onClick={onGoTerms}
-      className="rounded-lg bg-white px-3 py-2 text-black text-sm hover:opacity-90"
+      className="k21-btn-primary"
     >
       Leer y aceptar
     </button>
@@ -1119,11 +1071,6 @@ function OnboardingGateModal({
   )}
 </div>
 
-          {error && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
         </div>
 
         <div className="mt-6 text-xs text-white/40">
