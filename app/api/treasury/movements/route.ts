@@ -3,14 +3,17 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { getOnboardingStatus } from "@/lib/onboardingStatus";
 import { AssetCode, Prisma, TreasuryMovementStatus } from "@prisma/client";
+import { supabaseServer } from "@/lib/supabaseServer";
+import twilio from "twilio";
+import { sendDepositSlipWhatsApp } from "@/lib/whatsapp";
 
-import path from "path";
+import nodePath from "path";
 import fs from "fs/promises";
 
-import { budaCreateMarketOrder } from "@/lib/buda";
-import { syncSystemWalletFromBuda } from "@/lib/syncSystemWallet";
 import { requireCanOperate } from "@/lib/guards/requireCanOperate";
+import { approveMovementAsSystem } from "@/lib/treasury/approveMovement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +41,34 @@ function safeExtFromMime(mime: string) {
   return null;
 }
 
+async function uploadReceiptToSupabase(opts: {
+  userId: string;
+  file: File;
+}) {
+  const bucket = "deposit-slips";
+
+  const isPdf = opts.file.type === "application/pdf";
+  const extRaw = (opts.file.name.split(".").pop() || "").toLowerCase();
+  const ext = isPdf ? "pdf" : (["jpg", "jpeg", "png", "webp"].includes(extRaw) ? extRaw : "jpg");
+
+  const path = `user/${opts.userId}/deposit-slip-${Date.now()}.${ext}`;
+
+  const arrayBuffer = await opts.file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+
+  const { error } = await supabaseServer.storage
+    .from(bucket)
+    .upload(path, bytes, {
+      contentType: opts.file.type,
+      upsert: true,
+      cacheControl: "3600",
+    });
+
+  if (error) throw new Error(`SUPABASE_UPLOAD_ERROR: ${error.message}`);
+
+  return { bucket, path };
+}
+
 async function saveReceiptLocal(opts: { companyId: string; movementId: string; file: File }) {
   const { companyId, movementId, file } = opts;
 
@@ -47,18 +78,38 @@ async function saveReceiptLocal(opts: { companyId: string; movementId: string; f
   const MAX_BYTES = 10 * 1024 * 1024;
   if (file.size > MAX_BYTES) throw new Error("FILE_TOO_LARGE");
 
-  const publicDir = path.join(process.cwd(), "public");
-  const dir = path.join(publicDir, "uploads", "treasury", companyId);
+  const publicDir = nodePath.join(process.cwd(), "public");
+  const dir = nodePath.join(publicDir, "uploads", "treasury", companyId);
   await fs.mkdir(dir, { recursive: true });
 
   const filename = `${movementId}.${ext}`;
-  const abs = path.join(dir, filename);
+  const abs = nodePath.join(dir, filename);
 
   const buf = Buffer.from(await file.arrayBuffer());
   await fs.writeFile(abs, buf);
 
   return `/uploads/treasury/${companyId}/${filename}`;
 }
+
+async function notifyAdminWhatsApp(text: string) {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const waFrom = process.env.TWILIO_WHATSAPP_FROM; // "whatsapp:+1415..."
+  const adminTo = process.env.ADMIN_WHATSAPP_TO;   // "whatsapp:+56..."
+
+  if (!sid || !token || !waFrom || !adminTo) {
+    console.warn("[notifyAdminWhatsApp] Missing env vars");
+    return;
+  }
+
+  const client = twilio(sid, token);
+  await client.messages.create({
+    from: waFrom,
+    to: adminTo,
+    body: text,
+  });
+}
+
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -70,25 +121,16 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, personProfile: { select: { userId: true } } },
+    select: { id: true },
   });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
 
-  const onboarding = await prisma.userOnboarding.findUnique({
-    where: { userId: user.id },
-    select: { termsAcceptedAt: true },
-  });
-
-  const canOperate = Boolean(user.personProfile?.userId) && Boolean(onboarding?.termsAcceptedAt);
-  if (!canOperate) {
+  const onboarding = await getOnboardingStatus(user.id);
+  if (!onboarding.canOperate) {
     return NextResponse.json(
       {
         error: "Completa tu onboarding para operar.",
-        onboarding: {
-          hasProfile: Boolean(user.personProfile?.userId),
-          termsAccepted: Boolean(onboarding?.termsAcceptedAt),
-          canOperate,
-        },
+        onboarding,
       },
       { status: 403 }
     );
@@ -156,6 +198,15 @@ export async function POST(req: Request) {
     }
   }
 
+  const isDepositSlip = type === "deposit" && assetCode === AssetCode.CLP;
+  if (isDepositSlip) {
+    console.info("deposit_slip:create_entry", {
+      companyId: activeCompanyId,
+      userId: user.id,
+      amount: amount.toString(),
+    });
+  }
+
   // ====== Crear movimiento PENDING y (si aplica) guardar attachment ======
   try {
     const out = await prisma.$transaction(async (tx) => {
@@ -177,72 +228,216 @@ export async function POST(req: Request) {
       let attachmentUrl: string | null = null;
     
       if (type === "deposit" && assetCode === AssetCode.CLP && receiptFile) {
+        // 2A) Guardar comprobante local (para que el dashboard lo pueda abrir como hoy)
         attachmentUrl = await saveReceiptLocal({
           companyId: activeCompanyId,
           movementId: movement.id,
           file: receiptFile,
         });
-    
+      
         await tx.treasuryMovement.update({
           where: { id: movement.id },
           data: { attachmentUrl },
           select: { id: true },
         });
-    
-        // AUTO-APPROVE CLP
-        const accClp = await tx.treasuryAccount.upsert({
-          where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-          update: {},
-          create: { companyId: activeCompanyId, assetCode: AssetCode.CLP, balance: new Prisma.Decimal(0) },
-          select: { balance: true },
+      
+        // 2B) Subir también a Supabase (para que funcione el flujo WhatsApp/OCR)
+        const { path: supabasePath } = await uploadReceiptToSupabase({
+          userId: user.id,
+          file: receiptFile,
         });
-    
-        await tx.treasuryAccount.update({
-          where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-          data: { balance: new Prisma.Decimal(accClp.balance).plus(amount) },
-        });
-    
-        await tx.treasuryMovement.update({
-          where: { id: movement.id },
+      
+        // 2C) Crear DepositSlip apuntando al path de Supabase
+        const slip = await tx.depositSlip.create({
           data: {
-            status: TreasuryMovementStatus.APPROVED,
-            approvedByUserId: user.id,
-            approvedAt: new Date(),
-            executedPrice: new Prisma.Decimal(1),
-            executedQuoteCode: AssetCode.CLP,
-            executedSource: "bank-receipt",
-            executedAt: new Date(),
+            userId: user.id,
+            filePath: supabasePath,
+            fileMime: receiptFile.type,
+            fileSizeBytes: BigInt(receiptFile.size),
+            ocrStatus: "received",
+            status: "received",
+            notes: `movementId:${movement.id}`,
           },
-          select: { id: true },
         });
-    
-        return { movementId: movement.id, status: TreasuryMovementStatus.APPROVED, attachmentUrl, autoExecuted: true };
+
+        // 2D) Disparar el proceso (esto es lo que manda el WhatsApp “🟠 PENDIENTE MANUAL...”)
+        // const origin = req.headers.get("origin") ?? "http://localhost:3000";
+        // await fetch(`${origin}/api/internal/deposit-slip/process`, {
+        //   method: "POST",
+        //   headers: { "content-type": "application/json" },
+        //   body: JSON.stringify({ slipId: slip.id }),
+        //   cache: "no-store",
+        // });
+      
+        // IMPORTANTE: dejamos el movimiento en PENDING (sin auto-aprobar),
+        // porque ahora lo vas a aprobar por WhatsApp.
+        return {
+          movementId: movement.id,
+          status: TreasuryMovementStatus.PENDING,
+          attachmentUrl,
+          autoExecuted: false,
+          depositSlipId: slip.id,
+          depositSlipStatus: slip.status,
+          depositSlipOcrStatus: slip.ocrStatus,
+        };
       }
-    
-      // 3) Si es BTC/USD y es deposit/withdraw => EJECUTA AUTOMATICO
+      
+            // 2E) CLP withdraw: guardar solicitud, chequear saldo, descontar y avisar por WhatsApp
+            if (type === "withdraw" && assetCode === AssetCode.CLP) {
+              // 1) Validar que exista cuenta bancaria del usuario
+              const bank = await tx.bankAccount.findUnique({
+                where: { userId: user.id },
+                select: {
+                  bankName: true,
+                  accountType: true,
+                  accountNumber: true,
+                  holderRut: true,
+                },
+              });
+      
+              if (!bank) {
+                throw new Error("BANK_NOT_CONFIGURED");
+              }
+      
+              // 2) Leer balance CLP de la empresa
+              const acc = await tx.treasuryAccount.findUnique({
+                where: {
+                  companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP },
+                },
+                select: { balance: true },
+              });
+      
+              const bal = new Prisma.Decimal(acc?.balance ?? 0);
+      
+              // 3) Chequear fondos
+              if (bal.lt(amount)) {
+                throw new Error("INSUFFICIENT_FUNDS");
+              }
+      
+              // 4) Descontar inmediatamente para “reservar” fondos
+              await tx.treasuryAccount.update({
+                where: {
+                  companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP },
+                },
+                data: { balance: bal.minus(amount) },
+              });
+      
+              // 5) Marcar movimiento como PROCESSING (pendiente de pago manual)
+              await tx.treasuryMovement.update({
+                where: { id: movement.id },
+                data: {
+                  status: TreasuryMovementStatus.PROCESSING,
+                  executedQuoteAmount: amount,
+                  executedQuoteCode: AssetCode.CLP,
+                  executedSource: "withdraw-request",
+                  executedAt: new Date(),
+                  // paidOut queda false por default
+                },
+                select: { id: true },
+              });
+      
+              // 6) Avisar por WhatsApp (NO rompemos si Twilio falla)
+              try {
+                const fullName =
+                  (user as any)?.personProfile?.fullName?.trim?.() || email.split("@")[0];
+      
+                await notifyAdminWhatsApp(
+                  [
+                    "🏧 NUEVO RETIRO (TESORERÍA)",
+                    `Empresa: ${activeCompanyId}`,
+                    `Usuario: ${fullName}`,
+                    `Monto: ${amount.toString()} CLP`,
+                    "",
+                    "Datos bancarios:",
+                    `Banco: ${bank.bankName}`,
+                    `Tipo: ${bank.accountType}`,
+                    `Cuenta: ${bank.accountNumber}`,
+                    `RUT: ${bank.holderRut}`,
+                    "",
+                    `movementId: ${movement.id}`,
+                    "Acción: pagar manual y luego marcar paidOut=true",
+                  ].join("\n")
+                );
+              } catch (e) {
+                console.warn("[withdraw notifyAdminWhatsApp] failed", e);
+              }
+      
+              return {
+                movementId: movement.id,
+                status: TreasuryMovementStatus.PROCESSING,
+                attachmentUrl: null,
+                autoExecuted: false,
+              };
+            }
+
+      // 3) Si es BTC/USD y es deposit/withdraw => queda PENDING y se intenta aprobar fuera
       const isTradeAsset = assetCode === AssetCode.BTC || assetCode === AssetCode.USD;
       const isBuy = type === "deposit";
       const isSell = type === "withdraw";
-    
+
       if (isTradeAsset && (isBuy || isSell)) {
-        // 3.1 lock
-        await tx.treasuryMovement.update({
-          where: { id: movement.id },
-          data: { status: TreasuryMovementStatus.PROCESSING },
-          select: { id: true },
-        });
-    
-        // 3.2 sync system wallet desde Buda (remanente)
-        await syncSystemWalletFromBuda(tx);
-    
-        // ✅ por ahora SOLO dejamos el movimiento en PROCESSING para que el approve endpoint haga el resto
-        // (esto te deja el flujo funcionando sin reescribir toda tu lógica hoy)
-        return { movementId: movement.id, status: TreasuryMovementStatus.PROCESSING, attachmentUrl, autoExecuted: false };
+        return {
+          movementId: movement.id,
+          status: movement.status,
+          attachmentUrl,
+          autoExecuted: false,
+          isTrade: true,
+          assetCode,
+          type,
+        };
       }
     
       // 4) default: queda PENDING
-      return { movementId: movement.id, status: movement.status, attachmentUrl, autoExecuted: false };
+      return {
+        movementId: movement.id,
+        status: movement.status,
+        attachmentUrl,
+        autoExecuted: false,
+        isTrade: false,
+        assetCode,
+        type,
+      };
     });
+
+    // Ejecutar auto-aprobación para trades BTC/USD
+    if (out.isTrade) {
+      try {
+        const approved = await approveMovementAsSystem({
+          movementId: out.movementId,
+          companyId: activeCompanyId,
+          actorUserId: user.id,
+        });
+
+        return NextResponse.json({
+          ok: true,
+          movementId: out.movementId,
+          status: (approved as any)?.updated?.status ?? out.status,
+          executionMode: (approved as any)?.venue ?? "unknown",
+        });
+      } catch (e: any) {
+        return NextResponse.json(
+          { ok: false, movementId: out.movementId, error: e?.message ?? "Error ejecutando trade" },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (out.depositSlipId) {
+      console.info("deposit_slip:created", {
+        slipId: out.depositSlipId,
+        companyId: activeCompanyId,
+        amount: amount.toString(),
+        status: out.depositSlipStatus ?? "received",
+      });
+      await sendDepositSlipWhatsApp({
+        slipId: out.depositSlipId,
+        companyId: activeCompanyId,
+        amount: amount.toString(),
+        currency: "CLP",
+        status: out.depositSlipStatus ?? "received",
+        ocrStatus: out.depositSlipOcrStatus ?? null,
+      });
+    }
 
     return NextResponse.json({ ok: true, ...out });
   } catch (e: any) {
