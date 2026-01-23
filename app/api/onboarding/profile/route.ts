@@ -4,6 +4,35 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email?.toLowerCase().trim();
+
+  if (!email) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
+  }
+
+  const profile = await prisma.personProfile.findUnique({
+    where: { userId: user.id },
+    select: { fullName: true, rut: true, phone: true },
+  });
+
+  return NextResponse.json({
+    fullName: profile?.fullName ?? null,
+    rut: profile?.rut ?? null,
+    phone: profile?.phone ?? null,
+  });
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
@@ -22,22 +51,23 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const fullName = String(body.fullName ?? "").trim();
-  const phone = String(body.phone ?? "").trim();
-  const rut = String(body.rut ?? "").trim();
+  const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  const rut = typeof body.rut === "string" ? body.rut.trim() : "";
 
   const existing = await prisma.personProfile.findUnique({
     where: { userId: user.id },
     select: { fullName: true, rut: true, phone: true },
   });
 
-  const existingFullName = String(existing?.fullName ?? "").trim();
-  const existingRut = String(existing?.rut ?? "").trim();
-  const existingPhone = String(existing?.phone ?? "").trim();
+  const existingFullName = typeof existing?.fullName === "string" ? existing.fullName.trim() : "";
+  const existingRut = typeof existing?.rut === "string" ? existing.rut.trim() : "";
+  const existingPhoneRaw = typeof existing?.phone === "string" ? existing.phone.trim() : "";
+  const existingPhone = existingPhoneRaw || null;
 
   const nextFullName = fullName || existingFullName || "";
   const nextRut = rut || existingRut || "";
-  const nextPhone = phone || existingPhone || null;
+  const nextPhone = phone ? phone : existingPhone;
 
   // Validación mínima (para que no se guarde vacío)
   if (!nextFullName) {

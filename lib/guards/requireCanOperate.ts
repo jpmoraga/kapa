@@ -1,22 +1,21 @@
-import { prisma } from "@/lib/prisma";
+import { getOnboardingStatus } from "@/lib/onboardingStatus";
 
 export async function requireCanOperate(userId: string) {
-  const [profile, onboarding] = await prisma.$transaction([
-    prisma.personProfile.findUnique({
-      where: { userId },
-      select: { userId: true },
-    }),
-    prisma.userOnboarding.findUnique({
-      where: { userId },
-      select: { termsAcceptedAt: true },
-    }),
-  ]);
+  const onboarding = await getOnboardingStatus(userId);
 
-  if (!profile) {
+  if (!onboarding.hasIdDocument) {
+    return { ok: false, error: "Debes subir tu documento de identidad para operar." };
+  }
+
+  if (!onboarding.hasProfile) {
     return { ok: false, error: "Debes completar tu perfil para operar." };
   }
 
-  if (!onboarding?.termsAcceptedAt) {
+  if (!onboarding.hasBankAccount) {
+    return { ok: false, error: "Debes registrar tu cuenta bancaria para operar." };
+  }
+
+  if (!onboarding.termsAccepted) {
     return { ok: false, error: "Debes aceptar los términos para operar." };
   }
 

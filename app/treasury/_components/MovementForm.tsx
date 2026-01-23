@@ -1,11 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import TradeReceiptModal from "./TradeReceiptModal";
+import ConfirmTradeModal, { TradeEstimate } from "./ConfirmTradeModal";
 
 type MovementType = "deposit" | "withdraw" | "adjust";
 type Mode = "buy" | "sell" | "adjust";
 type AssetCode = "BTC" | "CLP" | "USD";
+
+type TradeReceipt = {
+  movementId: string;
+  side: "buy" | "sell";
+  baseAsset: "BTC" | "USD";
+  quoteAsset: "CLP";
+  status: string;
+  grossAmount: string | null;
+  feePercent: string;
+  feeAmount: string | null;
+  feeCurrency: "CLP" | "BTC" | "USD";
+  netAmount: string | null;
+  qty: string;
+  price: string | null;
+  isEstimated?: boolean;
+  message?: string | null;
+  internalReason?: string | null;
+  externalOrderId?: string | null;
+};
 
 function modeToType(mode: Mode): MovementType {
   if (mode === "buy") return "deposit"; // comprar => suma asset
@@ -14,28 +35,36 @@ function modeToType(mode: Mode): MovementType {
 }
 
 function modeLabels(mode: Mode, assetCode: AssetCode) {
-  const assetLabel = assetCode;
+  const isCLP = assetCode === "CLP";
 
   if (mode === "buy") {
     return {
-      title: `Comprar ${assetLabel}`,
-      subtitle: `Crea una solicitud de compra: aumentará el balance ${assetLabel} cuando se apruebe.`,
-      button: "Confirmar compra",
-      notePlaceholder: "Ej: Compra (simulación)",
+      title: isCLP ? "Depositar CLP" : `Comprar ${assetCode}`,
+      subtitle: isCLP
+      ? "Transfiere a la cuenta indicada y sube el comprobante."
+      : "Indica el monto y continua.",
+      button: isCLP ? "Confirmar depósito" : "Confirmar compra",
+      notePlaceholder: isCLP
+        ? "Ej: Depósito por transferencia"
+        : "Ej: Compra (simulación)",
     };
   }
 
   if (mode === "sell") {
     return {
-      title: `Vender ${assetLabel}`,
-      subtitle: `Crea una solicitud de venta: disminuirá el balance ${assetLabel} cuando se apruebe.`,
-      button: "Confirmar venta",
-      notePlaceholder: "Ej: Venta parcial (simulación)",
+      title: isCLP ? "Retirar CLP" : `Vender ${assetCode}`,
+      subtitle: isCLP
+        ? "Indica el monto. Enviaremos los fondos a tu cuenta bancaria registrada."
+        : "Indica el monto y continua.",
+      button: isCLP ? "Confirmar retiro" : "Confirmar venta",
+      notePlaceholder: isCLP
+        ? "Ej: Retiro a cuenta bancaria"
+        : "Ej: Venta parcial (simulación)",
     };
   }
 
   return {
-    title: `Ajuste de balance (${assetLabel})`,
+    title: `Ajuste de balance (${assetCode})`,
     subtitle: "Movimiento manual para corregir balance (admin).",
     button: "Guardar ajuste",
     notePlaceholder: "Ej: Ajuste por conciliación",
@@ -45,36 +74,347 @@ function modeLabels(mode: Mode, assetCode: AssetCode) {
 export default function MovementForm({
   mode,
   assetCode = "BTC",
+  variant = "page",
+  onClose,
 }: {
   mode: Mode;
   assetCode?: AssetCode;
+  variant?: "page" | "modal";
+  onClose?: () => void;
 }) {
   const router = useRouter();
 
-  const [amount, setAmount] = useState<string>(assetCode === "CLP" ? "10000" : assetCode === "USD" ? "10" : "0.001");
+  const [amount, setAmount] = useState<string>(assetCode === "CLP" ? "" : assetCode === "USD" ? "10" : "0.001");
   const [note, setNote] = useState<string>("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receipt, setReceipt] = useState<TradeReceipt | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [estimate, setEstimate] = useState<TradeEstimate | null>(null);
+  const pollAttemptsRef = useRef(0);
+
+  useEffect(() => {
+    if (!receipt?.movementId) return;
+    pollAttemptsRef.current = 0;
+  }, [receipt?.movementId]);
 
   const type = modeToType(mode);
   const labels = modeLabels(mode, assetCode);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const isDepositCLP = assetCode === "CLP" && mode === "buy";
+  const isWithdrawCLP = assetCode === "CLP" && mode === "sell";
+  const isTrade = assetCode !== "CLP" && (mode === "buy" || mode === "sell");
+  const primaryLabel = isTrade ? "Continuar" : labels.button;
+  const parsedAmount = Number(amount);
+  const isAmountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const showDepositHelp = isDepositCLP && (!receiptFile || !isAmountValid);
+
+  // Por ahora NO bloqueamos el retiro (la cuenta bancaria viene en otra capa)
+  const bankNotConfigured = false;
+
+  const bankDetails = {
+    name: "Kapa21 SpA",
+    rut: "76.303.591-3",
+    bank: "Banco de Chile",
+    accountType: "Cuenta Corriente",
+    accountNumber: "3561497801",
+    email: "contacto@kapa21.cl",
+  };
+
+  async function copyBankDetails() {
+    const text =
+      `Nombre: ${bankDetails.name}\n` +
+      `RUT: ${bankDetails.rut}\n` +
+      `Banco: ${bankDetails.bank}\n` +
+      `Tipo: ${bankDetails.accountType}\n` +
+      `Cuenta: ${bankDetails.accountNumber}\n` +
+      `Email: ${bankDetails.email}\n`;
+  
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      window.prompt("Copia estos datos:", text);
+    }
+  }
+
+function onPickReceipt(file: File | null) {
+  if (!file) return;
+  setReceiptFile(file);
+}
+
+  function getTradeFeePercent(code: AssetCode) {
+    if (code === "BTC") return 0.006;
+    if (code === "USD") return 0.004;
+    return 0;
+  }
+
+  async function fetchPriceEstimate(code: AssetCode) {
+    const pair = code === "BTC" ? "BTC_CLP" : "USDT_CLP";
+    const res = await fetch(`/api/prices/current?pair=${pair}`, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.price) {
+      throw new Error(data?.error ?? "No pude obtener precio");
+    }
+    return String(data.price);
+  }
+
+  function buildTradeEstimate(opts: {
+    side: "buy" | "sell";
+    baseAsset: "BTC" | "USD";
+    qty: number;
+    price: number;
+  }): TradeEstimate {
+    const feePercent = getTradeFeePercent(opts.baseAsset);
+    const grossQuote = opts.qty * opts.price;
+    const feeOnQuote = grossQuote * feePercent;
+    const feeOnBase = opts.qty * feePercent;
+
+    if (opts.side === "buy") {
+      return {
+        side: "buy",
+        baseAsset: opts.baseAsset,
+        quoteAsset: "CLP",
+        qty: opts.qty.toString(),
+        price: opts.price.toString(),
+        grossQuote: grossQuote.toString(),
+        feePercent: feePercent.toString(),
+        feeAmount: feeOnQuote.toString(),
+        feeCurrency: "CLP",
+        netAmount: (grossQuote + feeOnQuote).toString(),
+        netCurrency: "CLP",
+      };
+    }
+
+    return {
+      side: "sell",
+      baseAsset: opts.baseAsset,
+      quoteAsset: "CLP",
+      qty: opts.qty.toString(),
+      price: opts.price.toString(),
+      grossQuote: grossQuote.toString(),
+      feePercent: feePercent.toString(),
+      feeAmount: feeOnBase.toString(),
+      feeCurrency: opts.baseAsset,
+      netAmount: (opts.qty - feeOnBase).toString(),
+      netCurrency: opts.baseAsset,
+    };
+  }
+
+  async function openConfirm() {
+    setError(null);
+    setEstimate(null);
+    const qty = Number(amount);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setError("Monto invalido");
+      return;
+    }
+
+    setConfirmLoading(true);
+    try {
+      const priceStr = await fetchPriceEstimate(assetCode);
+      const price = Number(priceStr);
+      if (!Number.isFinite(price) || price <= 0) {
+        throw new Error("Precio invalido");
+      }
+      const estimateValue = buildTradeEstimate({
+        side: mode === "buy" ? "buy" : "sell",
+        baseAsset: assetCode as "BTC" | "USD",
+        qty,
+        price,
+      });
+      setEstimate(estimateValue);
+      setConfirmOpen(true);
+    } catch (err: any) {
+      setConfirmOpen(false);
+      setEstimate(null);
+      setError(err?.message ?? "No pude obtener la estimacion");
+    } finally {
+      setConfirmLoading(false);
+    }
+  }
+
+  async function handleConfirm() {
+    console.log("trade:confirm_clicked", { assetCode, amount, mode });
     setError(null);
     setLoading(true);
-
     try {
       const res = await fetch("/api/treasury/movements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
-          assetCode, // ✅ importante para multi-asset
+          assetCode,
           amount,
           note,
         }),
       });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error ?? "Error creando movimiento");
+        setConfirmOpen(false);
+        setEstimate(null);
+        return;
+      }
+
+      localStorage.setItem("activeAsset", assetCode);
+
+      const movementId = data?.movementId ? String(data.movementId) : null;
+      if (!movementId) {
+        setError("No pude crear la operacion");
+        setConfirmOpen(false);
+        setEstimate(null);
+        return;
+      }
+
+      console.log("trade:post_ok", { movementId });
+
+      let next = await fetchReceipt(movementId);
+      if (!isReceiptComplete(next)) {
+        next = await pollReceiptComplete(movementId);
+      }
+
+      if (shouldOpenVoucher(next)) {
+        setReceiptOpen(true);
+        setConfirmOpen(false);
+        setEstimate(null);
+        console.log("trade:receipt_ok", { status: next?.status, movementId });
+      } else {
+        setError("No pude obtener el voucher. Reintenta.");
+        setConfirmOpen(false);
+        setEstimate(null);
+      }
+    } catch (err: any) {
+      setError(err?.message ?? "Error inesperado");
+      setConfirmOpen(false);
+      setEstimate(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchReceipt(movementId: string) {
+    setReceiptLoading(true);
+    try {
+      const res = await fetch(`/api/treasury/movements/${movementId}/receipt`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setReceipt(data as TradeReceipt);
+        return data as TradeReceipt;
+      }
+      return null;
+    } finally {
+      setReceiptLoading(false);
+    }
+  }
+
+  function isReceiptComplete(next: TradeReceipt | null) {
+    if (!next) return false;
+    return (
+      Boolean(next.status) &&
+      next.grossAmount !== null &&
+      next.feeAmount !== null &&
+      next.netAmount !== null &&
+      next.price !== null &&
+      Boolean(next.qty)
+    );
+  }
+
+  async function pollReceiptComplete(movementId: string) {
+    const started = Date.now();
+    let last: TradeReceipt | null = null;
+    while (Date.now() - started < 10000) {
+      last = await fetchReceipt(movementId);
+      if (isReceiptComplete(last)) return last;
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    return last;
+  }
+
+  function shouldOpenVoucher(next: TradeReceipt | null) {
+    if (!next) return false;
+    if (!isReceiptComplete(next)) return false;
+    if (next.status === "APPROVED") return true;
+    if (next.status === "PROCESSING" && next.externalOrderId) return true;
+    if (next.status === "PENDING" && next.internalReason === "INSUFFICIENT_LIQUIDITY") return true;
+    return false;
+  }
+
+  useEffect(() => {
+    if (!receiptOpen) {
+      pollAttemptsRef.current = 0;
+      return;
+    }
+    if (!receipt || receipt.status !== "PROCESSING") {
+      pollAttemptsRef.current = 0;
+      return;
+    }
+    if (pollAttemptsRef.current >= 40) return;
+
+    const id = receipt.movementId;
+    const interval = setInterval(() => {
+      pollAttemptsRef.current += 1;
+      if (pollAttemptsRef.current > 40) {
+        clearInterval(interval);
+        return;
+      }
+      fetchReceipt(id);
+    }, 1800);
+
+    return () => clearInterval(interval);
+  }, [receiptOpen, receipt?.status, receipt?.movementId]);
+
+  async function triggerRetry() {
+    if (!receipt?.movementId) return;
+    setReceiptLoading(true);
+    try {
+      await fetch("/api/treasury/sync-wallet", { method: "POST" });
+    } finally {
+      setReceiptLoading(false);
+    }
+    fetchReceipt(receipt.movementId);
+  }
+
+  async function createMovement() {
+    setError(null);
+    setLoading(true);
+
+    try {
+      let res: Response;
+
+      if (isDepositCLP) {
+        // ✅ multipart para subir comprobante
+        const fd = new FormData();
+        fd.append("type", type);
+        fd.append("assetCode", assetCode);
+        fd.append("amount", amount);
+        if (note) fd.append("note", note);
+        if (receiptFile) fd.append("receipt", receiptFile); // 🔑 OJO: el backend espera "receipt"
+
+        res = await fetch("/api/treasury/movements", {
+          method: "POST",
+          body: fd,
+          // ⚠️ NO pongas Content-Type acá
+        });
+      } else {
+        // ✅ JSON para BTC/USD, y cualquier cosa sin comprobante
+        res = await fetch("/api/treasury/movements", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type,
+            assetCode,
+            amount,
+            note,
+          }),
+        });
+      }
 
       const data = await res.json().catch(() => ({}));
 
@@ -86,6 +426,22 @@ export default function MovementForm({
       // ✅ para que el dashboard no vuelva a BTC por defecto
       localStorage.setItem("activeAsset", assetCode);
 
+      if (isTrade && data?.movementId) {
+        const next = await fetchReceipt(String(data.movementId));
+        if (shouldOpenVoucher(next)) {
+          setReceiptOpen(true);
+        } else {
+          setReceiptOpen(false);
+        }
+        return;
+      }
+
+      if (variant === "modal") {
+        onClose?.();
+        router.refresh();
+        return;
+      }
+
       router.push("/dashboard");
       router.refresh();
     } catch (err: any) {
@@ -95,64 +451,248 @@ export default function MovementForm({
     }
   }
 
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isTrade) {
+      await openConfirm();
+      return;
+    }
+    await createMovement();
+  }
+
   return (
-    <div className="min-h-screen bg-neutral-50 p-8">
-      <div className="mx-auto max-w-lg rounded-2xl border bg-white p-6 shadow-sm">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold">{labels.title}</h1>
-          <p className="text-sm text-neutral-600">{labels.subtitle}</p>
+    <div className={variant === "modal" ? "bg-neutral-950 p-6 text-neutral-100 max-h-[85vh] overflow-y-auto" : "min-h-screen bg-neutral-950 p-6 text-neutral-100"}>
+      <div className={variant === "modal" ? "mx-auto w-full" : "mx-auto max-w-lg"}>
+        <div className="k21-card p-6">
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold tracking-tight text-neutral-100">
+              {labels.title}
+            </h1>
+            <p className="mt-1 text-sm text-neutral-400">{labels.subtitle}</p>
+          </div>
+
+          <form onSubmit={onSubmit} className="space-y-5">
+  {isDepositCLP && (
+    <div className="k21-card p-5 border border-white/10 bg-white/5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs text-neutral-500 uppercase tracking-wide">Depósito</div>
+          <div className="mt-1 text-sm text-neutral-200">Transfiere a esta cuenta</div>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs text-neutral-600">Monto ({assetCode})</label>
-            <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              inputMode="decimal"
-              placeholder={assetCode === "BTC" ? "0.001" : assetCode === "CLP" ? "10000" : "10"}
-              required
-            />
-            <div className="mt-1 text-xs text-neutral-500">
-              {assetCode === "BTC" ? "Usa punto decimal. Ej: 0.001" : "Monto > 0"}
+        <button
+          type="button"
+          onClick={copyBankDetails}
+          className="k21-btn-secondary text-xs !px-3 !py-2 h-9"
+          title="Copiar datos de transferencia"
+        >
+          Copiar
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div className="text-neutral-300">
+          <div className="text-xs text-neutral-500">Banco</div>
+          <div className="mt-1">{bankDetails.bank}</div>
+        </div>
+        <div className="text-neutral-300">
+          <div className="text-xs text-neutral-500">Tipo</div>
+          <div className="mt-1">{bankDetails.accountType}</div>
+        </div>
+        <div className="text-neutral-300">
+          <div className="text-xs text-neutral-500">Cuenta</div>
+          <div className="mt-1 font-medium">{bankDetails.accountNumber}</div>
+        </div>
+        <div className="text-neutral-300">
+          <div className="text-xs text-neutral-500">RUT</div>
+          <div className="mt-1">{bankDetails.rut}</div>
+        </div>
+        <div className="text-neutral-300 sm:col-span-2">
+          <div className="text-xs text-neutral-500">Nombre</div>
+          <div className="mt-1">{bankDetails.name}</div>
+        </div>
+        <div className="text-neutral-300 sm:col-span-2">
+          <div className="text-xs text-neutral-500">Contacto</div>
+          <div className="mt-1">{bankDetails.email}</div>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {isWithdrawCLP && (
+    <div className="k21-card p-4 border border-white/10 bg-white/5">
+      <div className="text-xs text-neutral-500 uppercase tracking-wide">Retiro</div>
+      <div className="mt-1 text-sm text-neutral-200">
+        Se enviará a tu cuenta bancaria registrada
+      </div>
+
+      <div className="mt-3 text-xs text-neutral-500">
+        Procesamos retiros en horario hábil.
+      </div>
+    </div>
+  )}
+
+  <div>
+    <label className="text-xs text-neutral-400">Monto ({assetCode})</label>
+              <input
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-700"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                inputMode="decimal"
+                placeholder={assetCode === "BTC" ? "0.001" : assetCode === "CLP" ? "10000" : "10"}
+                required
+              />
+              <div className="mt-1 text-xs text-neutral-500">
+                {assetCode === "BTC" ? "Usa punto decimal. Ej: 0.001" : "Monto > 0"}
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label className="text-xs text-neutral-600">Nota (opcional)</label>
-            <input
-              className="mt-1 w-full rounded-xl border px-3 py-2"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={labels.notePlaceholder}
-            />
-          </div>
+            {isDepositCLP && (
+            <div>
+              <label className="text-xs text-neutral-400">Comprobante (obligatorio)</label>
 
-          {error && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-700">
-              {error}
+              <div
+                className={
+                  "mt-2 rounded-2xl border border-dashed p-4 transition " +
+                  (dragOver ? "border-white/30 bg-white/10" : "border-white/15 bg-white/5")
+                }
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) onPickReceipt(f);
+                }}
+                onClick={() => {
+                  const el = document.getElementById("k21-receipt-input") as HTMLInputElement | null;
+                  el?.click();
+                }}
+                role="button"
+                tabIndex={0}
+              >
+                <input
+                  id="k21-receipt-input"
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => onPickReceipt(e.target.files?.[0] ?? null)}
+                />
+
+                {!receiptFile ? (
+                  <div className="text-sm text-neutral-300">
+                    <div className="font-medium">Arrastra el comprobante aquí</div>
+                    <div className="mt-1 text-xs text-neutral-500">o haz click para subirlo (JPG, PNG o PDF)</div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-neutral-200 truncate">{receiptFile.name}</div>
+                      <div className="mt-1 text-xs text-neutral-500">
+                        {(receiptFile.size / 1024 / 1024).toFixed(2)} MB
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="k21-btn-secondary text-xs !px-3 !py-2 h-9"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReceiptFile(null);
+                      }}
+                    >
+                      Reemplazar
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-2 text-xs text-neutral-500">
+                Revisamos y acreditamos apenas esté validado.
+              </div>
             </div>
           )}
 
-          <div className="flex gap-2">
-            <button
-              disabled={loading}
-              className="rounded-xl bg-black px-4 py-2 text-white disabled:opacity-60"
-            >
-              {loading ? "Guardando..." : labels.button}
-            </button>
+          {showDepositHelp && (
+            <div className="text-xs text-neutral-500">
+              Ingresa monto y adjunta comprobante.
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              className="rounded-xl border px-4 py-2"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+            <div>
+              <label className="text-xs text-neutral-400">Nota (opcional)</label>
+              <input
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-700"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={labels.notePlaceholder}
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                {error}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                disabled={loading || confirmLoading || (isDepositCLP && (!receiptFile || !isAmountValid))}
+                className={loading ? "k21-btn-disabled" : "k21-btn-primary"}
+              >
+                {loading ? "Guardando..." : confirmLoading ? "Calculando..." : primaryLabel}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (variant === "modal") {
+                    onClose?.();
+                    return;
+                  }
+                  router.push("/dashboard");
+                }}
+                className="k21-btn-secondary"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
+
+      <ConfirmTradeModal
+        open={confirmOpen}
+        estimate={estimate}
+        loading={confirmLoading || loading}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setEstimate(null);
+        }}
+        onConfirm={handleConfirm}
+      />
+
+      <TradeReceiptModal
+        open={receiptOpen}
+        receipt={receipt}
+        loading={receiptLoading}
+        onClose={async () => {
+          setReceiptOpen(false);
+          setReceipt(null);
+          try {
+            await fetch("/api/treasury/summary", { cache: "no-store" });
+          } catch {}
+          router.refresh();
+          console.log("trade:summary_refreshed");
+        }}
+        onRefresh={() => {
+          if (receipt?.movementId) fetchReceipt(receipt.movementId);
+        }}
+        onRetry={triggerRetry}
+      />
     </div>
   );
 }

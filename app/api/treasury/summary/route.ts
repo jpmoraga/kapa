@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { getOnboardingStatus } from "@/lib/onboardingStatus";
 import { AssetCode, Prisma } from "@prisma/client";
 
 const ASSETS: AssetCode[] = [AssetCode.BTC, AssetCode.CLP, AssetCode.USD];
@@ -49,10 +50,7 @@ export async function GET(req: Request) {
   // =====================================================
   const user = await prisma.user.findUnique({
     where: { email },
-    select: {
-      id: true,
-      personProfile: { select: { userId: true } },
-    },
+    select: { id: true },
   });
 
   if (!user) {
@@ -62,16 +60,7 @@ export async function GET(req: Request) {
     );
   }
 
-  const onboarding = await prisma.userOnboarding.findUnique({
-    where: { userId: user.id },
-    select: { termsAcceptedAt: true },
-  });
-
-  const onboardingStatus = {
-    hasProfile: Boolean(user.personProfile?.userId),
-    termsAccepted: Boolean(onboarding?.termsAcceptedAt),
-    canOperate: Boolean(user.personProfile?.userId) && Boolean(onboarding?.termsAcceptedAt),
-  };
+  const onboardingStatus = await getOnboardingStatus(user.id);
 
   // =====================================================
   // BALANCES
@@ -122,10 +111,19 @@ export async function GET(req: Request) {
   // =====================================================
   // PRECIOS
   // =====================================================
-  const [pBtcClp, pUsdtClp] = await Promise.all([
-    getPrice(origin, "BTC_CLP"),
-    getPrice(origin, "USDT_CLP"),
-  ]);
+  let pBtcClp: any = { ok: false, data: null };
+  let pUsdtClp: any = { ok: false, data: null };
+
+  try {
+    [pBtcClp, pUsdtClp] = await Promise.all([
+      getPrice(origin, "BTC_CLP"),
+      getPrice(origin, "USDT_CLP"),
+    ]);
+  } catch (e) {
+    // ✅ no rompemos el endpoint por un tema de precios
+    pBtcClp = { ok: false, data: null };
+    pUsdtClp = { ok: false, data: null };
+  }
 
   const btcClp = pBtcClp.ok ? safeDecimal(pBtcClp.data.price) : null;
   const usdClp = pUsdtClp.ok ? safeDecimal(pUsdtClp.data.price) : null;
@@ -156,13 +154,15 @@ export async function GET(req: Request) {
       id: true,
       type: true,
       assetCode: true,
+  
+      // 👇 DEJA amount (es el fallback)
       amount: true,
+  
+      // 👇 AGREGA ESTA LÍNEA (ESTE ES EL MONTO REAL APROBADO)
+      executedQuoteAmount: true,
+  
       status: true,
       createdAt: true,
-      executedPrice: true,
-      executedQuoteCode: true,
-      executedSource: true,
-      executedAt: true,
     },
   });
 

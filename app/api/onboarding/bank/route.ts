@@ -42,40 +42,60 @@ export async function POST(req: Request) {
   });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({}));
+  try {
+    const body = await req.json().catch(() => ({}));
 
-  const bankName = String(body.bankName ?? "").trim();
-  const accountType = String(body.accountType ?? "").trim();
-  const accountNumber = String(body.accountNumber ?? "").trim();
-  const holderRut = String(body.holderRut ?? user.personProfile?.rut ?? "").trim();
+    const bankName = String(body.bankName ?? "").trim();
+    const accountType = String(body.accountType ?? "").trim();
+    const accountNumber = String(body.accountNumber ?? "").trim();
+    const holderRut = String(body.holderRut ?? user.personProfile?.rut ?? "").trim();
 
-  if (!bankName) return NextResponse.json({ error: "Banco requerido" }, { status: 400 });
-  if (!accountType) return NextResponse.json({ error: "Tipo de cuenta requerido" }, { status: 400 });
-  if (!accountNumber) return NextResponse.json({ error: "Número de cuenta requerido" }, { status: 400 });
-  const finalRut = holderRut || "PENDIENTE";
+    if (!bankName) return NextResponse.json({ error: "Banco requerido" }, { status: 400 });
+    if (!accountType) return NextResponse.json({ error: "Tipo de cuenta requerido" }, { status: 400 });
+    if (!accountNumber) return NextResponse.json({ error: "Número de cuenta requerido" }, { status: 400 });
+    const finalRut = holderRut || "PENDIENTE";
+
+    console.info("auth:bank", {
+      userId: user.id,
+      payload: {
+        bankName,
+        accountType,
+        accountNumberLast4: accountNumber.slice(-4),
+        holderRut: finalRut ? `${finalRut.slice(0, 4)}***` : null,
+      },
+    });
 
     await prisma.bankAccount.upsert({
-    where: { userId: user.id },
-    update: {
+      where: { userId: user.id },
+      update: {
         bankName,
         accountType,
         accountNumber,
         holderRut: finalRut,
-    },
-    create: {
+      },
+      create: {
         userId: user.id,
         bankName,
         accountType,
         accountNumber,
         holderRut: finalRut,
-    },
+      },
     });
 
-  await prisma.bankAccount.upsert({
-    where: { userId: user.id },
-    update: { bankName, accountType, accountNumber, holderRut },
-    create: { userId: user.id, bankName, accountType, accountNumber, holderRut },
-  });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    const message = e?.message ?? "unknown";
+    const code = e?.code;
+    console.error("auth:bank", {
+      userId: user.id,
+      error: message,
+      code,
+    });
 
-  return NextResponse.json({ ok: true });
+    if (code === "P2002") {
+      return NextResponse.json({ error: "Cuenta bancaria ya registrada" }, { status: 409 });
+    }
+
+    return NextResponse.json({ error: "Error guardando cuenta bancaria" }, { status: 500 });
+  }
 }

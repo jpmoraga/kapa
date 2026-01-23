@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { AssetCode, Prisma, TreasuryMovementStatus } from "@prisma/client";
 import { requireCanOperate } from "@/lib/guards/requireCanOperate";
 import { budaGetOrder } from "@/lib/buda";
+import { computeTradeFee, getTradeFeePercent } from "@/lib/fees";
 
 // ---- helpers robustos (Buda a veces devuelve arrays tipo ["0.001","BTC"]) ----
 function toNumberMaybe(x: any): number | null {
@@ -69,10 +70,14 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           assetCode: true,
           amount: true,
           note: true,
+          externalOrderId: true,
           executedPrice: true,
           executedQuoteCode: true,
           executedSource: true,
           executedAt: true,
+          executedBaseAmount: true,
+          executedQuoteAmount: true,
+          executedFeeAmount: true,
         },
       });
 
@@ -87,7 +92,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
         throw new Error("NOT_TRADE_ASSET");
       }
 
-      const orderId = extractOrderIdFromNote(m.note);
+      const orderId = m.externalOrderId ?? extractOrderIdFromNote(m.note);
       if (!orderId) throw new Error("MISSING_ORDER_ID");
 
       const payload = await budaGetOrder(orderId);
@@ -107,6 +112,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
       // precio ejecutado (CLP por BTC/USDT)
       const executedPrice = clpDec.div(tradedBaseDec);
+      const feePct = getTradeFeePercent(m.assetCode);
+      const feeOnQuote = computeTradeFee(clpDec, feePct);
+      const feeOnBase = computeTradeFee(tradedBaseDec, feePct);
 
       // upsert cuentas
       const accAsset = await tx.treasuryAccount.upsert({
@@ -131,28 +139,44 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       const isSell = m.type === "withdraw";
       if (!isBuy && !isSell) throw new Error("BAD_TYPE");
 
-      // chequeos mínimos (por seguridad)
-      if (isBuy && currentClp.lt(clpDec)) throw new Error("INSUFFICIENT_CLP");
-      if (isSell && currentAsset.lt(tradedBaseDec)) throw new Error("INSUFFICIENT_FUNDS");
+      const reservedBase = new Prisma.Decimal(m.executedBaseAmount ?? 0);
+      const reservedQuote = new Prisma.Decimal(m.executedQuoteAmount ?? 0);
+      const reservedFee =
+        m.executedFeeAmount !== null && m.executedFeeAmount !== undefined
+          ? new Prisma.Decimal(m.executedFeeAmount as any)
+          : isBuy
+          ? computeTradeFee(reservedQuote, feePct)
+          : computeTradeFee(reservedBase, feePct);
 
-      // aplicar balances reales usando montos ejecutados
+      const deltaBase = tradedBaseDec.minus(reservedBase);
+      const deltaQuote = clpDec.minus(reservedQuote);
+      const deltaFee = (isBuy ? feeOnQuote : feeOnBase).minus(reservedFee);
+
       if (isBuy) {
+        const nextClp = currentClp.minus(deltaQuote).minus(deltaFee);
+        const nextAsset = currentAsset.plus(deltaBase);
+        if (nextClp.lt(0)) throw new Error("INSUFFICIENT_CLP");
+
         await tx.treasuryAccount.update({
           where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-          data: { balance: currentClp.minus(clpDec) },
+          data: { balance: nextClp },
         });
         await tx.treasuryAccount.update({
           where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: m.assetCode } },
-          data: { balance: currentAsset.plus(tradedBaseDec) },
+          data: { balance: nextAsset },
         });
       } else {
+        const nextAsset = currentAsset.minus(deltaBase).minus(deltaFee);
+        const nextClp = currentClp.plus(deltaQuote);
+        if (nextAsset.lt(0)) throw new Error("INSUFFICIENT_FUNDS");
+
         await tx.treasuryAccount.update({
           where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: m.assetCode } },
-          data: { balance: currentAsset.minus(tradedBaseDec) },
+          data: { balance: nextAsset },
         });
         await tx.treasuryAccount.update({
           where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-          data: { balance: currentClp.plus(clpDec) },
+          data: { balance: nextClp },
         });
       }
 
@@ -165,6 +189,12 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
           executedQuoteCode: AssetCode.CLP,
           executedSource: m.assetCode === AssetCode.BTC ? "buda-btc" : "buda-usdt",
           executedAt: new Date(),
+          executedBaseAmount: tradedBaseDec,
+          executedQuoteAmount: clpDec,
+          executedFeeAmount: isBuy ? feeOnQuote : feeOnBase,
+          executedFeeCode: isBuy ? AssetCode.CLP : m.assetCode,
+          approvedAt: new Date(),
+          approvedByUserId: user.id,
         },
         select: { id: true, status: true },
       });

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "InternalMovementReason" ADD VALUE 'INSUFFICIENT_LIQUIDITY';

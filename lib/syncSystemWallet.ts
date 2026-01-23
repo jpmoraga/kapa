@@ -1,6 +1,7 @@
-import { Prisma, AssetCode } from "@prisma/client";
+import { Prisma, AssetCode, InternalMovementReason, InternalMovementState, TreasuryMovementStatus } from "@prisma/client";
 import { budaGetBalances } from "@/lib/buda";
 import { ensureSystemWallet } from "@/lib/systemWallet";
+import { prisma } from "@/lib/prisma";
 
 /**
  * ✅ Sync "System Wallet" desde Buda
@@ -67,4 +68,58 @@ export async function syncSystemWalletFromBuda(tx: Prisma.TransactionClient) {
     system: { clp: sysClp, btc: sysBtc, usd: sysUsd },
     raw, // por si quieres log
   };
+}
+
+export async function syncSystemWalletAndRetry() {
+  const snapshot = await prisma.$transaction(async (tx) => syncSystemWalletFromBuda(tx));
+  await retryPendingLiquidityTrades();
+  return snapshot;
+}
+
+async function retryPendingLiquidityTrades() {
+  const pendings = await prisma.treasuryMovement.findMany({
+    where: {
+      status: TreasuryMovementStatus.PENDING,
+      internalReason: InternalMovementReason.INSUFFICIENT_LIQUIDITY,
+      internalState: InternalMovementState.WAITING_LIQUIDITY,
+      assetCode: { in: [AssetCode.BTC, AssetCode.USD] },
+      OR: [{ type: "deposit" }, { type: "withdraw" }],
+    },
+    select: { id: true, companyId: true, createdByUserId: true },
+    take: 25,
+  });
+
+  if (!pendings.length) return;
+
+  const mod = await import("@/lib/treasury/approveMovement");
+
+  for (const m of pendings) {
+    const claimed = await prisma.treasuryMovement.updateMany({
+      where: {
+        id: m.id,
+        status: TreasuryMovementStatus.PENDING,
+        internalState: InternalMovementState.WAITING_LIQUIDITY,
+      },
+      data: { internalState: InternalMovementState.RETRYING_BUDA },
+    });
+
+    if (!claimed.count) continue;
+
+    try {
+      await mod.approveMovementAsSystem({
+        movementId: m.id,
+        companyId: m.companyId,
+        actorUserId: m.createdByUserId ?? null,
+        skipSync: true,
+      });
+    } catch (e: any) {
+      await prisma.treasuryMovement.update({
+        where: { id: m.id },
+        data: {
+          internalState: InternalMovementState.WAITING_LIQUIDITY,
+          lastError: String(e?.message ?? "RETRY_ERROR"),
+        },
+      });
+    }
+  }
 }

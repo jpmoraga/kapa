@@ -11,12 +11,13 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 
-type TF = "1H" | "6H" | "24H" | "7D";
+type TF = "1H" | "6H" | "24H" | "7D" | "30D";
 const TF_SECONDS: Record<TF, number> = {
   "1H": 60 * 60,
   "6H": 6 * 60 * 60,
   "24H": 24 * 60 * 60,
   "7D": 7 * 24 * 60 * 60,
+  "30D": 30 * 24 * 60 * 60,
 };
 
 // ✅ intervalo de vela por ventana (puedes ajustar después)
@@ -25,6 +26,7 @@ const TF_CANDLE_INTERVAL_SEC: Record<TF, number> = {
   "6H": 15 * 60,     // 15m
   "24H": 60 * 60,    // 1h
   "7D": 4 * 60 * 60, // 4h
+  "30D": 12 * 60 * 60, // 12h
 };
 
 type Point = { time: UTCTimestamp; value: number };
@@ -104,7 +106,7 @@ export default function BtcClpChart() {
 
   const [loading, setLoading] = useState(false);
   const [log, setLog] = useState(false);
-  const [tf, setTf] = useState<TF>("24H");
+  const [tf, setTf] = useState<TF>("7D");
   const [allPoints, setAllPoints] = useState<Point[]>([]);
   const [view, setView] = useState<"candles" | "line">("candles");
 
@@ -291,7 +293,7 @@ export default function BtcClpChart() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const tfs: TF[] = ["1H", "6H", "24H", "7D"];
+  const tfs: TF[] = ["1H", "6H", "24H", "7D", "30D"];
 
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-4">
@@ -327,7 +329,7 @@ export default function BtcClpChart() {
 
           {/* ✅ timeframes */}
           {tfs.map((x) => {
-            const enabled = availableSeconds >= TF_SECONDS[x];
+            const enabled = availableSeconds >= TF_SECONDS[x] || x === tf;
             return (
               <button
                 key={x}

@@ -1,9 +1,227 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                        String                  @id @default(cuid())
+  email                     String                  @unique
+  passwordHash              String
+  createdAt                 DateTime                @default(now())
+  activeCompanyId           String?
+  emailVerifiedAt           DateTime?               @db.Timestamp(6)
+  emailVerificationToken    EmailVerificationToken?
+  bankAccount               BankAccount?
+  personalCompany           Company?                @relation("PersonalCompany")
+  companyUsers              CompanyUser[]
+  personProfile             PersonProfile?
+  sessions                  Session[]
+  approvedTreasuryMovements TreasuryMovement[]      @relation("TreasuryMovementApprovedBy")
+  createdTreasuryMovements  TreasuryMovement[]      @relation("TreasuryMovementCreatedBy")
+  activeCompany             Company?                @relation("ActiveCompany", fields: [activeCompanyId], references: [id])
+  depositSlips              DepositSlip[]
+  onboarding                UserOnboarding?
+}
+
+model PersonProfile {
+  userId              String   @id
+  fullName            String?
+  rut                 String?
+  phone               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  birthDate           String?
+  documentSerial      String?
+  nationality         String?
+  idDocumentBackPath  String?
+  idDocumentFrontPath String?
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([rut])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bankName      String
+  accountType   String
+  accountNumber String
+  holderRut     String
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([holderRut])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Company {
+  id                  String             @id @default(cuid())
+  name                String
+  kind                CompanyKind        @default(BUSINESS)
+  personalOwnerId     String?            @unique
+  companyRut          String?
+  fundsDeclAcceptedAt DateTime?
+  onboardingCompleted Boolean            @default(false)
+  privacyAcceptedAt   DateTime?
+  termsAcceptedAt     DateTime?
+  personalOwner       User?              @relation("PersonalCompany", fields: [personalOwnerId], references: [id], onDelete: Cascade)
+  members             CompanyUser[]
+  treasury            TreasuryAccount[]
+  movements           TreasuryMovement[]
+  activeUsers         User[]             @relation("ActiveCompany")
+}
+
+model CompanyUser {
+  userId    String
+  companyId String
+  role      String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, companyId])
+}
+
+/// *
+///  * ✅ Antes: 1 cuenta por company (companyId unique)
+///  * ✅ Ahora: 1 cuenta por (companyId, assetCode)
+model TreasuryAccount {
+  id        String    @id @default(cuid())
+  companyId String
+  balance   Decimal   @default(0)
+  assetCode AssetCode @default(BTC)
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, assetCode])
+  @@index([companyId])
+}
+
+/// *
+///  * ✅ Movimientos multi-asset + approvals (Fase 2)
+model TreasuryMovement {
+  id                  String                 @id @default(cuid())
+  companyId           String
+  amount              Decimal
+  type                String
+  note                String?
+  createdAt           DateTime               @default(now())
+  assetCode           AssetCode              @default(BTC)
+  approvedAt          DateTime?
+  approvedByUserId    String?
+  attachmentUrl       String?
+  createdByUserId     String?
+  status              TreasuryMovementStatus @default(PENDING)
+  executedAt          DateTime?
+  executedPrice       Decimal?
+  executedQuoteCode   AssetCode?
+  executedSource      String?
+  executedBaseAmount  Decimal?
+  executedFeeAmount   Decimal?
+  executedFeeCode     AssetCode?
+  executedQuoteAmount Decimal?
+  externalOrderId     String?
+  externalVenue       String?
+  internalNote        String?
+  internalReason      InternalMovementReason @default(NONE)
+  internalState       InternalMovementState  @default(NONE)
+  lastError           String?
+  nextRetryAt         DateTime?
+  retryCount          Int                    @default(0)
+  paidOut             Boolean                @default(false)
+  paidOutAt           DateTime?              @db.Timestamptz(6)
+  approvedBy          User?                  @relation("TreasuryMovementApprovedBy", fields: [approvedByUserId], references: [id])
+  company             Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy           User?                  @relation("TreasuryMovementCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([companyId, createdAt])
+  @@index([companyId, assetCode, createdAt])
+  @@index([companyId, status, createdAt])
+}
+
+model PriceSnapshot {
+  id        String    @id @default(cuid())
+  assetCode AssetCode
+  quoteCode AssetCode
+  price     Decimal
+  source    String
+  createdAt DateTime  @default(now())
+
+  @@index([assetCode, quoteCode, createdAt])
+}
+
+model UserOnboarding {
+  userId              String    @id
+  termsAcceptedAt     DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  idDocumentBackPath  String?
+  idDocumentFrontPath String?
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_onboarding")
+}
+
+model MarketTrade {
+  id        String   @id @default(cuid())
+  marketId  String
+  timeMs    BigInt
+  price     Decimal
+  amount    Decimal
+  direction String
+  createdAt DateTime @default(now())
+
+  @@unique([marketId, timeMs, price, amount, direction])
+  @@index([marketId, timeMs])
+}
+
+model CronRun {
+  id         String   @id @default(cuid())
+  job        String
+  marketId   String
+  ok         Boolean
+  inserted   Int
+  error      String?
+  startedAt  DateTime
+  finishedAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([job, createdAt])
+  @@index([marketId, createdAt])
+}
+
+model DepositSlip {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @map("user_id")
+  filePath          String   @map("file_path")
+  fileMime          String?  @map("file_mime")
+  fileSizeBytes     BigInt?  @map("file_size_bytes")
+  declaredAmountClp BigInt?  @map("declared_amount_clp")
+  ocrStatus         String   @default("received") @map("ocr_status")
+  ocrText           String?  @map("ocr_text")
+  parsedAmountClp   BigInt?  @map("parsed_amount_clp")
+  bankHint          String?  @map("bank_hint")
+  status            String   @default("received")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([userId])
+  @@map("deposit_slips")
 }
 
 enum CompanyKind {
@@ -11,11 +229,10 @@ enum CompanyKind {
   BUSINESS
 }
 
-/**
- * ✅ Multi-asset real
- * - BTC: satoshis/bitcoin (tu lógica actual vive acá)
- * - CLP/USD: se habilitan en la fase siguiente (saldo, movimientos, pricing)
- */
+/// *
+///  * ✅ Multi-asset real
+///  * - BTC: satoshis/bitcoin (tu lógica actual vive acá)
+///  * - CLP/USD: se habilitan en la fase siguiente (saldo, movimientos, pricing)
 enum AssetCode {
   BTC
   CLP
@@ -34,6 +251,7 @@ enum InternalMovementState {
 
 enum InternalMovementReason {
   NONE
+  INSUFFICIENT_LIQUIDITY
   BELOW_BUDA_MIN
   BUDA_INSUFFICIENT_FUNDS
   BUDA_API_ERROR
@@ -41,226 +259,21 @@ enum InternalMovementReason {
   UNKNOWN
 }
 
-/**
- * ✅ Fase 2: workflow de aprobación
- */
+/// *
+///  * ✅ Fase 2: workflow de aprobación
 enum TreasuryMovementStatus {
   PENDING
-  PROCESSING
   APPROVED
   REJECTED
+  PROCESSING
 }
 
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
-
-  // empresa/cuenta activa (opcional)
-  activeCompanyId String?
-  activeCompany   Company? @relation("ActiveCompany", fields: [activeCompanyId], references: [id], onDelete: SetNull)
-
-  // relación inversa: "mi cuenta personal"
-  personalCompany Company? @relation("PersonalCompany")
-
-  sessions      Session[]
-  companyUsers  CompanyUser[]
-  personProfile PersonProfile?
-
-  onboarding UserOnboarding?
-
-  // ✅ Fase 2: auditoría de movimientos
-  createdTreasuryMovements  TreasuryMovement[] @relation("TreasuryMovementCreatedBy")
-  approvedTreasuryMovements TreasuryMovement[] @relation("TreasuryMovementApprovedBy")
-}
-
-model PersonProfile {
-  userId    String   @id
-  fullName  String?
-  rut       String?
-  phone     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([rut])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Company {
-  id   String @id @default(cuid())
-  name String
-
-  // ✅ Company ahora es "Cuenta" (PERSONAL o BUSINESS)
-  kind CompanyKind @default(BUSINESS)
-
-  // ✅ Para asegurar 1 cuenta PERSONAL por usuario
-  personalOwnerId String? @unique
-  personalOwner   User?   @relation("PersonalCompany", fields: [personalOwnerId], references: [id], onDelete: Cascade)
-
-  members     CompanyUser[]
-  treasury    TreasuryAccount[]
-  movements   TreasuryMovement[]
-  activeUsers User[]             @relation("ActiveCompany")
-
-  // ✅ Onboarding / legales (van dentro del model, no fuera)
-  onboardingCompleted Boolean   @default(false)
-  companyRut          String?
-  termsAcceptedAt     DateTime?
-  privacyAcceptedAt   DateTime?
-  fundsDeclAcceptedAt DateTime?
-}
-
-model CompanyUser {
-  userId    String
-  companyId String
-  role      String
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@id([userId, companyId])
-}
-
-/**
- * ✅ Antes: 1 cuenta por company (companyId unique)
- * ✅ Ahora: 1 cuenta por (companyId, assetCode)
- */
-model TreasuryAccount {
-  id        String    @id @default(cuid())
-  companyId String
-  assetCode AssetCode @default(BTC)
-  balance   Decimal   @default(0)
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@unique([companyId, assetCode])
-  @@index([companyId])
-}
-
-/**
- * ✅ Movimientos multi-asset + approvals (Fase 2)
- */
-model TreasuryMovement {
-  id        String    @id @default(cuid())
-  companyId String
-  assetCode AssetCode @default(BTC)
-  amount    Decimal
-  type      String // deposit | withdraw | adjust (por ahora)
-  note      String?
-  createdAt DateTime  @default(now())
-
-  // ✅ Fase 2: approval workflow
-  status        TreasuryMovementStatus @default(PENDING)
-  attachmentUrl String?
-
-    // ✅ Fase 2A: ejecución externa (Buda)
-  externalVenue   String?   // "buda"
-  externalOrderId String?   // id de la orden en buda
-
-  // ✅ Fill real (para contabilidad)
-  executedBaseAmount  Decimal? // BTC o USDT realmente comprados/vendidos
-  executedQuoteAmount Decimal? // CLP realmente gastados/recibidos
-  executedFeeAmount   Decimal?
-  executedFeeCode     AssetCode?
-
-  // quién lo creó (normalmente member o admin)
-  createdByUserId String?
-  createdBy       User?   @relation("TreasuryMovementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-
-  // quién lo aprobó/rechazó (admin/owner)
-  approvedByUserId String?
-  approvedBy       User?     @relation("TreasuryMovementApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
-  approvedAt       DateTime?
-
-  // ✅ Fase 3: precio congelado al aprobar (PriceSnapshot)
-  executedPrice     Decimal? // precio usado para valorizar este movimiento
-  executedQuoteCode AssetCode? // normalmente CLP (podría ser USD más adelante)
-  executedSource    String? // "manual", "buda", "buda-usdt", etc.
-  executedAt        DateTime? // timestamp de congelamiento
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId, createdAt])
-  @@index([companyId, assetCode, createdAt])
-  // ✅ útil para panel de pendientes
-  @@index([companyId, status, createdAt])
-
-  internalState   InternalMovementState  @default(NONE)
-  internalReason  InternalMovementReason @default(NONE)
-
-  internalNote    String?   // para logs internos (no cliente)
-  lastError       String?   // error raw
-  retryCount      Int       @default(0)
-  nextRetryAt     DateTime?
-}
-
-model PriceSnapshot {
-  id        String    @id @default(cuid())
-  assetCode AssetCode // BTC, USD
-  quoteCode AssetCode // USD, CLP
-  price     Decimal // precio directo
-  source    String // "coingecko", "manual"
-  createdAt DateTime  @default(now())
-
-  @@index([assetCode, quoteCode, createdAt])
-}
-model UserOnboarding {
-  userId          String   @id
-  termsAcceptedAt DateTime?
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_onboarding")
-}
-
-model MarketTrade {
+model EmailVerificationToken {
   id        String   @id @default(cuid())
+  userId    String   @unique
+  token     String   @unique
+  expiresAt DateTime @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 
-  // ej: "btc-clp", "usdt-clp"
-  marketId  String
-
-  // timestamp del trade en milisegundos (como viene de Buda)
-  timeMs    BigInt
-
-  // precio y monto (Buda los manda como string numérico)
-  price     Decimal
-  amount    Decimal
-
-  // "buy" o "sell" (como viene de Buda)
-  direction String
-
-  createdAt DateTime @default(now())
-
-  @@index([marketId, timeMs])
-  @@unique([marketId, timeMs, price, amount, direction])
-}
-
-model CronRun {
-  id         String   @id @default(cuid())
-  job        String
-  marketId   String
-  ok         Boolean
-  inserted   Int
-  error      String?
-  startedAt  DateTime
-  finishedAt DateTime
-
-  createdAt  DateTime @default(now())
-
-  @@index([job, createdAt])
-  @@index([marketId, createdAt])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

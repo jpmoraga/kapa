@@ -1,14 +1,25 @@
 // web/app/dashboard/page.tsx
+export const runtime = "nodejs";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
-import DashboardClient from "./dashboard-client";
+import { getOnboardingStatus } from "@/lib/onboardingStatus";
+import DashboardBonito from "@/app/components/DashboardBonito";
 import { AssetCode, Prisma } from "@prisma/client";
+import { CreditCard, BarChart3, ArrowLeftRight, Activity, SlidersHorizontal } from "lucide-react";
 
 const ASSETS: AssetCode[] = [AssetCode.BTC, AssetCode.CLP, AssetCode.USD];
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
+}) {
+
+  await Promise.resolve(searchParams);
+
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/auth/login");
 
@@ -16,44 +27,28 @@ export default async function DashboardPage() {
   const activeCompanyId = (session as any).activeCompanyId as string | undefined;
   if (!activeCompanyId) redirect("/select-company");
 
-  // 1) usuario
+  
+
+  // 1) usuario (con nombre desde DB)
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
       id: true,
-      personProfile: { select: { userId: true } },
+      personProfile: { select: { fullName: true } },
     },
   });
   if (!user) redirect("/auth/login");
 
+  const displayName =
+    (user.personProfile?.fullName ?? "").trim() || email.split("@")[0];
+
   
 
-    // 1.5) estado onboarding (server-side)
-    const [personProfile, userOnboarding] = await prisma.$transaction([
-      prisma.personProfile.findUnique({
-        where: { userId: user.id },
-        select: { userId: true },
-      }),
-      prisma.userOnboarding.findUnique({
-        where: { userId: user.id },
-        select: { termsAcceptedAt: true },
-      }),
-    ]);
-  
-    const onboarding = {
-      hasProfile: Boolean(personProfile?.userId),
-      termsAccepted: Boolean(userOnboarding?.termsAcceptedAt),
-      canOperate: Boolean(personProfile?.userId) && Boolean(userOnboarding?.termsAcceptedAt),
-    };
+  // 1.5) estado onboarding (server-side)
+  const onboarding = await getOnboardingStatus(user.id);
 
-    // 🔒 Hard redirect de onboarding (server-side)
-    if (!onboarding.hasProfile) {
-      redirect("/onboarding/profile");
-    }
-
-    if (!onboarding.termsAccepted) {
-      redirect("/onboarding/accept-terms");
-    }
+  // 🔒 Hard redirect de onboarding (server-side)
+  if (!onboarding.canOperate) redirect("/onboarding");
 
   // 2) role en la empresa activa
   const membership = await prisma.companyUser.findUnique({
@@ -66,20 +61,14 @@ export default async function DashboardPage() {
 
   const [balances, movements] = await prisma.$transaction(async (tx) => {
     // ✅ asegurar cuentas BTC/CLP/USD (multi-asset real)
-    await Promise.all(
-      ASSETS.map((assetCode) =>
-        tx.treasuryAccount.upsert({
-          where: { companyId_assetCode: { companyId: activeCompanyId, assetCode } },
-          update: {},
-          create: {
-            companyId: activeCompanyId,
-            assetCode,
-            balance: new Prisma.Decimal(0),
-          },
-          select: { id: true },
-        })
-      )
-    );
+    await tx.treasuryAccount.createMany({
+      data: ASSETS.map((assetCode) => ({
+        companyId: activeCompanyId,
+        assetCode,
+        balance: 0,
+      })),
+      skipDuplicates: true,
+    });
 
     // balances por asset
     const accounts = await tx.treasuryAccount.findMany({
@@ -109,9 +98,9 @@ export default async function DashboardPage() {
         assetCode: true,
         type: true,
         amount: true,
-        note: true,
         createdAt: true,
         status: true,
+        executedQuoteAmount: true,
       },
     });
 
@@ -123,29 +112,37 @@ export default async function DashboardPage() {
     assetCode: m.assetCode,
     type: m.type as "deposit" | "withdraw" | "adjust",
     amount: m.amount.toString(),
-    note: m.note,
+    executedQuoteAmount: m.executedQuoteAmount
+      ? m.executedQuoteAmount.toString()
+      : null,
     createdAt: m.createdAt.toISOString(),
     status: m.status,
   }));
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100 p-8">
-      <header className="mb-10 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-neutral-400">Empresa activa · {activeCompanyId}</p>
-          <p className="text-xs text-neutral-500">Rol · {role}</p>
-        </div>
-      </header>
-
-      <main className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <DashboardClient
-        balances={balances}
-        movements={clientMovements}
-        isAdmin={isAdmin}
-        onboarding={onboarding}
-      />
-      </main>
-    </div>
+    <DashboardBonito
+      activeCompanyId={activeCompanyId}
+      activeCompanyName={displayName}
+      balances={balances}
+      movements={clientMovements}
+      isAdmin={isAdmin}
+      onboarding={onboarding}
+      hrefs={{
+        // CLP
+        depositCLP: "/treasury/new-movement?mode=buy&assetCode=CLP",
+        withdrawCLP: "/treasury/new-movement?mode=sell&assetCode=CLP",
+      
+        // BTC
+        buyBTC: "/treasury/new-movement?mode=buy&assetCode=BTC",
+        sellBTC: "/treasury/new-movement?mode=sell&assetCode=BTC",
+      
+        // USD (en tu sistema = USDT)
+        buyUSD: "/treasury/new-movement?mode=buy&assetCode=USD",
+        sellUSD: "/treasury/new-movement?mode=sell&assetCode=USD",
+      
+        // Activity
+        activity: "/treasury/activity",
+      }}
+    />
   );
 }

@@ -528,7 +528,7 @@ export default function OCRPage() {
               ? `Leyendo OCR… ${ocrProgress}%`
               : ocrOk
               ? "OCR listo ✅ (releer)"
-              : "Ejecutar OCR"}
+              : "Leer datos"}
           </button>
         </div>
 

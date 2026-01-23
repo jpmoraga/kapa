@@ -47,6 +47,12 @@ function normalizeWhatsAppNumber(value: string) {
   return trimmed.startsWith("whatsapp:") ? trimmed : `whatsapp:${trimmed}`;
 }
 
+function extractMovementId(notes: string | null | undefined) {
+  if (!notes) return null;
+  const m = notes.match(/movementId:([a-zA-Z0-9_-]+)/);
+  return m?.[1] ?? null;
+}
+
 function getRequiredEnv(
   keys: string[],
   missing: string[],
@@ -105,24 +111,25 @@ function getWhatsAppConfig(context: {
 function buildDepositSlipMessage(opts: {
   slipId: string;
   companyId: string | null;
-  amount: string;
+  amount: string | null;
   currency: string;
   status: string;
   ocrStatus?: string | null;
 }) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || null;
   const link = baseUrl ? `${baseUrl.replace(/\/$/, "")}/treasury/pending` : null;
+  const amountLine = opts.amount ? `${opts.amount} ${opts.currency}` : "unknown";
 
   return [
     "🧾 Nuevo comprobante recibido",
     `slipId: ${opts.slipId}`,
     `empresa: ${opts.companyId ?? "unknown"}`,
-    `monto: ${opts.amount} ${opts.currency}`,
+    `monto: ${amountLine}`,
     `estado: ${opts.status}${opts.ocrStatus ? ` / ocr: ${opts.ocrStatus}` : ""}`,
     link ? `link: ${link}` : null,
     "",
     "Responde:",
-    `aprobar ${opts.slipId} 125000`,
+    `aprobar ${opts.slipId}`,
     `rechazar ${opts.slipId}`,
   ]
     .filter(Boolean)
@@ -133,7 +140,13 @@ export async function sendDepositSlipWhatsApp(input: DepositSlipWhatsAppInput) {
   try {
     const slip = await prisma.depositSlip.findUnique({
       where: { id: input.slipId },
-      select: { notes: true, status: true, ocrStatus: true },
+      select: {
+        notes: true,
+        status: true,
+        ocrStatus: true,
+        parsedAmountClp: true,
+        declaredAmountClp: true,
+      },
     });
 
     if (!slip) {
@@ -160,10 +173,40 @@ export async function sendDepositSlipWhatsApp(input: DepositSlipWhatsAppInput) {
     const status = input.status ?? slip.status ?? "unknown";
     const ocrStatus = input.ocrStatus ?? slip.ocrStatus ?? null;
 
+    let amountUsed: string | null = input.amount || null;
+    let amountSource = input.amount ? "input" : "unknown";
+
+    if (slip.parsedAmountClp != null) {
+      amountUsed = slip.parsedAmountClp.toString();
+      amountSource = "parsedAmountClp";
+    } else if (slip.declaredAmountClp != null) {
+      amountUsed = slip.declaredAmountClp.toString();
+      amountSource = "declaredAmountClp";
+    } else {
+      const movementId = extractMovementId(slip.notes);
+      if (movementId) {
+        const movement = await prisma.treasuryMovement.findUnique({
+          where: { id: movementId },
+          select: { amount: true },
+        });
+        if (movement?.amount != null) {
+          amountUsed = movement.amount.toString();
+          amountSource = "movement.amount";
+        }
+      }
+    }
+
+    console.info("whatsapp.amount_used", {
+      slipId: input.slipId,
+      amountUsed,
+      source: amountSource,
+      currency: input.currency,
+    });
+
     const config = getWhatsAppConfig({
       slipId: input.slipId,
       companyId: input.companyId,
-      amount: input.amount,
+      amount: amountUsed ?? input.amount,
       status,
     });
     if (!config) {
@@ -205,7 +248,7 @@ export async function sendDepositSlipWhatsApp(input: DepositSlipWhatsAppInput) {
         body: buildDepositSlipMessage({
           slipId: input.slipId,
           companyId: input.companyId,
-          amount: input.amount,
+          amount: amountUsed ?? input.amount,
           currency: input.currency,
           status,
           ocrStatus,

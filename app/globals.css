@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
+/* K21 design tokens (used by @apply components below) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --k21-accent: #F7931A;
+  --k21-border: rgb(38 38 38);          /* neutral-800 */
+  --k21-surface: rgba(10, 10, 10, 0.8); /* neutral-950/80 */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer components {
+  .k21-card {
+    @apply rounded-2xl border shadow-lg backdrop-blur;
+    border-color: var(--k21-border);
+    background-color: var(--k21-surface);
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  .k21-btn {
+    @apply rounded-xl px-4 py-3 text-sm font-semibold transition;
+  }
+
+  .k21-btn-primary {
+    @apply rounded-xl px-4 py-3 text-sm font-semibold transition text-black hover:opacity-90;
+    background-color: var(--k21-accent);
+  }
+
+  .k21-btn-secondary {
+    @apply rounded-xl px-4 py-3 text-sm font-semibold transition border bg-transparent font-medium text-neutral-300 hover:bg-neutral-900/40;
+    border-color: var(--k21-border);
+  }
+
+  .k21-btn-disabled {
+    @apply rounded-xl px-4 py-3 text-sm font-semibold transition border bg-transparent text-neutral-500 opacity-60 cursor-not-allowed;
+    border-color: var(--k21-border);
+  }
+
+  .k21-badge {
+    @apply rounded-xl border px-3 py-2 text-xs text-neutral-300;
+    border-color: var(--k21-border);
+    background-color: rgba(23, 23, 23, 0.4); /* neutral-900/40 */
+  }
+
+  .k21-toggle {
+    @apply rounded-lg border px-3 py-1.5 text-xs;
+    border-color: var(--k21-border);
+    background-color: rgba(10, 10, 10, 1); /* neutral-950 */
+    color: rgb(212 212 212); /* neutral-300 */
+  }
+
+  .k21-toggle:hover {
+    background-color: rgba(23, 23, 23, 1); /* neutral-900 */
+  }
+
+  .k21-toggle-active {
+    @apply rounded-lg border px-3 py-1.5 text-xs;
+    border-color: rgb(82 82 82); /* neutral-600 */
+    background-color: rgba(23, 23, 23, 1); /* neutral-900 */
+    color: rgb(245 245 245); /* neutral-100 */
+  }
+
+  .k21-row {
+    @apply flex items-center justify-between gap-3 rounded-xl border px-4 py-3;
+    border-color: var(--k21-border);
+    background-color: rgba(10, 10, 10, 1); /* neutral-950 */
+  }
+
+  .k21-empty {
+    @apply mt-4 rounded-xl border p-4 text-sm text-neutral-400;
+    border-color: var(--k21-border);
+    background-color: rgba(10, 10, 10, 1); /* neutral-950 */
+  }
+
+  .k21-pill-none {
+    @apply rounded-full border px-2 py-0.5 text-[11px] border-neutral-700 text-neutral-300 bg-neutral-900/40;
+  }
+
+  .k21-pill-approved {
+    @apply rounded-full border px-2 py-0.5 text-[11px] border-emerald-500/30 text-emerald-200 bg-emerald-500/10;
+  }
+
+  .k21-pill-pending {
+    @apply rounded-full border px-2 py-0.5 text-[11px] border-yellow-500/30 text-yellow-200 bg-yellow-500/10;
+  }
+
+  .k21-pill-rejected {
+    @apply rounded-full border px-2 py-0.5 text-[11px] border-red-500/30 text-red-200 bg-red-500/10;
+  }
 }

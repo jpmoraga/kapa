@@ -21,9 +21,9 @@ function labelType(t: MovementType) {
 }
 
 function badgeClass(t: MovementType) {
-  if (t === "withdraw") return "bg-red-500/10 text-red-400 border-red-500/20";
-  if (t === "deposit") return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-  return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+  if (t === "withdraw") return "k21-pill-rejected";
+  if (t === "deposit") return "k21-pill-approved";
+  return "k21-pill-pending";
 }
 
 function fmtAmount(asset: AssetCode, amount: string) {
@@ -104,7 +104,7 @@ export default function PendingClient() {
   const count = useMemo(() => rows.length, [rows]);
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-6 shadow-lg">
+    <div className="k21-card p-6">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="text-sm text-neutral-400">
           Pendientes: <span className="text-neutral-100 font-semibold">{loading ? "…" : count}</span>
@@ -113,7 +113,7 @@ export default function PendingClient() {
         <button
           type="button"
           onClick={load}
-          className="rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-2 text-sm hover:bg-neutral-900"
+          className="k21-btn-secondary py-2"
           disabled={loading || !!busyId}
         >
           {loading ? "Cargando…" : "Refrescar"}
@@ -154,7 +154,7 @@ export default function PendingClient() {
                     <td className="py-3">{new Date(m.createdAt).toLocaleString("es-CL")}</td>
 
                     <td className="py-3">
-                      <span className={`rounded-full border px-2 py-1 text-xs ${badgeClass(m.type)}`}>
+                      <span className={badgeClass(m.type)}>
                         {labelType(m.type)}
                       </span>
                     </td>
@@ -171,7 +171,7 @@ export default function PendingClient() {
                           type="button"
                           onClick={() => approve(m.id)}
                           disabled={disabled || busy}
-                          className="rounded-lg bg-white px-3 py-1.5 text-black text-xs font-medium disabled:opacity-50"
+                          className="k21-btn-primary py-1.5 px-3 text-xs disabled:opacity-50"
                           title="Aprueba y aplica el movimiento al balance"
                         >
                           {busy ? "…" : "Aprobar"}
@@ -181,7 +181,7 @@ export default function PendingClient() {
                           type="button"
                           onClick={() => reject(m.id)}
                           disabled={disabled || busy}
-                          className="rounded-lg border border-red-500/30 px-3 py-1.5 text-red-300 text-xs hover:bg-red-500/10 disabled:opacity-50"
+                          className="k21-btn-secondary py-1.5 px-3 text-xs border-red-500/30 text-red-300 hover:bg-red-500/10 disabled:opacity-50"
                           title="Rechaza (no cambia el balance)"
                         >
                           {busy ? "…" : "Rechazar"}

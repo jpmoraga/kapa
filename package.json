@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 next dev --webpack",
     "postinstall": "prisma generate",
     "build": "prisma generate && next build --webpack",
     "start": "next start",
@@ -12,19 +12,23 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/adapter-pg": "^7.2.0",
-    "@prisma/client": "^7.1.0",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.89.0",
     "bcrypt": "^6.0.0",
     "lightweight-charts": "^5.1.0",
+    "lucide-react": "^0.562.0",
     "next": "16.0.8",
     "next-auth": "^4.24.13",
     "pg": "^8.16.3",
-    "prisma": "^7.1.0",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "resend": "^6.8.0",
+    "tesseract.js": "^7.0.0",
+    "twilio": "^5.11.2",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@prisma/client": "^6.19.2",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
@@ -34,6 +38,7 @@
     "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.0.8",
+    "prisma": "^6.19.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

@@ -14,4 +14,7 @@ export default defineConfig({
   datasource: {
     url: databaseUrl,
   },
+  engine: {
+    type: "binary",
+  },
 });

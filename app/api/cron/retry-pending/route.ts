@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TreasuryMovementStatus } from "@prisma/client";
 import { approveMovementAsSystem } from "@/lib/treasury/approveMovement";
+import { syncSystemWalletAndRetry } from "@/lib/syncSystemWallet";
 
 export async function POST(req: Request) {
   // 🔒 protección simple con secret
@@ -18,6 +19,9 @@ export async function POST(req: Request) {
   if (!actor) return NextResponse.json({ error: "No users found" }, { status: 500 });
 
   const batch = Number(process.env.CRON_RETRY_BATCH ?? "20");
+
+  // ✅ sincroniza pool y reintenta pendientes por liquidez
+  await syncSystemWalletAndRetry();
 
   const pendings = await prisma.treasuryMovement.findMany({
     where: { status: TreasuryMovementStatus.PENDING },

@@ -19,15 +19,24 @@ export const authOptions: NextAuthOptions = {
         const email = credentials?.email?.toLowerCase().trim();
         const password = credentials?.password ?? "";
         if (!email || !password) return null;
-
-        const user = await prisma.user.findUnique({ where: { email } });
+      
+        const user = await prisma.user.findUnique({
+          where: { email },
+          select: { id: true, email: true, passwordHash: true, emailVerifiedAt: true },
+        });
+      
         if (!user?.passwordHash) return null;
-
+      
         const ok = await compare(password, user.passwordHash);
         if (!ok) return null;
-
+      
+        // ⛔ bloquear si no está verificado
+        if (!user.emailVerifiedAt) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
+      
         return { id: user.id, email: user.email };
-      },
+      }
     }),
   ],
 

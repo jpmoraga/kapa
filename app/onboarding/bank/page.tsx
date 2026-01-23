@@ -45,8 +45,56 @@ export default function BankPage() {
   const [bank, setBank] = useState("");
   const [accountType, setAccountType] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isReady = bank && accountType && accountNumber.trim().length >= 4;
+
+  async function submitBank() {
+    setSaving(true);
+    setError(null);
+
+    const attempt = async () => {
+      const res = await fetch("/api/onboarding/bank", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bankName: bank,
+          accountType,
+          accountNumber,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = data?.error ?? "Error guardando cuenta bancaria";
+        const err = new Error(message);
+        (err as any).status = res.status;
+        throw err;
+      }
+    };
+
+    try {
+      await attempt();
+      router.refresh();
+    } catch (e: any) {
+      const status = e?.status;
+      if (!status || status >= 500) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        try {
+          await attempt();
+          router.refresh();
+          return;
+        } catch (err: any) {
+          setError(err?.message ?? "Error guardando cuenta bancaria");
+        }
+      } else {
+        setError(e?.message ?? "Error guardando cuenta bancaria");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <OnboardingShell title={copy.bank.title} subtitle={copy.bank.subtitle}>
@@ -100,37 +148,20 @@ export default function BankPage() {
           {copy.bank.btnBack}
         </button>
         <button
-          disabled={!isReady}
+          disabled={!isReady || saving}
           className="k21-btn-primary flex-1 h-11 disabled:opacity-60"
           title={!isReady ? copy.bank.btnContinueDisabled : undefined}
-          onClick={async () => {
-            try {
-              const res = await fetch("/api/onboarding/bank", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  bankName: bank,
-                  accountType,
-                  accountNumber,
-                }),
-              });
-
-              const data = await res.json().catch(() => ({}));
-
-              if (!res.ok) {
-                alert(data?.error ?? "Error guardando cuenta bancaria");
-                return;
-              }
-
-              router.refresh();
-            } catch (e) {
-              alert("Error inesperado guardando cuenta bancaria");
-            }
-          }}
+          onClick={submitBank}
         >
-          {copy.bank.btnContinue}
+          {saving ? "Guardando..." : copy.bank.btnContinue}
         </button>
       </div>
+
+      {error && (
+        <div className="mt-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
     </OnboardingShell>
   );
 }
