@@ -230,9 +230,9 @@ export async function sendDepositSlipWhatsApp(input: DepositSlipWhatsAppInput) {
         slipId: input.slipId,
         companyId: input.companyId,
         amount: input.amount,
-        status,
+        slipStatus: status,
         twilioCode: e?.code ?? null,
-        status: e?.status ?? null,
+        httpStatus: e?.status ?? null,
         error: String(e?.message ?? e),
       });
       return { ok: false, error: "SEND_FAILED" };
