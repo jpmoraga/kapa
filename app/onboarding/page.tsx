@@ -9,7 +9,7 @@ import OnboardingClient from "./OnboardingClient";
 export default async function OnboardingPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ step?: string | string[] }> | { step?: string | string[] };
+  searchParams?: Promise<{ step?: string | string[] }>;
 }) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
@@ -30,7 +30,7 @@ export default async function OnboardingPage({
     redirect("/dashboard");
   }
 
-  const sp = (await searchParams) ?? {};
+  const sp = searchParams ? await searchParams : {};
   const desiredStep = getOnboardingStep(onboarding);
   const stepParam = Array.isArray(sp.step) ? sp.step[0] : sp.step;
   if (stepParam !== desiredStep) {

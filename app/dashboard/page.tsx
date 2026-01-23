@@ -14,10 +14,10 @@ const ASSETS: AssetCode[] = [AssetCode.BTC, AssetCode.CLP, AssetCode.USD];
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-
-  await Promise.resolve(searchParams);
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  void resolvedSearchParams;
 
 
   const session = await getServerSession(authOptions);

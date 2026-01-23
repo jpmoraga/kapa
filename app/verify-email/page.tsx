@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ token?: string | string[] }> | { token?: string | string[] };
+  searchParams?: Promise<{ token?: string | string[] }>;
 }) {
-  const sp = (await searchParams) ?? {};
+  const sp = searchParams ? await searchParams : {};
   const token = typeof sp.token === "string" ? sp.token : null;
 
   if (token) {
