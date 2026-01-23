@@ -17,6 +17,31 @@ type TwilioWhatsAppConfig = {
   to: string;
 };
 
+let cachedTwilioClient: ReturnType<typeof twilio> | null = null;
+
+function maskEnv(value: string | null | undefined) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.length <= 8) return "***";
+  return `${trimmed.slice(0, 4)}...${trimmed.slice(-4)}`;
+}
+
+const runtimeEnvSnapshot = {
+  TWILIO_ACCOUNT_SID: maskEnv(process.env.TWILIO_ACCOUNT_SID ?? null),
+  TWILIO_AUTH_TOKEN: maskEnv(process.env.TWILIO_AUTH_TOKEN ?? null),
+  TWILIO_WHATSAPP_FROM: maskEnv(process.env.TWILIO_WHATSAPP_FROM ?? null),
+  TWILIO_FROM: maskEnv(process.env.TWILIO_FROM ?? null),
+  ADMIN_WHATSAPP_TO: maskEnv(process.env.ADMIN_WHATSAPP_TO ?? null),
+  WHATSAPP_ADMIN_TO: maskEnv(process.env.WHATSAPP_ADMIN_TO ?? null),
+  NEXT_RUNTIME: process.env.NEXT_RUNTIME ?? null,
+};
+
+if (!(globalThis as any).__whatsappEnvLogged) {
+  console.info("whatsapp:env_snapshot", runtimeEnvSnapshot);
+  (globalThis as any).__whatsappEnvLogged = true;
+}
+
 function normalizeWhatsAppNumber(value: string) {
   const trimmed = value.trim();
   return trimmed.startsWith("whatsapp:") ? trimmed : `whatsapp:${trimmed}`;
@@ -163,7 +188,17 @@ export async function sendDepositSlipWhatsApp(input: DepositSlipWhatsAppInput) {
     });
 
     try {
-      const client = twilio(config.sid, config.token);
+      if (!cachedTwilioClient) {
+        cachedTwilioClient = twilio(config.sid, config.token);
+      }
+      const client = cachedTwilioClient;
+
+      console.info("whatsapp:before_create", {
+        slipId: input.slipId,
+        from: config.from,
+        to: config.to,
+      });
+
       const message = await client.messages.create({
         from: config.from,
         to: config.to,
