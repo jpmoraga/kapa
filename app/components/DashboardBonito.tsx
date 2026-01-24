@@ -572,26 +572,11 @@ useEffect(() => {
                     ))}
 
                     {!liveMovements.length && (
-                      <>
-                        {[
-                          { date: "09-01-2026 20:30", type: "Compra BTC", amt: "+0.10 BTC" },
-                          { date: "09-01-2026 17:10", type: "Ingreso USDT", amt: "+2.000 USDT" },
-                          { date: "08-01-2026 21:05", type: "Salida CLP", amt: "-$1.500.000" },
-                        ].map((r, idx) => (
-                          <tr key={idx} className="border-b border-white/10 last:border-0">
-                            <td className="py-3">{r.date}</td>
-                            <td className="py-3">
-                              <span className="k21-pill border-white/10 bg-white/5 text-neutral-200">
-                                {r.type}
-                              </span>
-                            </td>
-                            <td className="py-3 text-right font-medium text-neutral-200">
-                              {r.amt}
-                            </td>
-                            
-                          </tr>
-                        ))}
-                      </>
+                      <tr className="border-b border-white/10 last:border-0">
+                        <td colSpan={3} className="py-6 text-center text-sm text-neutral-500">
+                          Aún no hay movimientos.
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
