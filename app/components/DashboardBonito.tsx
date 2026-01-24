@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import MovementForm from "@/app/treasury/_components/MovementForm";
 import BtcClpChart from "@/components/landing/BtcClpChart";
+import type { TreasuryMovementStatus } from "@prisma/client";
 import {
   CreditCard,
   BarChart3,
@@ -17,6 +18,7 @@ import {
 type AssetCode = "BTC" | "CLP" | "USD";
 type Mode = "buy" | "sell" | "adjust";
 type QuoteCurrency = "CLP" | "BTC" | "USDT";
+type MovementStatus = TreasuryMovementStatus;
 
 type Movement = {
   id: string;
@@ -25,7 +27,7 @@ type Movement = {
   amount: string;
   executedQuoteAmount?: string | null; // 👈 NUEVO
   createdAt: string; // ISO
-  status: "APPROVED" | "REJECTED" | "PENDING";
+  status: MovementStatus;
 };
 
 type OnboardingStatus = {
