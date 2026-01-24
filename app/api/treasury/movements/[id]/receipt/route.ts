@@ -8,7 +8,10 @@ import { prisma } from "@/lib/prisma";
 import { AssetCode, Prisma } from "@prisma/client";
 import { computeTradeFee, getTradeFeePercent } from "@/lib/fees";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
   const activeCompanyId = (session as any)?.activeCompanyId as string | undefined;
@@ -25,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   });
   if (!membership) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const { id } = await params;
+  const { id } = await context.params;
 
   const movement = await prisma.treasuryMovement.findFirst({
     where: { id, companyId: activeCompanyId },

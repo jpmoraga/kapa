@@ -6,7 +6,10 @@ import { TreasuryMovementStatus } from "@prisma/client";
 
 export const runtime = "nodejs";
 
-export async function POST(_: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  _: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
   const activeCompanyId = (session as any)?.activeCompanyId as string | undefined;
@@ -29,7 +32,7 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
   const isAdmin = role === "admin" || role === "owner";
   if (!isAdmin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const id = params.id;
+  const { id } = await context.params;
 
   const m = await prisma.treasuryMovement.findFirst({
     where: { id, companyId: activeCompanyId },

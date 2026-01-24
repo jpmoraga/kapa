@@ -6,7 +6,7 @@ import { TreasuryMovementStatus } from "@prisma/client";
 
 export async function POST(
   _req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
@@ -15,7 +15,7 @@ export async function POST(
   if (!email) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   if (!activeCompanyId) return NextResponse.json({ error: "Sin empresa activa" }, { status: 400 });
 
-  const { id: movementId } = await params;
+  const { id: movementId } = await context.params;
 
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });

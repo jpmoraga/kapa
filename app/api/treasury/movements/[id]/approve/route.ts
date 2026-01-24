@@ -9,7 +9,10 @@ import { prisma } from "@/lib/prisma";
 import { requireCanOperate } from "@/lib/guards/requireCanOperate";
 import { approveMovementAsSystem } from "@/lib/treasury/approveMovement";
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
   const activeCompanyId = (session as any)?.activeCompanyId as string | undefined;
@@ -32,7 +35,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const isAdminOrOwner = role === "admin" || role === "owner";
   if (!isAdminOrOwner) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
-  const { id: movementId } = await params;
+  const { id: movementId } = await context.params;
 
   try {
     const out = await approveMovementAsSystem({
