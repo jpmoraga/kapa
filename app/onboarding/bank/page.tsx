@@ -6,9 +6,11 @@ import OnboardingShell from "../_components/OnboardingShell";
 import { onboardingCopy as copy } from "../_copy";
 
 type BankOption = { value: string; label: string };
+type PerfStore = { navStart?: number; from?: string };
 
 export default function BankPage() {
   const router = useRouter();
+  const perfEnabled = process.env.NEXT_PUBLIC_DEBUG_PERF === "1";
 
   const banks = useMemo<BankOption[]>(
     () => [
@@ -53,6 +55,18 @@ export default function BankPage() {
   async function submitBank() {
     setSaving(true);
     setError(null);
+
+    if (perfEnabled) {
+      const now = performance.now();
+      (globalThis as typeof globalThis & { __k21Perf?: PerfStore }).__k21Perf = {
+        navStart: now,
+        from: "bank",
+      };
+      console.info("perf:onboarding_click", {
+        step: "bank",
+        t: Math.round(now),
+      });
+    }
 
     const attempt = async () => {
       const res = await fetch("/api/onboarding/bank", {

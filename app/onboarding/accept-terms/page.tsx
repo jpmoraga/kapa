@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import OnboardingShell from "../_components/OnboardingShell";
 import { onboardingCopy as copy } from "../_copy";
 
+type PerfStore = { navStart?: number; from?: string };
+
 export default function AcceptTermsPage() {
   const router = useRouter();
+  const perfEnabled = process.env.NEXT_PUBLIC_DEBUG_PERF === "1";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +37,17 @@ export default function AcceptTermsPage() {
     setError(null);
 
     try {
+      if (perfEnabled) {
+        const now = performance.now();
+        (globalThis as typeof globalThis & { __k21Perf?: PerfStore }).__k21Perf = {
+          navStart: now,
+          from: "terms",
+        };
+        console.info("perf:onboarding_click", {
+          step: "terms",
+          t: Math.round(now),
+        });
+      }
       const res = await fetch("/api/onboarding/accept-terms", { method: "POST" });
       const data = await res.json().catch(() => ({}));
 

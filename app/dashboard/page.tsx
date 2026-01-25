@@ -19,8 +19,12 @@ export default async function DashboardPage({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   void resolvedSearchParams;
 
+  const perfEnabled = process.env.DEBUG_PERF === "1";
+  const t0 = Date.now();
 
+  const tSession = Date.now();
   const session = await getServerSession(authOptions);
+  const sessionMs = Date.now() - tSession;
   if (!session?.user?.email) redirect("/auth/login");
 
   const email = session.user.email.toLowerCase().trim();
@@ -30,6 +34,7 @@ export default async function DashboardPage({
   
 
   // 1) usuario (con nombre desde DB)
+  const tUser = Date.now();
   const user = await prisma.user.findUnique({
     where: { email },
     select: {
@@ -37,6 +42,7 @@ export default async function DashboardPage({
       personProfile: { select: { fullName: true } },
     },
   });
+  const userMs = Date.now() - tUser;
   if (!user) redirect("/auth/login");
 
   const displayName =
@@ -45,20 +51,25 @@ export default async function DashboardPage({
   
 
   // 1.5) estado onboarding (server-side)
+  const tOnboarding = Date.now();
   const onboarding = await getOnboardingStatus(user.id);
+  const onboardingMs = Date.now() - tOnboarding;
 
   // 🔒 Hard redirect de onboarding (server-side)
   if (!onboarding.canOperate) redirect("/onboarding");
 
   // 2) role en la empresa activa
+  const tMembership = Date.now();
   const membership = await prisma.companyUser.findUnique({
     where: { userId_companyId: { userId: user.id, companyId: activeCompanyId } },
     select: { role: true },
   });
+  const membershipMs = Date.now() - tMembership;
   const role = membership?.role ?? "member";
   const roleLower = String(role).toLowerCase();
   const isAdmin = roleLower === "admin" || roleLower === "owner";
 
+  const tTxn = Date.now();
   const [balances, movements] = await prisma.$transaction(async (tx) => {
     // ✅ asegurar cuentas BTC/CLP/USD (multi-asset real)
     await tx.treasuryAccount.createMany({
@@ -106,6 +117,7 @@ export default async function DashboardPage({
 
     return [map, mv] as const;
   });
+  const txnMs = Date.now() - tTxn;
 
   const clientMovements = movements.map((m) => ({
     id: m.id,
@@ -118,6 +130,19 @@ export default async function DashboardPage({
     createdAt: m.createdAt.toISOString(),
     status: m.status,
   }));
+
+  if (perfEnabled) {
+    console.info("perf:dashboard", {
+      route: "/dashboard",
+      sessionMs,
+      userMs,
+      onboardingMs,
+      membershipMs,
+      txnMs,
+      movementsCount: movements.length,
+      totalMs: Date.now() - t0,
+    });
+  }
 
   return (
     <DashboardBonito

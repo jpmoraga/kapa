@@ -12,6 +12,7 @@ type Parsed = {
   nacionalidad: string;
   serie: string;
 };
+type PerfStore = { navStart?: number; from?: string };
 
 function normalizeRut(rut: string) {
   return rut
@@ -321,6 +322,7 @@ async function getImageOrientationHint(file: File): Promise<"ok" | "rotate90"> {
 
 export default function OCRPage() {
   const router = useRouter();
+  const perfEnabled = process.env.NEXT_PUBLIC_DEBUG_PERF === "1";
 
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [backFile, setBackFile] = useState<File | null>(null);
@@ -602,6 +604,17 @@ export default function OCRPage() {
           <button
             onClick={async () => {
               if (!canContinue) return;
+              if (perfEnabled) {
+                const now = performance.now();
+                (globalThis as typeof globalThis & { __k21Perf?: PerfStore }).__k21Perf = {
+                  navStart: now,
+                  from: "ocr",
+                };
+                console.info("perf:onboarding_click", {
+                  step: "ocr",
+                  t: Math.round(now),
+                });
+              }
 
               const res = await fetch("/api/onboarding/profile", {
                 method: "POST",

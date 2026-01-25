@@ -20,6 +20,8 @@ export function getOnboardingStep(status: OnboardingStatus): OnboardingStep {
 }
 
 export async function getOnboardingStatus(userId: string): Promise<OnboardingStatus> {
+  const perfEnabled = process.env.DEBUG_PERF === "1";
+  const t0 = Date.now();
   const [profile, onboarding, bankAccount] = await prisma.$transaction([
     prisma.personProfile.findUnique({
       where: { userId },
@@ -43,6 +45,18 @@ export async function getOnboardingStatus(userId: string): Promise<OnboardingSta
   const hasBankAccount = Boolean(bankAccount?.userId);
   const termsAccepted = Boolean(onboarding?.termsAcceptedAt);
   const isComplete = hasIdDocument && hasProfile && hasBankAccount && termsAccepted;
+
+  if (perfEnabled) {
+    console.info("perf:onboarding_status", {
+      userId,
+      ms: Date.now() - t0,
+      queries: 3,
+      hasIdDocument,
+      hasProfile,
+      hasBankAccount,
+      termsAccepted,
+    });
+  }
 
   return {
     hasIdDocument,

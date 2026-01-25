@@ -7,6 +7,8 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+  const perfEnabled = process.env.DEBUG_PERF === "1";
+  const t0 = Date.now();
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
   if (!email) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
@@ -28,10 +30,22 @@ export async function GET() {
     },
   });
 
+  if (perfEnabled) {
+    console.info("perf:onboarding_bank", {
+      method: "GET",
+      action: "ok",
+      userId: user.id,
+      ms: Date.now() - t0,
+      queries: 2,
+    });
+  }
+
   return NextResponse.json({ bankAccount });
 }
 
 export async function POST(req: Request) {
+  const perfEnabled = process.env.DEBUG_PERF === "1";
+  const t0 = Date.now();
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
   if (!email) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
@@ -82,6 +96,16 @@ export async function POST(req: Request) {
       },
     });
 
+    if (perfEnabled) {
+      console.info("perf:onboarding_bank", {
+        method: "POST",
+        action: "ok",
+        userId: user.id,
+        ms: Date.now() - t0,
+        queries: 2,
+      });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const message = e?.message ?? "unknown";
@@ -91,6 +115,15 @@ export async function POST(req: Request) {
       error: message,
       code,
     });
+    if (perfEnabled) {
+      console.info("perf:onboarding_bank", {
+        method: "POST",
+        action: "error",
+        userId: user.id,
+        ms: Date.now() - t0,
+        code: code ?? null,
+      });
+    }
 
     if (code === "P2002") {
       return NextResponse.json({ error: "Cuenta bancaria ya registrada" }, { status: 409 });

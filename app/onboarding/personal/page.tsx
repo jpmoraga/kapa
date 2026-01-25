@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import OnboardingShell from "../_components/OnboardingShell";
 import { onboardingCopy as copy } from "../_copy";
 
+type PerfStore = { navStart?: number; from?: string };
+
 export default function PersonalPage() {
   const router = useRouter();
+  const perfEnabled = process.env.NEXT_PUBLIC_DEBUG_PERF === "1";
 
   const [fullName, setFullName] = useState("");
   const [rut, setRut] = useState("");
@@ -78,6 +81,17 @@ export default function PersonalPage() {
     setError(null);
 
     try {
+      if (perfEnabled) {
+        const now = performance.now();
+        (globalThis as typeof globalThis & { __k21Perf?: PerfStore }).__k21Perf = {
+          navStart: now,
+          from: "personal",
+        };
+        console.info("perf:onboarding_click", {
+          step: "personal",
+          t: Math.round(now),
+        });
+      }
       const payload: { fullName?: string; rut?: string; phone: string } = {
         phone: normalizedPhone,
       };
