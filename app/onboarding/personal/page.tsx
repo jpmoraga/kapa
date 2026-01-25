@@ -48,6 +48,14 @@ export default function PersonalPage() {
     };
   }, []);
 
+  if (!profileLoaded) {
+    return (
+      <OnboardingShell title="Cargando...">
+        <div className="text-sm text-neutral-400">Cargando…</div>
+      </OnboardingShell>
+    );
+  }
+
   async function onContinue() {
     const normalizedPhone = phone.trim();
     const normalizedFullName = fullName.trim();
@@ -99,7 +107,7 @@ export default function PersonalPage() {
     }
   }
 
-  const phoneOnly = profileLoaded && !needsNameRut;
+  const phoneOnly = !needsNameRut;
   const canContinue = profileLoaded
     ? phoneOnly
       ? Boolean(phone.trim())
