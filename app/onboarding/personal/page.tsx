@@ -113,7 +113,7 @@ export default function PersonalPage() {
         return;
       }
 
-      router.refresh();
+      router.push("/onboarding?step=bank");
     } catch {
       setError("Error de red. Intenta de nuevo.");
     } finally {

@@ -634,7 +634,7 @@ export default function OCRPage() {
                 return;
               }
 
-              router.refresh();
+              router.push("/onboarding?step=personal");
             }}
             disabled={!canContinue}
             className="k21-btn-primary flex-1 h-11 disabled:opacity-50"

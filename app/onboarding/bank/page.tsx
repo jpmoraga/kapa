@@ -90,14 +90,14 @@ export default function BankPage() {
 
     try {
       await attempt();
-      router.refresh();
+      router.push("/onboarding?step=terms");
     } catch (e: any) {
       const status = e?.status;
       if (!status || status >= 500) {
         await new Promise((resolve) => setTimeout(resolve, 400));
         try {
           await attempt();
-          router.refresh();
+          router.push("/onboarding?step=terms");
           return;
         } catch (err: any) {
           setError(err?.message ?? "Error guardando cuenta bancaria");
