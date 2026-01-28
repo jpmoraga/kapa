@@ -8,6 +8,13 @@ Notes:
 - Models without @@map use quoted table names in Postgres (e.g., "TreasuryMovement").
 - @map on fields indicates a column name override.
 
+## Source of truth (balances)
+- TreasuryAccount is the source of truth for balances.
+- TreasuryMovement is an event log and does not represent balances by itself.
+- Evidence:
+  - app/api/treasury/summary/route.ts reads TreasuryAccount balances.
+  - lib/treasury/approveMovement.ts updates TreasuryAccount on approve/execution.
+
 ## Migrations
 - 20251212175204_init: -- CreateTable
 - 20251212184223_fix_companyuser_pk: /*
