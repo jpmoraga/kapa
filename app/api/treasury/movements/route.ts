@@ -165,6 +165,10 @@ export async function POST(req: Request) {
     assetCode = normalizeAssetCode(body.assetCode);
   }
 
+  if (type === "deposit" && receiptFile) {
+    assetCode = AssetCode.CLP;
+  }
+
   if (!["deposit", "withdraw", "adjust"].includes(type)) {
     return NextResponse.json({ error: "Tipo inválido" }, { status: 400 });
   }
@@ -269,8 +273,7 @@ export async function POST(req: Request) {
         //   cache: "no-store",
         // });
       
-        // IMPORTANTE: dejamos el movimiento en PENDING (sin auto-aprobar),
-        // porque ahora lo vas a aprobar por WhatsApp.
+        // IMPORTANTE: el movimiento se auto-aprueba fuera de la transacción.
         return {
           movementId: movement.id,
           status: TreasuryMovementStatus.PENDING,
@@ -422,6 +425,30 @@ export async function POST(req: Request) {
       }
     }
 
+    let finalStatus = out.status;
+
+    if (out.depositSlipId) {
+      try {
+        const approved = await approveMovementAsSystem({
+          movementId: out.movementId,
+          companyId: activeCompanyId,
+          actorUserId: user.id,
+          skipSync: true,
+        });
+        finalStatus = (approved as any)?.updated?.status ?? finalStatus;
+      } catch (e: any) {
+        console.error("deposit_slip:auto_approve_failed", {
+          movementId: out.movementId,
+          companyId: activeCompanyId,
+          error: e?.message ?? String(e),
+        });
+        return NextResponse.json(
+          { ok: false, movementId: out.movementId, error: "Error aprobando depósito" },
+          { status: 500 }
+        );
+      }
+    }
+
     if (out.depositSlipId) {
       console.info("deposit_slip:created", {
         slipId: out.depositSlipId,
@@ -429,17 +456,52 @@ export async function POST(req: Request) {
         amount: amount.toString(),
         status: out.depositSlipStatus ?? "received",
       });
-      await sendDepositSlipWhatsApp({
+      const waResult = await sendDepositSlipWhatsApp({
         slipId: out.depositSlipId,
         companyId: activeCompanyId,
         amount: amount.toString(),
         currency: "CLP",
         status: out.depositSlipStatus ?? "received",
         ocrStatus: out.depositSlipOcrStatus ?? null,
-      });
+      }).catch((err: any) => ({
+        ok: false,
+        error: err?.message ?? "SEND_THROW",
+      }));
+
+      if (!waResult?.ok) {
+        const errorMessage = waResult?.error ?? "UNKNOWN";
+        console.error("whatsapp_send_failed", {
+          movementId: out.movementId,
+          companyId: activeCompanyId,
+          error: errorMessage,
+        });
+
+        try {
+          const current = await prisma.treasuryMovement.findUnique({
+            where: { id: out.movementId },
+            select: { retryCount: true },
+          });
+
+          const nextRetryCount = Math.min((current?.retryCount ?? 0) + 1, 5);
+
+          await prisma.treasuryMovement.update({
+            where: { id: out.movementId },
+            data: {
+              lastError: `whatsapp:${errorMessage}`,
+              nextRetryAt: new Date(Date.now() + 10 * 60 * 1000),
+              retryCount: nextRetryCount,
+            },
+          });
+        } catch (err: any) {
+          console.warn("whatsapp_send_failed_update_error", {
+            movementId: out.movementId,
+            error: err?.message ?? String(err),
+          });
+        }
+      }
     }
 
-    return NextResponse.json({ ok: true, ...out });
+    return NextResponse.json({ ok: true, ...out, status: finalStatus });
   } catch (e: any) {
     console.error("MOVEMENT_CREATE_ERROR", e);
 

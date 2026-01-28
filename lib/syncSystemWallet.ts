@@ -22,11 +22,11 @@ export async function syncSystemWalletFromBuda(tx: Prisma.TransactionClient) {
   const budaUsdt = new Prisma.Decimal(byCurrency["USDT"] ?? byCurrency["USD"] ?? "0");
 
   // 2) sumar saldos de TODOS los clientes (todas las companies menos __SYSTEM_WALLET__)
-  //    (si tienes companies "business" que también son clientes, igual cuentan como clientes)
+  //    SystemWallet = buda_balance(asset) - sum(client balances)
   const sums = await tx.treasuryAccount.groupBy({
     by: ["assetCode"],
     where: {
-      company: { name: { not: "__SYSTEM_WALLET__" } },
+      companyId: { not: systemCompanyId },
       assetCode: { in: [AssetCode.CLP, AssetCode.BTC, AssetCode.USD] },
     },
     _sum: { balance: true },
