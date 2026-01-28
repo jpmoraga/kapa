@@ -109,6 +109,7 @@ export default async function DashboardPage({
         assetCode: true,
         type: true,
         amount: true,
+        attachmentUrl: true,
         createdAt: true,
         status: true,
         executedQuoteAmount: true,
@@ -124,6 +125,7 @@ export default async function DashboardPage({
     assetCode: m.assetCode,
     type: m.type as "deposit" | "withdraw" | "adjust",
     amount: m.amount.toString(),
+    attachmentUrl: m.attachmentUrl ?? null,
     executedQuoteAmount: m.executedQuoteAmount
       ? m.executedQuoteAmount.toString()
       : null,

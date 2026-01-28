@@ -26,6 +26,7 @@ type Movement = {
   type: "deposit" | "withdraw" | "adjust";
   amount: string;
   executedQuoteAmount?: string | null; // 👈 NUEVO
+  attachmentUrl?: string | null;
   createdAt: string; // ISO
   status: MovementStatus;
 };
@@ -84,6 +85,8 @@ export default function DashboardBonito({
   // ✅ balances/movements "vivos" (se actualizan sin refresh)
   const [liveBalances, setLiveBalances] = useState(balances);
   const [liveMovements, setLiveMovements] = useState(movements);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [attachmentBusyId, setAttachmentBusyId] = useState<string | null>(null);
 
   // Si cambian props por navegación, resincroniza
   useEffect(() => {
@@ -234,6 +237,33 @@ useEffect(() => {
     // 2) si no, navegar normal
     if (onGo) return onGo(href);
     router.push(href);
+  }
+
+  async function openAttachment(movementId: string, path: string) {
+    if (!path) return;
+    if (path.startsWith("/uploads/")) {
+      setAttachmentError("Comprobante no disponible (archivo legacy).");
+      return;
+    }
+
+    setAttachmentError(null);
+    setAttachmentBusyId(movementId);
+    try {
+      const res = await fetch(
+        `/api/storage/signed-url?bucket=deposit-slips&path=${encodeURIComponent(path)}`,
+        { cache: "no-store" }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok || !data?.signedUrl) {
+        setAttachmentError(data?.error ?? "No pude abrir el comprobante.");
+        return;
+      }
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setAttachmentError(e?.message ?? "No pude abrir el comprobante.");
+    } finally {
+      setAttachmentBusyId(null);
+    }
   }
 
   return (
@@ -533,6 +563,9 @@ useEffect(() => {
               </div>
 
               <div className="mt-4 overflow-x-auto">
+                {attachmentError && (
+                  <div className="mb-3 text-xs text-red-300">{attachmentError}</div>
+                )}
                 <table className="w-full text-sm">
                   <thead className="text-neutral-500 border-b border-white/10">
                     <tr>
@@ -566,6 +599,19 @@ useEffect(() => {
                               ? formatUSD(n(amt))
                               : formatBTC(n(amt));
                           })()}
+                          {m.attachmentUrl ? (
+                            <div className="mt-1">
+                              <button
+                                type="button"
+                                onClick={() => openAttachment(m.id, m.attachmentUrl as string)}
+                                disabled={attachmentBusyId === m.id}
+                                className="text-[11px] text-neutral-400 underline hover:text-neutral-200 disabled:opacity-50"
+                                title="Abrir comprobante"
+                              >
+                                {attachmentBusyId === m.id ? "Abriendo…" : "Ver comprobante"}
+                              </button>
+                            </div>
+                          ) : null}
                         </td>
                         
                       </tr>

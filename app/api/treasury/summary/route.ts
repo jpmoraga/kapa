@@ -160,7 +160,9 @@ export async function GET(req: Request) {
   
       // 👇 AGREGA ESTA LÍNEA (ESTE ES EL MONTO REAL APROBADO)
       executedQuoteAmount: true,
-  
+
+      attachmentUrl: true,
+
       status: true,
       createdAt: true,
     },

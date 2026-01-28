@@ -9,8 +9,6 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import twilio from "twilio";
 import { sendDepositSlipWhatsApp } from "@/lib/whatsapp";
 
-import nodePath from "path";
-import fs from "fs/promises";
 
 import { requireCanOperate } from "@/lib/guards/requireCanOperate";
 import { approveMovementAsSystem } from "@/lib/treasury/approveMovement";
@@ -38,6 +36,7 @@ function safeExtFromMime(mime: string) {
   if (m === "application/pdf") return "pdf";
   if (m === "image/jpeg") return "jpg";
   if (m === "image/png") return "png";
+  if (m === "image/webp") return "webp";
   return null;
 }
 
@@ -47,9 +46,11 @@ async function uploadReceiptToSupabase(opts: {
 }) {
   const bucket = "deposit-slips";
 
-  const isPdf = opts.file.type === "application/pdf";
-  const extRaw = (opts.file.name.split(".").pop() || "").toLowerCase();
-  const ext = isPdf ? "pdf" : (["jpg", "jpeg", "png", "webp"].includes(extRaw) ? extRaw : "jpg");
+  const ext = safeExtFromMime(opts.file.type);
+  if (!ext) throw new Error("BAD_FILE_TYPE");
+
+  const MAX_BYTES = 10 * 1024 * 1024;
+  if (opts.file.size > MAX_BYTES) throw new Error("FILE_TOO_LARGE");
 
   const path = `user/${opts.userId}/deposit-slip-${Date.now()}.${ext}`;
 
@@ -67,28 +68,6 @@ async function uploadReceiptToSupabase(opts: {
   if (error) throw new Error(`SUPABASE_UPLOAD_ERROR: ${error.message}`);
 
   return { bucket, path };
-}
-
-async function saveReceiptLocal(opts: { companyId: string; movementId: string; file: File }) {
-  const { companyId, movementId, file } = opts;
-
-  const ext = safeExtFromMime(file.type);
-  if (!ext) throw new Error("BAD_FILE_TYPE");
-
-  const MAX_BYTES = 10 * 1024 * 1024;
-  if (file.size > MAX_BYTES) throw new Error("FILE_TOO_LARGE");
-
-  const publicDir = nodePath.join(process.cwd(), "public");
-  const dir = nodePath.join(publicDir, "uploads", "treasury", companyId);
-  await fs.mkdir(dir, { recursive: true });
-
-  const filename = `${movementId}.${ext}`;
-  const abs = nodePath.join(dir, filename);
-
-  const buf = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(abs, buf);
-
-  return `/uploads/treasury/${companyId}/${filename}`;
 }
 
 async function notifyAdminWhatsApp(text: string) {
@@ -232,25 +211,19 @@ export async function POST(req: Request) {
       let attachmentUrl: string | null = null;
     
       if (type === "deposit" && assetCode === AssetCode.CLP && receiptFile) {
-        // 2A) Guardar comprobante local (para que el dashboard lo pueda abrir como hoy)
-        attachmentUrl = await saveReceiptLocal({
-          companyId: activeCompanyId,
-          movementId: movement.id,
+        // 2A) Subir comprobante a Supabase Storage (source of truth)
+        const { path: supabasePath } = await uploadReceiptToSupabase({
+          userId: user.id,
           file: receiptFile,
         });
-      
+
+        attachmentUrl = supabasePath;
         await tx.treasuryMovement.update({
           where: { id: movement.id },
           data: { attachmentUrl },
           select: { id: true },
         });
-      
-        // 2B) Subir también a Supabase (para que funcione el flujo WhatsApp/OCR)
-        const { path: supabasePath } = await uploadReceiptToSupabase({
-          userId: user.id,
-          file: receiptFile,
-        });
-      
+
         // 2C) Crear DepositSlip apuntando al path de Supabase
         const slip = await tx.depositSlip.create({
           data: {
