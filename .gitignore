@@ -46,3 +46,8 @@ next-env.d.ts
 # local uploads / QA artifacts
 public/uploads/
 _archive/
+
+# Docs
+docs/*.pdf
+exports/*.pdf
+_ALL.pdf
