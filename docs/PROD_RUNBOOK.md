@@ -48,6 +48,16 @@ Endpoint:
 Effect:
 - Calls syncSystemWalletAndRetry -> recompute system wallet balances from Buda and retry pending liquidity trades.
 
+## 4.1) DB-only retry trigger (no Buda sync)
+
+Endpoint:
+- POST /api/treasury/retry-pending-db
+
+Effect:
+- Claims PENDING trades with internalReason=INSUFFICIENT_LIQUIDITY and internalState=WAITING_LIQUIDITY.
+- Calls approveMovementAsSystem(skipSync: true) for each claimed movement.
+- Does NOT call syncSystemWalletFromBuda as part of the trigger.
+
 ## 5) Debugging a deposit with receipt (CLP)
 
 Checklist:
@@ -76,4 +86,3 @@ Checklist:
 - Twilio inbound webhook configured to /api/webhooks/twilio/whatsapp.
 - Resend domain verified for EMAIL_FROM.
 - Buda API keys valid and allowed by IP (if restricted).
-
