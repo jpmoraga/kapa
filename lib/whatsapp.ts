@@ -119,21 +119,23 @@ function buildDepositSlipMessage(opts: {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || null;
   const link = baseUrl ? `${baseUrl.replace(/\/$/, "")}/treasury/pending` : null;
   const amountLine = opts.amount ? `${opts.amount} ${opts.currency}` : "unknown";
+  const statusLower = String(opts.status || "").toLowerCase();
+  const isPending = statusLower !== "approved" && statusLower !== "rejected";
 
-  return [
-    "🧾 Nuevo comprobante recibido",
+  const lines = [
+    isPending ? "🧾 Depósito pendiente" : "🧾 Depósito actualizado",
     `slipId: ${opts.slipId}`,
     `empresa: ${opts.companyId ?? "unknown"}`,
     `monto: ${amountLine}`,
     `estado: ${opts.status}${opts.ocrStatus ? ` / ocr: ${opts.ocrStatus}` : ""}`,
     link ? `link: ${link}` : null,
-    "",
-    "Responde:",
-    `aprobar ${opts.slipId}`,
-    `rechazar ${opts.slipId}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ];
+
+  if (isPending) {
+    lines.push("", "Responde:", `aprobar ${opts.slipId}`, `rechazar ${opts.slipId}`);
+  }
+
+  return lines.filter(Boolean).join("\n");
 }
 
 export async function sendDepositSlipWhatsApp(input: DepositSlipWhatsAppInput) {

@@ -43,13 +43,22 @@ function marketForAsset(a: AssetCode) {
   throw new Error("BAD_MARKET");
 }
 
+function logEvent(event: string, payload: Record<string, unknown>) {
+  console.info(JSON.stringify({ event, ...payload }));
+}
+
 export async function approveMovementAsSystem(opts: {
   movementId: string;
   companyId: string;
   actorUserId?: string | null; // el user que queda como approvedBy
   skipSync?: boolean;
+  correlationId?: string;
 }) {
-  const { movementId, companyId, actorUserId, skipSync } = opts;
+  const { movementId, companyId, actorUserId, skipSync, correlationId } = opts;
+  const baseLog = { correlationId, movementId, companyId };
+  logEvent("trade:approve_start", baseLog);
+  const strictSystemWallet = process.env.STRICT_SYSTEM_WALLET !== "false";
+  const hasBudaKeys = Boolean(process.env.BUDA_API_KEY && process.env.BUDA_API_SECRET);
 
   try {
     const out = await prisma.$transaction(async (tx) => {
@@ -85,8 +94,24 @@ export async function approveMovementAsSystem(opts: {
       });
 
       // sync system wallet desde Buda
-      if (!skipSync) {
-        await syncSystemWalletFromBuda(tx);
+      if (!skipSync && isTradeAsset(m.assetCode)) {
+        if (!hasBudaKeys && strictSystemWallet) {
+          const updated = await tx.treasuryMovement.update({
+            where: { id: m.id },
+            data: {
+              status: TreasuryMovementStatus.PENDING,
+              internalReason: InternalMovementReason.BUDA_API_ERROR,
+              internalState: InternalMovementState.FAILED_TEMPORARY,
+              lastError: "MISSING_BUDA_KEYS",
+            },
+            select: { id: true, status: true, internalReason: true, internalState: true },
+          });
+          return { updated, venue: "missing-buda-keys" as const };
+        }
+
+        if (hasBudaKeys) {
+          await syncSystemWalletFromBuda(tx);
+        }
       }
 
       const amount = new Prisma.Decimal(m.amount);
@@ -122,18 +147,18 @@ export async function approveMovementAsSystem(opts: {
       } else if (isTradeAsset(m.assetCode)) {
         const snap = await getBestPriceSnapshot(tx, m.assetCode, AssetCode.CLP);
         if (!snap?.price) {
-          const updated = await tx.treasuryMovement.update({
-            where: { id: m.id },
-            data: {
-              status: TreasuryMovementStatus.PENDING,
-              internalReason: InternalMovementReason.PRICE_MISSING,
-              internalState: InternalMovementState.FAILED_TEMPORARY,
-              lastError: "PRICE_MISSING",
-            },
-            select: { id: true, status: true },
-          });
-          return { updated, venue: "missing-price" as const };
-        }
+        const updated = await tx.treasuryMovement.update({
+          where: { id: m.id },
+          data: {
+            status: TreasuryMovementStatus.PENDING,
+            internalReason: InternalMovementReason.PRICE_MISSING,
+            internalState: InternalMovementState.FAILED_TEMPORARY,
+            lastError: "PRICE_MISSING",
+          },
+          select: { id: true, status: true, internalReason: true, internalState: true },
+        });
+        return { updated, venue: "missing-price" as const };
+      }
         executedPrice = new Prisma.Decimal(snap.price);
         executedSource = snap.source ?? null;
         executedQuoteCode = AssetCode.CLP;
@@ -177,7 +202,7 @@ export async function approveMovementAsSystem(opts: {
             internalReason: InternalMovementReason.NONE,
             internalState: InternalMovementState.NONE,
           },
-          select: { id: true, status: true },
+          select: { id: true, status: true, internalReason: true, internalState: true },
         });
 
         return { updated, venue: "internal-clp" as const };
@@ -286,10 +311,39 @@ export async function approveMovementAsSystem(opts: {
             externalOrderId: null,
             externalVenue: null,
           },
-          select: { id: true, status: true },
+          select: { id: true, status: true, internalReason: true, internalState: true },
         });
 
         return { updated, venue: "internal-wallet" as const };
+      }
+
+      const requiredForBuda = isBuy ? sysClp.gte(totalBuyClp) : sysAsset.gte(totalSellBase);
+      if (strictSystemWallet && !requiredForBuda) {
+        const updated = await tx.treasuryMovement.update({
+          where: { id: m.id },
+          data: {
+            status: TreasuryMovementStatus.PENDING,
+            internalReason: InternalMovementReason.INSUFFICIENT_LIQUIDITY,
+            internalState: InternalMovementState.WAITING_LIQUIDITY,
+            lastError: "SYSTEM_WALLET_INSUFFICIENT",
+          },
+          select: { id: true, status: true, internalReason: true, internalState: true },
+        });
+        return { updated, venue: "insufficient-system-wallet" as const };
+      }
+
+      if (!hasBudaKeys && strictSystemWallet) {
+        const updated = await tx.treasuryMovement.update({
+          where: { id: m.id },
+          data: {
+            status: TreasuryMovementStatus.PENDING,
+            internalReason: InternalMovementReason.BUDA_API_ERROR,
+            internalState: InternalMovementState.FAILED_TEMPORARY,
+            lastError: "MISSING_BUDA_KEYS",
+          },
+          select: { id: true, status: true, internalReason: true, internalState: true },
+        });
+        return { updated, venue: "missing-buda-keys" as const };
       }
 
       // 2) Si no alcanza, intentar BUDA (si supera mínimos configurados)
@@ -309,7 +363,7 @@ export async function approveMovementAsSystem(opts: {
             internalState: InternalMovementState.WAITING_MIN_SIZE_AGGREGATION,
             lastError: "BELOW_BUDA_MIN",
           },
-          select: { id: true, status: true },
+          select: { id: true, status: true, internalReason: true, internalState: true },
         });
         return { updated, venue: "below-min" as const };
       }
@@ -341,7 +395,7 @@ export async function approveMovementAsSystem(opts: {
               : InternalMovementState.FAILED_TEMPORARY,
             lastError: msg,
           },
-          select: { id: true, status: true },
+          select: { id: true, status: true, internalReason: true, internalState: true },
         });
         return { updated, venue: "buda-error" as const };
       }
@@ -361,7 +415,7 @@ export async function approveMovementAsSystem(opts: {
             internalState: InternalMovementState.FAILED_TEMPORARY,
             lastError: "MISSING_BUDA_ORDER_ID",
           },
-          select: { id: true, status: true },
+          select: { id: true, status: true, internalReason: true, internalState: true },
         });
         return { updated, venue: "buda-error" as const };
       }
@@ -402,15 +456,24 @@ export async function approveMovementAsSystem(opts: {
           externalOrderId: budaOrderId,
           externalVenue: "buda",
         },
-        select: { id: true, status: true },
+        select: { id: true, status: true, internalReason: true, internalState: true },
       });
 
       return { updated, venue: "buda" as const, budaOrderId };
     });
 
+    logEvent("trade:approve_result", {
+      ...baseLog,
+      venue: (out as any)?.venue ?? null,
+      status: (out as any)?.updated?.status ?? null,
+      internalReason: (out as any)?.updated?.internalReason ?? null,
+      internalState: (out as any)?.updated?.internalState ?? null,
+      externalOrderId: (out as any)?.budaOrderId ?? null,
+    });
     return out;
   } catch (e: any) {
     const lastError = String(e?.message ?? "UNKNOWN_ERROR");
+    logEvent("trade:approve_exception", { ...baseLog, error: lastError });
     // Si quedó PROCESSING y falló -> vuelve a PENDING (para reintento automático)
     await prisma.treasuryMovement.updateMany({
       where: { id: movementId, companyId, status: TreasuryMovementStatus.PROCESSING },

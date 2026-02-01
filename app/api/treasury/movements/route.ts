@@ -1,5 +1,6 @@
 // web/app/api/treasury/movements/route.ts
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type MovementType = "deposit" | "withdraw" | "adjust";
+
+function logEvent(event: string, payload: Record<string, unknown>) {
+  console.info(JSON.stringify({ event, ...payload }));
+}
 
 function normalizeAssetCode(input: any): AssetCode {
   const v = String(input ?? "").trim().toUpperCase();
@@ -91,6 +96,10 @@ async function notifyAdminWhatsApp(text: string) {
 
 
 export async function POST(req: Request) {
+  const correlationId =
+    req.headers.get("x-correlation-id") ??
+    req.headers.get("x-request-id") ??
+    randomUUID();
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
   const activeCompanyId = (session as any)?.activeCompanyId as string | undefined;
@@ -168,6 +177,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
   }
 
+  const autoApproveDeposits = process.env.AUTO_APPROVE_DEPOSITS === "true";
+  const autoApproveMaxClp = new Prisma.Decimal(process.env.AUTO_APPROVE_MAX_CLP ?? "0");
+  const canAutoApprove =
+    autoApproveDeposits && amount.lte(autoApproveMaxClp) && assetCode === AssetCode.CLP && type === "deposit";
+
+  logEvent("trade:create_request", {
+    correlationId,
+    companyId: activeCompanyId,
+    userId: user.id,
+    type,
+    assetCode,
+    amount: amount.toString(),
+  });
+
   if (type === "deposit" || type === "withdraw") {
     if (amount.lte(0)) return NextResponse.json({ error: "Monto debe ser > 0" }, { status: 400 });
   } else {
@@ -193,6 +216,9 @@ export async function POST(req: Request) {
   // ====== Crear movimiento PENDING y (si aplica) guardar attachment ======
   try {
     const out = await prisma.$transaction(async (tx) => {
+      const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+      const ua = req.headers.get("user-agent") || "unknown";
+
       // 1) Crear movimiento
       const movement = await tx.treasuryMovement.create({
         data: {
@@ -203,6 +229,7 @@ export async function POST(req: Request) {
           note,
           createdByUserId: user.id,
           status: TreasuryMovementStatus.PENDING,
+          internalNote: `submittedAt=${new Date().toISOString()} ip=${ip} ua=${ua}`,
         },
         select: { id: true, status: true },
       });
@@ -375,24 +402,55 @@ export async function POST(req: Request) {
       };
     });
 
+    logEvent("trade:movement_created", {
+      correlationId,
+      companyId: activeCompanyId,
+      userId: user.id,
+      movementId: out.movementId,
+      status: out.status,
+      type,
+      assetCode,
+      amount: amount.toString(),
+    });
+
     // Ejecutar auto-aprobación para trades BTC/USD
     if (out.isTrade) {
       try {
+        logEvent("trade:approve_attempt", {
+          correlationId,
+          companyId: activeCompanyId,
+          userId: user.id,
+          movementId: out.movementId,
+        });
         const approved = await approveMovementAsSystem({
           movementId: out.movementId,
           companyId: activeCompanyId,
           actorUserId: user.id,
+          correlationId,
         });
 
         return NextResponse.json({
           ok: true,
+          traceId: correlationId,
           movementId: out.movementId,
           status: (approved as any)?.updated?.status ?? out.status,
           executionMode: (approved as any)?.venue ?? "unknown",
         });
       } catch (e: any) {
+        logEvent("trade:approve_error", {
+          correlationId,
+          companyId: activeCompanyId,
+          userId: user.id,
+          movementId: out.movementId,
+          error: e?.message ?? "Error ejecutando trade",
+        });
         return NextResponse.json(
-          { ok: false, movementId: out.movementId, error: e?.message ?? "Error ejecutando trade" },
+          {
+            ok: false,
+            traceId: correlationId,
+            movementId: out.movementId,
+            error: e?.message ?? "Error ejecutando trade",
+          },
           { status: 400 }
         );
       }
@@ -400,13 +458,14 @@ export async function POST(req: Request) {
 
     let finalStatus = out.status;
 
-    if (out.depositSlipId) {
+    if (out.depositSlipId && canAutoApprove) {
       try {
         const approved = await approveMovementAsSystem({
           movementId: out.movementId,
           companyId: activeCompanyId,
           actorUserId: user.id,
           skipSync: true,
+          correlationId,
         });
         finalStatus = (approved as any)?.updated?.status ?? finalStatus;
       } catch (e: any) {
@@ -446,6 +505,7 @@ export async function POST(req: Request) {
         console.error("whatsapp_send_failed", {
           movementId: out.movementId,
           companyId: activeCompanyId,
+          correlationId,
           error: errorMessage,
         });
 
@@ -474,7 +534,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, ...out, status: finalStatus });
+    return NextResponse.json({ ok: true, traceId: correlationId, ...out, status: finalStatus });
   } catch (e: any) {
     console.error("MOVEMENT_CREATE_ERROR", e);
 

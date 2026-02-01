@@ -688,8 +688,14 @@ function onPickReceipt(file: File | null) {
           router.refresh();
           console.log("trade:summary_refreshed");
         }}
-        onRefresh={() => {
-          if (receipt?.movementId) fetchReceipt(receipt.movementId);
+        onRefresh={async () => {
+          if (!receipt?.movementId) return;
+          try {
+            await fetch(`/api/treasury/movements/${receipt.movementId}/reconcile`, {
+              method: "POST",
+            });
+          } catch {}
+          fetchReceipt(receipt.movementId);
         }}
         onRetry={triggerRetry}
       />

@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import twilio from "twilio";
 import { validate as isUuid } from "uuid";
-import { Prisma, AssetCode, TreasuryMovementStatus } from "@prisma/client";
+import { envFlag, parseAllowlist, requireEnv } from "@/lib/env";
+import { approveClpDepositBySlip, rejectClpDepositBySlip } from "@/lib/treasury/manualClpDeposits";
+import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
 
-function extractMovementId(notes: string | null | undefined) {
-  if (!notes) return null;
-  // soporta "movementId:XXXX" en cualquier parte del texto
-  const m = notes.match(/movementId:([a-zA-Z0-9_-]+)/);
-  return m?.[1] ?? null;
+function normalizeWhatsAppNumber(value: string) {
+  const trimmed = value.trim();
+  return trimmed.startsWith("whatsapp:") ? trimmed : `whatsapp:${trimmed}`;
 }
 
 /**
@@ -23,6 +23,11 @@ function extractMovementId(notes: string | null | undefined) {
  */
 export async function POST(req: Request) {
   try {
+    const correlationId =
+      req.headers.get("x-correlation-id") ??
+      req.headers.get("x-request-id") ??
+      randomUUID();
+
     const form = await req.formData();
 
     const from = (form.get("From") || "").toString(); // "whatsapp:+569..."
@@ -31,20 +36,41 @@ export async function POST(req: Request) {
 
     console.log("[TWILIO WHATSAPP INBOUND]", { from, bodyRaw });
 
-    const sid = process.env.TWILIO_ACCOUNT_SID;
-    const token = process.env.TWILIO_AUTH_TOKEN;
-    const waFrom = process.env.TWILIO_WHATSAPP_FROM; // sandbox number "whatsapp:+1415..."
-    const adminTo = process.env.ADMIN_WHATSAPP_TO;   // tu número "whatsapp:+56..."
-
-    // Seguridad mínima: solo aceptar comandos desde el admin
-    if (!adminTo || from !== adminTo) {
-      return NextResponse.json({ ok: true }); // no respondemos a cualquiera
-    }
-
-    if (!sid || !token || !waFrom) {
-      console.warn("Missing Twilio env vars");
+    const approvalsEnabled = envFlag("FEATURE_WHATSAPP_APPROVAL", false);
+    if (!approvalsEnabled) {
+      console.warn("whatsapp:approvals_disabled");
       return NextResponse.json({ ok: true });
     }
+
+    const url = new URL(req.url);
+    const tokenParam = url.searchParams.get("token");
+    const tokenHeader = req.headers.get("x-webhook-token");
+    const webhookToken = process.env.TWILIO_WEBHOOK_TOKEN;
+    if (!webhookToken) {
+      console.error("whatsapp:webhook_token_missing");
+      return NextResponse.json({ error: "Webhook token missing" }, { status: 500 });
+    }
+    if (tokenParam !== webhookToken && tokenHeader !== webhookToken) {
+      console.warn("whatsapp:webhook_token_invalid");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const allowlistRaw = parseAllowlist(process.env.WHATSAPP_ADMIN_ALLOWLIST);
+    const fallbackAdmin =
+      process.env.ADMIN_WHATSAPP_TO ?? process.env.WHATSAPP_ADMIN_TO ?? "";
+    if (fallbackAdmin) allowlistRaw.push(fallbackAdmin);
+
+    const allowlist = new Set(
+      allowlistRaw.map((n) => normalizeWhatsAppNumber(n)).filter(Boolean)
+    );
+
+    if (!allowlist.size || !allowlist.has(normalizeWhatsAppNumber(from))) {
+      return NextResponse.json({ ok: true });
+    }
+
+    const sid = requireEnv(["TWILIO_ACCOUNT_SID"], "TWILIO_ACCOUNT_SID");
+    const token = requireEnv(["TWILIO_AUTH_TOKEN"], "TWILIO_AUTH_TOKEN");
+    const waFrom = requireEnv(["TWILIO_WHATSAPP_FROM", "TWILIO_FROM"], "TWILIO_WHATSAPP_FROM");
 
     const client = twilio(sid, token);
 
@@ -118,21 +144,6 @@ export async function POST(req: Request) {
         } else if (slipForAmount.declaredAmountClp != null) {
           amountClp = Number(slipForAmount.declaredAmountClp);
           amountSource = "declaredAmountClp";
-        } else {
-          const movementId = extractMovementId(slipForAmount.notes);
-          if (movementId) {
-            const movement = await prisma.treasuryMovement.findUnique({
-              where: { id: movementId },
-              select: { amount: true, executedQuoteAmount: true },
-            });
-            if (movement?.executedQuoteAmount != null) {
-              amountClp = Number(movement.executedQuoteAmount);
-              amountSource = "movement.executedQuoteAmount";
-            } else if (movement?.amount != null) {
-              amountClp = Number(movement.amount);
-              amountSource = "movement.amount";
-            }
-          }
         }
 
       }
@@ -151,96 +162,12 @@ export async function POST(req: Request) {
       }
 
       try {
-        await prisma.$transaction(async (tx) => {
-          // 1) Leer slip
-          const slip = await tx.depositSlip.findUnique({
-            where: { id: slipId },
-            select: {
-              id: true,
-              status: true,
-              notes: true,
-            },
-          });
-
-          if (!slip) throw new Error("DepositSlip no existe");
-
-          const movementId = extractMovementId(slip.notes);
-
-          // 2) Aprobar slip (idempotente)
-          const approvedNote = "Aprobado por WhatsApp (admin).";
-
-          const slipUpdated = await tx.depositSlip.update({
-            where: { id: slipId },
-            data: {
-              status: "approved",
-              ocrStatus: "parsed",
-              parsedAmountClp: BigInt(Math.round(amountClp)),
-              notes: slip.notes
-                ? (slip.notes.includes(approvedNote) ? slip.notes : `${slip.notes} | ${approvedNote}`)
-                : approvedNote,
-            },
-            select: { id: true, status: true },
-          });
-
-          // Si no hay movementId, paramos acá
-          if (!movementId) {
-            return { slipUpdated, movementUpdated: null as any, credited: false };
-          }
-
-          // 3) Buscar movement
-          const movement = await tx.treasuryMovement.findUnique({
-            where: { id: movementId },
-            select: {
-              id: true,
-              companyId: true,
-              status: true,
-              assetCode: true,
-              type: true,
-            },
-          });
-
-          if (!movement) {
-            return { slipUpdated, movementUpdated: null as any, credited: false };
-          }
-
-          // Seguridad: solo CLP deposit
-          if (movement.type !== "deposit" || movement.assetCode !== AssetCode.CLP) {
-            return { slipUpdated, movementUpdated: null as any, credited: false };
-          }
-
-          // Idempotencia: si ya está APPROVED, no acreditamos de nuevo
-          if (movement.status === TreasuryMovementStatus.APPROVED) {
-            return { slipUpdated, movementUpdated: movement as any, credited: false };
-          }
-
-          // 4) Acreditar balance CLP
-          const accClp = await tx.treasuryAccount.upsert({
-            where: { companyId_assetCode: { companyId: movement.companyId, assetCode: AssetCode.CLP } },
-            update: {},
-            create: { companyId: movement.companyId, assetCode: AssetCode.CLP, balance: new Prisma.Decimal(0) },
-            select: { balance: true },
-          });
-
-          await tx.treasuryAccount.update({
-            where: { companyId_assetCode: { companyId: movement.companyId, assetCode: AssetCode.CLP } },
-            data: { balance: new Prisma.Decimal(accClp.balance).plus(new Prisma.Decimal(Math.round(amountClp).toString())) },
-          });
-
-          // 5) Marcar movement como APPROVED + setear montos reales
-          const movementUpdated = await tx.treasuryMovement.update({
-            where: { id: movement.id },
-            data: {
-              status: TreasuryMovementStatus.APPROVED,
-              amount: new Prisma.Decimal(Math.round(amountClp).toString()),
-              executedQuoteAmount: new Prisma.Decimal(Math.round(amountClp).toString()),
-              executedQuoteCode: AssetCode.CLP,
-              executedSource: "whatsapp",
-              approvedAt: new Date(),
-            },
-            select: { id: true, status: true },
-          });
-
-          return { slipUpdated, movementUpdated, credited: true };
+        await approveClpDepositBySlip({
+          slipId,
+          amountClp,
+          channel: "whatsapp",
+          actorUserId: null,
+          correlationId,
         });
 
         console.info("whatsapp:approve_ok", { slipId, amountClp });
@@ -269,16 +196,14 @@ export async function POST(req: Request) {
       }
 
       try {
-        const updated = await prisma.depositSlip.update({
-          where: { id: slipId },
-          data: {
-            status: "rejected",
-            notes: "Rechazado por WhatsApp (admin).",
-          },
-          select: { id: true, status: true },
+        await rejectClpDepositBySlip({
+          slipId,
+          channel: "whatsapp",
+          actorUserId: null,
+          correlationId,
         });
 
-        await reply(`✅ Rechazado\nslipId: ${updated.id}\nstatus: ${updated.status}`);
+        await reply(`✅ Rechazado\nslipId: ${slipId}\nstatus: rejected`);
       } catch (e: any) {
         console.error("Reject error:", e?.message || e);
         await reply(`❌ Error rechazando\n${e?.message || "unknown"}`);
