@@ -84,6 +84,7 @@ export async function GET(req: Request) {
         companyId: { not: systemCompany.id },
         assetCode: { in: ASSETS },
       },
+      orderBy: { assetCode: "asc" },
       _sum: { balance: true },
     }),
     prisma.treasuryMovement.findMany({
