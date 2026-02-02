@@ -1,4 +1,4 @@
-import { resend } from "@/lib/resend";
+import { getResend } from "@/lib/resend";
 
 type SendVerificationEmailParams = {
   email: string;
@@ -9,6 +9,7 @@ export async function sendVerificationEmail({
   email,
   verifyUrl,
 }: SendVerificationEmailParams) {
+  const resend = getResend();
   await resend.emails.send({
     from: process.env.EMAIL_FROM!,
     to: email,

@@ -1,19 +1,18 @@
 // lib/sendVerificationEmail.ts
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function sendVerificationEmail(opts: {
   email: string;
   token: string;
 }) {
+  const apiKey = process.env.RESEND_API_KEY;
   const appUrl =
     process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL;
   const emailFrom = process.env.EMAIL_FROM;
   // Guardrails should only apply in true production (not preview/dev).
   const isProd = process.env.VERCEL_ENV === "production";
 
-  if (!process.env.RESEND_API_KEY) {
+  if (!apiKey) {
     return {
       ok: false,
       error: "RESEND_API_KEY not configured",
@@ -60,6 +59,8 @@ export async function sendVerificationEmail(opts: {
 
   const verifyUrl = new URL("/auth/verify-email", appUrl);
   verifyUrl.searchParams.set("token", opts.token);
+
+  const resend = new Resend(apiKey);
 
   const providerResponse = await resend.emails.send({
     from: emailFrom,
