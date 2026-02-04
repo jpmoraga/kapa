@@ -166,21 +166,21 @@ export default function LandingPage() {
 
         <section className="mt-10 grid gap-4 sm:grid-cols-3">
           <div className="k21-card p-5 min-h-[120px]">
-            <div className="text-sm font-medium">Compra & venta</div>
+            <div className="text-sm font-medium">Compra y ahorro en Bitcoin</div>
             <div className="mt-1 text-sm text-neutral-400">
-              Compra y vende BTC y USDT en CLP con comisiones competitivas. Lleva una bitácora clara: cuánto compraste, a qué precio, en qué fecha y cómo va tu posición.
+              Compra Bitcoin de forma simple y transparente. Pensado para usarlo como ahorro de largo plazo, con registro claro de cuánto compras, cuándo y a qué precio.
             </div>
           </div>
           <div className="k21-card p-5 min-h-[120px]">
-            <div className="text-sm font-medium">Crédito colateral BTC</div>
+            <div className="text-sm font-medium">Liquidez sin vender tu Bitcoin</div>
             <div className="mt-1 text-sm text-neutral-400">
-              Diseñado para obtener liquidez sin vender tu Bitcoin. Reglas claras de colateral, niveles de margen y alertas — habilitado próximamente.
+              Obtén liquidez usando tu Bitcoin como respaldo, sin necesidad de venderlo. Reglas claras desde el inicio, márgenes definidos y control del riesgo.
             </div>
           </div>
           <div className="k21-card p-5 min-h-[120px]">
-            <div className="text-sm font-medium">Panel & contexto</div>
+            <div className="text-sm font-medium">Control, no improvisación</div>
             <div className="mt-1 text-sm text-neutral-400">
-              Define reglas simples: montos, frecuencia, niveles de exposición y objetivos. Un panel para operar con método, no por impulso.
+              Usa Bitcoin con reglas simples. Un enfoque pensado para operar con método y contexto, no por impulso ni ruido de mercado.
             </div>
           </div>
         </section>
@@ -188,7 +188,7 @@ export default function LandingPage() {
         <footer className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-800/50 pt-6 text-xs text-neutral-500">
           <div>© {new Date().getFullYear()} Kapa21</div>
 
-          <div>Contacto: contacto@kapa21.cl</div>
+          <div>Si quieres conversar, escríbenos: contacto@kapa21.cl</div>
 
           <div className="flex items-center gap-3">
             {COMING_SOON ? (
