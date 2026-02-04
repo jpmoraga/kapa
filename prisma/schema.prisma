@@ -67,6 +67,27 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model AdminUser {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  role         AdminRole      @default(ADMIN)
+  createdAt    DateTime       @default(now())
+  sessions     AdminSession[]
+}
+
+model AdminSession {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  adminUserId String
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([expiresAt])
+}
+
 model Company {
   id                  String             @id @default(cuid())
   name                String
@@ -266,6 +287,10 @@ enum TreasuryMovementStatus {
   APPROVED
   REJECTED
   PROCESSING
+}
+
+enum AdminRole {
+  ADMIN
 }
 
 model EmailVerificationToken {
