@@ -12,6 +12,12 @@ export type MovementRow = {
   amount: string;
   note: string | null;
   createdAt: string;
+  approvedAt?: string | null;
+  executedAt?: string | null;
+  executedSource?: string | null;
+  externalVenue?: string | null;
+  paidOut?: boolean | null;
+  paidOutAt?: string | null;
   createdByUserId?: string | null;
   createdByEmail?: string | null;
   companyId?: string | null;
@@ -19,6 +25,9 @@ export type MovementRow = {
   attachmentUrl?: string | null;
   internalReason?: string | null;
   internalState?: string | null;
+  lastError?: string | null;
+  retryCount?: number | null;
+  nextRetryAt?: string | null;
   slipId?: string | null;
   slipStatus?: string | null;
   ocrStatus?: string | null;
@@ -52,6 +61,36 @@ function statusPill(status: string) {
   return "k21-pill-pending";
 }
 
+function normalizeTypeValue(value: string | null | undefined) {
+  return String(value ?? "").toLowerCase().trim();
+}
+
+function deriveType(row: MovementRow) {
+  const raw = normalizeTypeValue(row.type);
+  const isTradeAsset = row.assetCode === "BTC" || row.assetCode === "USD";
+  if (raw === "buy" || raw === "sell") return { key: raw, label: raw };
+  if (isTradeAsset && raw === "deposit") return { key: "buy", label: "buy" };
+  if (isTradeAsset && raw === "withdraw") return { key: "sell", label: "sell" };
+  if (raw === "deposit" || raw === "withdraw") return { key: raw, label: raw };
+  return { key: raw || "unknown", label: raw || "unknown" };
+}
+
+function resolveSourceLabel(row: MovementRow) {
+  const source = String(row.executedSource ?? row.externalVenue ?? "").toLowerCase();
+  if (!source) return "—";
+  if (source.includes("buda")) return "BUDA";
+  if (source.includes("internal") || source.includes("system") || source.includes("manual")) {
+    return "SYSTEM";
+  }
+  return source.toUpperCase();
+}
+
+function formatPaidOut(value?: boolean | null) {
+  if (value === true) return "Sí";
+  if (value === false) return "No";
+  return "—";
+}
+
 export default function AdminOpsClient({
   initialRows = [],
   disableAutoFetch = false,
@@ -62,8 +101,11 @@ export default function AdminOpsClient({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [paidFilter, setPaidFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [actioning, setActioning] = useState<Record<string, boolean>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -92,7 +134,15 @@ export default function AdminOpsClient({
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rows.filter((row) => {
-      if (statusFilter !== "ALL" && row.status !== statusFilter) return false;
+      const statusValue = String(row.status ?? "").toUpperCase();
+      if (statusFilter !== "ALL" && statusValue !== statusFilter) return false;
+      const typeMeta = deriveType(row);
+      if (typeFilter !== "ALL" && typeMeta.key !== typeFilter) return false;
+      if (paidFilter !== "ALL") {
+        const isPaid = row.paidOut === true;
+        if (paidFilter === "PAID" && !isPaid) return false;
+        if (paidFilter === "UNPAID" && isPaid) return false;
+      }
       if (!query) return true;
       const haystack = [
         row.id,
@@ -100,12 +150,55 @@ export default function AdminOpsClient({
         row.slipId ?? "",
         row.createdByEmail ?? "",
         row.companyName ?? "",
+        row.companyId ?? "",
+        row.createdByUserId ?? "",
       ]
         .join(" ")
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [rows, search, statusFilter]);
+  }, [rows, search, statusFilter, typeFilter, paidFilter]);
+
+  const pendingCount = useMemo(() => {
+    return rows.filter((row) => String(row.status ?? "").toUpperCase() === "PENDING").length;
+  }, [rows]);
+
+  const selectedRow = useMemo(() => {
+    if (!selectedId) return null;
+    return rows.find((row) => row.id === selectedId) ?? null;
+  }, [rows, selectedId]);
+
+  const detailJson = useMemo(() => {
+    if (!selectedRow) return null;
+    return {
+      id: selectedRow.id,
+      movementId: resolveMovementId(selectedRow),
+      slipId: resolveSlipId(selectedRow),
+      companyId: selectedRow.companyId ?? null,
+      companyName: selectedRow.companyName ?? null,
+      userId: selectedRow.createdByUserId ?? null,
+      userEmail: selectedRow.createdByEmail ?? null,
+      type: deriveType(selectedRow).label,
+      assetCode: selectedRow.assetCode,
+      amount: selectedRow.amount,
+      status: selectedRow.status,
+      paidOut: selectedRow.paidOut ?? null,
+      paidOutAt: selectedRow.paidOutAt ?? null,
+      createdAt: selectedRow.createdAt,
+      approvedAt: selectedRow.approvedAt ?? null,
+      executedAt: selectedRow.executedAt ?? null,
+      executedSource: selectedRow.executedSource ?? null,
+      externalVenue: selectedRow.externalVenue ?? null,
+      attachmentUrl: selectedRow.attachmentUrl ?? null,
+      slipPath: selectedRow.slipPath ?? null,
+      note: selectedRow.note ?? null,
+      internalReason: selectedRow.internalReason ?? null,
+      internalState: selectedRow.internalState ?? null,
+      lastError: selectedRow.lastError ?? null,
+      retryCount: selectedRow.retryCount ?? null,
+      nextRetryAt: selectedRow.nextRetryAt ?? null,
+    };
+  }, [selectedRow]);
 
   function resolveMovementId(row: MovementRow) {
     if (row.movementId) return row.movementId;
@@ -156,6 +249,7 @@ export default function AdminOpsClient({
 
       let endpoint = "";
       let body: Record<string, any> | undefined;
+      const rawType = normalizeTypeValue(row.type);
 
       if (row.source === "deposit_slip" && !movementId) {
         if (!slipId) {
@@ -183,7 +277,7 @@ export default function AdminOpsClient({
           setNotice({ type: "error", message: "Acción no disponible para este comprobante." });
           return;
         }
-      } else if (row.assetCode === "CLP" && row.type === "deposit") {
+      } else if (row.assetCode === "CLP" && rawType === "deposit") {
         if (!movementId) {
           setNotice({ type: "error", message: "Movimiento inválido." });
           return;
@@ -227,6 +321,37 @@ export default function AdminOpsClient({
     window.open(`/api/treasury/movements/${id}/receipt`, "_blank", "noopener,noreferrer");
   }
 
+  function getRowActions(row: MovementRow) {
+    const statusValue = String(row.status ?? "").toUpperCase();
+    const rawType = normalizeTypeValue(row.type);
+    const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
+    const isClp = row.assetCode === "CLP";
+    const isClpDeposit = isClp && (rawType === "deposit" || (isSlip && rawType !== "withdraw"));
+    const isClpWithdraw = isClp && rawType === "withdraw";
+    const isTrade = row.assetCode === "BTC" || row.assetCode === "USD";
+    const canApproveReject = isClpDeposit && statusValue === "PENDING";
+    const canMarkPaid =
+      (isClpDeposit || isClpWithdraw) && statusValue === "APPROVED" && row.paidOut !== true;
+    const canReconcile = isTrade && statusValue === "PROCESSING";
+
+    return {
+      isSlip,
+      canApproveReject,
+      canMarkPaid,
+      canReconcile,
+    };
+  }
+
+  async function copyDetailJson() {
+    if (!detailJson) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(detailJson, null, 2));
+      setNotice({ type: "success", message: "JSON copiado." });
+    } catch {
+      setNotice({ type: "error", message: "No se pudo copiar el JSON." });
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -234,7 +359,7 @@ export default function AdminOpsClient({
           <div className="text-sm text-neutral-400">Cava Admin</div>
           <h1 className="text-3xl font-semibold tracking-tight text-neutral-50">Operaciones</h1>
         </div>
-        <div className="k21-badge">Pendientes: {rows.length}</div>
+        <div className="k21-badge">Pendientes: {pendingCount}</div>
       </div>
 
       <div className="mt-6 k21-card p-4">
@@ -254,11 +379,39 @@ export default function AdminOpsClient({
             </select>
           </div>
 
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-neutral-400">Tipo</label>
+            <select
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="ALL">ALL</option>
+              <option value="deposit">deposit</option>
+              <option value="withdraw">withdraw</option>
+              <option value="buy">buy</option>
+              <option value="sell">sell</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-neutral-400">Pagado</label>
+            <select
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100"
+              value={paidFilter}
+              onChange={(e) => setPaidFilter(e.target.value)}
+            >
+              <option value="ALL">ALL</option>
+              <option value="PAID">paidOut=true</option>
+              <option value="UNPAID">paidOut=false</option>
+            </select>
+          </div>
+
           <div className="flex-1 min-w-[220px]">
             <label className="text-xs text-neutral-400">Buscar</label>
             <input
               className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-100"
-              placeholder="ID, email o empresa"
+              placeholder="movementId, slipId, email o empresa"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -298,33 +451,24 @@ export default function AdminOpsClient({
           <table className="min-w-full text-left text-sm">
             <thead className="bg-neutral-900/60 text-xs uppercase text-neutral-400">
               <tr>
-                <th className="px-4 py-3">Fuente</th>
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Usuario / Empresa</th>
                 <th className="px-4 py-3">Tipo</th>
-                <th className="px-4 py-3">Asset</th>
                 <th className="px-4 py-3">Monto</th>
                 <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Nota / Reason</th>
+                <th className="px-4 py-3">Pagado</th>
+                <th className="px-4 py-3">Fuente</th>
                 <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800">
               {filtered.map((row) => {
                 const rowBusy = Boolean(actioning[row.id]);
-                const slipPath = row.slipPath ?? row.attachmentUrl ?? null;
-                const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
-                const showPaid = row.type === "withdraw" && row.assetCode === "CLP";
-                const showReconcile =
-                  row.status === "PROCESSING" ||
-                  Boolean(row.internalReason && row.internalReason !== "NONE");
-                const showReceipt = row.assetCode === "BTC" || row.assetCode === "USD";
+                const typeMeta = deriveType(row);
+                const { canApproveReject, canMarkPaid, canReconcile } = getRowActions(row);
 
                 return (
                   <tr key={row.id} className="text-neutral-200">
-                    <td className="px-4 py-3 text-xs text-neutral-300">
-                      {row.source === "deposit_slip" ? "Comprobante" : "Movimiento"}
-                    </td>
                     <td className="px-4 py-3 text-xs text-neutral-400">
                       {new Date(row.createdAt).toLocaleString("es-CL")}
                     </td>
@@ -332,86 +476,62 @@ export default function AdminOpsClient({
                       <div className="text-sm">{row.createdByEmail ?? "—"}</div>
                       <div className="text-xs text-neutral-500">{row.companyName ?? "—"}</div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-neutral-300">{row.type}</td>
-                    <td className="px-4 py-3 text-xs text-neutral-300">{row.assetCode}</td>
+                    <td className="px-4 py-3 text-xs text-neutral-300">{typeMeta.label}</td>
                     <td className="px-4 py-3 text-sm font-medium">
                       {formatAmount(row.amount, row.assetCode)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={statusPill(row.status)}>{row.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-neutral-400">
-                      <div>{row.note ?? "—"}</div>
-                      {row.slipStatus && row.slipStatus !== "approved" && (
-                        <div className="text-[11px] text-neutral-500">Slip: {row.slipStatus}</div>
-                      )}
-                      {row.bankHint && (
-                        <div className="text-[11px] text-neutral-500">Banco: {row.bankHint}</div>
-                      )}
-                      {row.parsedAmountClp && (
-                        <div className="text-[11px] text-neutral-500">
-                          OCR: {Number(row.parsedAmountClp).toLocaleString("es-CL")} CLP
-                        </div>
-                      )}
-                      {row.declaredAmountClp && !row.parsedAmountClp && (
-                        <div className="text-[11px] text-neutral-500">
-                          Declarado: {Number(row.declaredAmountClp).toLocaleString("es-CL")} CLP
-                        </div>
-                      )}
-                      {row.internalReason && row.internalReason !== "NONE" && (
-                        <div className="text-[11px] text-neutral-500">{row.internalReason}</div>
-                      )}
+                    <td className="px-4 py-3 text-xs text-neutral-300">
+                      {formatPaidOut(row.paidOut)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-neutral-300">
+                      {resolveSourceLabel(row)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <button
-                          className="k21-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
-                          disabled={rowBusy}
-                          onClick={() => runAction(row, "approve")}
-                        >
-                          Approve
-                        </button>
-                        <button
                           className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                           disabled={rowBusy}
-                          onClick={() => runAction(row, "reject")}
+                          onClick={() => setSelectedId(row.id)}
                         >
-                          Reject
+                          Ver detalle
                         </button>
-                        {showPaid && (
+                        {canApproveReject && (
+                          <>
+                            <button
+                              className="k21-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+                              disabled={rowBusy}
+                              onClick={() => runAction(row, "approve")}
+                            >
+                              Aprobar
+                            </button>
+                            <button
+                              className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                              disabled={rowBusy}
+                              onClick={() => runAction(row, "reject")}
+                            >
+                              Rechazar
+                            </button>
+                          </>
+                        )}
+                        {canMarkPaid && (
                           <button
                             className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                             disabled={rowBusy}
                             onClick={() => runAction(row, "paid")}
                           >
-                            Mark Paid
+                            Marcar pagado
                           </button>
                         )}
-                        {showReconcile && (
+                        {canReconcile && (
                           <button
                             className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                             disabled={rowBusy}
                             onClick={() => runAction(row, "reconcile")}
                           >
-                            Reconcile
-                          </button>
-                        )}
-                        {showReceipt && (
-                          <button
-                            className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-                            disabled={rowBusy}
-                            onClick={() => openReceipt(row.id)}
-                          >
-                            Receipt
-                          </button>
-                        )}
-                        {isSlip && slipPath && (
-                          <button
-                            className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-                            disabled={rowBusy}
-                            onClick={() => openSlip(slipPath)}
-                          >
-                            Ver comprobante
+                            Resync
                           </button>
                         )}
                       </div>
@@ -421,14 +541,14 @@ export default function AdminOpsClient({
               })}
               {!filtered.length && !loading && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={9}>
+                  <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={8}>
                     No hay movimientos pendientes.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={9}>
+                  <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={8}>
                     Cargando...
                   </td>
                 </tr>
@@ -437,6 +557,163 @@ export default function AdminOpsClient({
           </table>
         </div>
       </div>
+
+      {selectedRow && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setSelectedId(null)}
+            role="button"
+            tabIndex={0}
+          />
+          <div className="absolute inset-y-0 right-0 w-full max-w-xl">
+            <div className="k21-card h-full overflow-y-auto p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs text-neutral-400">Detalle</div>
+                  <h2 className="text-xl font-semibold text-neutral-50">Movimiento</h2>
+                </div>
+                <button
+                  className="k21-btn-secondary px-3 py-1.5 text-xs"
+                  onClick={() => setSelectedId(null)}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 text-sm text-neutral-200">
+                <div className="text-xs text-neutral-400">movementId</div>
+                <div className="break-all">{resolveMovementId(selectedRow) ?? "—"}</div>
+
+                <div className="text-xs text-neutral-400">depositSlipId</div>
+                <div className="break-all">{resolveSlipId(selectedRow) ?? "—"}</div>
+
+                <div className="text-xs text-neutral-400">companyId</div>
+                <div className="break-all">{selectedRow.companyId ?? "—"}</div>
+
+                <div className="text-xs text-neutral-400">userId</div>
+                <div className="break-all">{selectedRow.createdByUserId ?? "—"}</div>
+
+                <div className="text-xs text-neutral-400">tipo</div>
+                <div>{deriveType(selectedRow).label}</div>
+
+                <div className="text-xs text-neutral-400">asset</div>
+                <div>{selectedRow.assetCode}</div>
+
+                <div className="text-xs text-neutral-400">amount</div>
+                <div>{formatAmount(selectedRow.amount, selectedRow.assetCode)}</div>
+
+                <div className="text-xs text-neutral-400">status</div>
+                <div>{selectedRow.status}</div>
+
+                <div className="text-xs text-neutral-400">paidOut</div>
+                <div>{formatPaidOut(selectedRow.paidOut)}</div>
+
+                <div className="text-xs text-neutral-400">timestamps</div>
+                <div className="grid gap-1 text-xs text-neutral-300">
+                  <div>createdAt: {selectedRow.createdAt ?? "—"}</div>
+                  <div>approvedAt: {selectedRow.approvedAt ?? "—"}</div>
+                  <div>executedAt: {selectedRow.executedAt ?? "—"}</div>
+                  <div>paidOutAt: {selectedRow.paidOutAt ?? "—"}</div>
+                </div>
+
+                <div className="text-xs text-neutral-400">lastError</div>
+                <div className="break-all">{selectedRow.lastError ?? "—"}</div>
+
+                <div className="text-xs text-neutral-400">retry</div>
+                <div className="text-xs text-neutral-300">
+                  retryCount: {selectedRow.retryCount ?? "—"} | nextRetryAt:{" "}
+                  {selectedRow.nextRetryAt ?? "—"}
+                </div>
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button className="k21-btn-secondary px-3 py-1.5 text-xs" onClick={copyDetailJson}>
+                  Copiar JSON
+                </button>
+
+                {(() => {
+                  const movementId = resolveMovementId(selectedRow);
+                  if (!movementId) return null;
+                  return (
+                    <button
+                      className="k21-btn-secondary px-3 py-1.5 text-xs"
+                      onClick={() => openReceipt(movementId)}
+                    >
+                      Ver receipt
+                    </button>
+                  );
+                })()}
+
+                {(() => {
+                  const slipPath = selectedRow.slipPath ?? selectedRow.attachmentUrl ?? null;
+                  if (!slipPath) return null;
+                  return (
+                    <button
+                      className="k21-btn-secondary px-3 py-1.5 text-xs"
+                      onClick={() => openSlip(slipPath)}
+                    >
+                      Ver comprobante
+                    </button>
+                  );
+                })()}
+              </div>
+
+              <div className="mt-6">
+                <div className="text-xs text-neutral-400 mb-2">Acciones</div>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    const rowBusy = Boolean(actioning[selectedRow.id]);
+                    const { canApproveReject, canMarkPaid, canReconcile } = getRowActions(
+                      selectedRow
+                    );
+                    return (
+                      <>
+                        {canApproveReject && (
+                          <>
+                            <button
+                              className="k21-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+                              disabled={rowBusy}
+                              onClick={() => runAction(selectedRow, "approve")}
+                            >
+                              Aprobar
+                            </button>
+                            <button
+                              className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                              disabled={rowBusy}
+                              onClick={() => runAction(selectedRow, "reject")}
+                            >
+                              Rechazar
+                            </button>
+                          </>
+                        )}
+                        {canMarkPaid && (
+                          <button
+                            className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                            disabled={rowBusy}
+                            onClick={() => runAction(selectedRow, "paid")}
+                          >
+                            Marcar pagado
+                          </button>
+                        )}
+                        {canReconcile && (
+                          <button
+                            className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                            disabled={rowBusy}
+                            onClick={() => runAction(selectedRow, "reconcile")}
+                          >
+                            Resync
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
