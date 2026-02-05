@@ -84,7 +84,12 @@ export default function MovementForm({
 }) {
   const router = useRouter();
 
-  const [amount, setAmount] = useState<string>(assetCode === "CLP" ? "" : assetCode === "USD" ? "10" : "0.001");
+  const [amount, setAmount] = useState<string>(() => {
+    if (assetCode === "CLP") return "";
+    if (mode === "buy" || mode === "sell") return "10000";
+    if (assetCode === "USD") return "10";
+    return "0.001";
+  });
   const [note, setNote] = useState<string>("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -109,10 +114,19 @@ export default function MovementForm({
   const isDepositCLP = assetCode === "CLP" && mode === "buy";
   const isWithdrawCLP = assetCode === "CLP" && mode === "sell";
   const isTrade = assetCode !== "CLP" && (mode === "buy" || mode === "sell");
+  const isTradeBuy = isTrade && mode === "buy";
+  const isTradeSell = isTrade && mode === "sell";
+  const isTradeClpInput = isTradeBuy || isTradeSell;
   const primaryLabel = isTrade ? "Continuar" : labels.button;
   const parsedAmount = Number(amount);
   const isAmountValid = Number.isFinite(parsedAmount) && parsedAmount > 0;
   const showDepositHelp = isDepositCLP && (!receiptFile || !isAmountValid);
+  const [spotPreview, setSpotPreview] = useState<string | null>(null);
+  const [spotPreviewAt, setSpotPreviewAt] = useState<string | null>(null);
+  const [spotPreviewError, setSpotPreviewError] = useState<string | null>(null);
+  const [spotPreviewLoading, setSpotPreviewLoading] = useState(false);
+  const [clpBalance, setClpBalance] = useState<string>("0");
+  const [clpBalanceLoading, setClpBalanceLoading] = useState(false);
 
   // Por ahora NO bloqueamos el retiro (la cuenta bancaria viene en otra capa)
   const bankNotConfigured = false;
@@ -153,14 +167,14 @@ function onPickReceipt(file: File | null) {
     return 0;
   }
 
-  async function fetchPriceEstimate(code: AssetCode) {
+  async function fetchSpotPrice(code: AssetCode) {
     const pair = code === "BTC" ? "BTC_CLP" : "USDT_CLP";
-    const res = await fetch(`/api/prices/current?pair=${pair}`, { cache: "no-store" });
+    const res = await fetch(`/api/prices/spot?pair=${pair}`, { cache: "no-store" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data?.price) {
-      throw new Error(data?.error ?? "No pude obtener precio");
+      throw new Error(data?.message ?? data?.error ?? "No pude obtener precio spot");
     }
-    return String(data.price);
+    return { price: String(data.price), timestamp: data.timestamp ?? null };
   }
 
   function buildTradeEstimate(opts: {
@@ -216,17 +230,26 @@ function onPickReceipt(file: File | null) {
 
     setConfirmLoading(true);
     try {
-      const priceStr = await fetchPriceEstimate(assetCode);
-      const price = Number(priceStr);
-      if (!Number.isFinite(price) || price <= 0) {
-        throw new Error("Precio invalido");
+      const previewPrice = spotPreview ? Number(spotPreview) : null;
+      let qtyForEstimate = qty;
+      if (isTradeClpInput && previewPrice && Number.isFinite(previewPrice) && previewPrice > 0) {
+        const feePct = getTradeFeePercent(assetCode);
+        if (mode === "buy") {
+          const denom = previewPrice * (1 + feePct);
+          qtyForEstimate = denom > 0 ? qty / denom : 0;
+        } else {
+          qtyForEstimate = previewPrice > 0 ? qty / previewPrice : 0;
+        }
       }
       const estimateValue = buildTradeEstimate({
         side: mode === "buy" ? "buy" : "sell",
         baseAsset: assetCode as "BTC" | "USD",
-        qty,
-        price,
+        qty: qtyForEstimate,
+        price: previewPrice && previewPrice > 0 ? previewPrice : 0,
       });
+      if (isTradeClpInput) {
+        estimateValue.inputClp = amount;
+      }
       setEstimate(estimateValue);
       setConfirmOpen(true);
     } catch (err: any) {
@@ -238,18 +261,24 @@ function onPickReceipt(file: File | null) {
     }
   }
 
-  async function handleConfirm() {
+  async function handleConfirm(qtyOverride?: string | null) {
     console.log("trade:confirm_clicked", { assetCode, amount, mode });
     setError(null);
     setLoading(true);
     try {
+      const amountToSend = qtyOverride ?? (isTradeClpInput ? null : amount);
+      if (!amountToSend || Number(amountToSend) <= 0) {
+        setError("No se pudo calcular el monto. Reintenta.");
+        setLoading(false);
+        return;
+      }
       const res = await fetch("/api/treasury/movements", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type,
           assetCode,
-          amount,
+          amount: amountToSend,
           note,
         }),
       });
@@ -369,6 +398,58 @@ function onPickReceipt(file: File | null) {
 
     return () => clearInterval(interval);
   }, [receiptOpen, receipt?.status, receipt?.movementId]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!isTrade) return;
+    setSpotPreviewLoading(true);
+    setSpotPreviewError(null);
+    fetchSpotPrice(assetCode)
+      .then((data) => {
+        if (!alive) return;
+        setSpotPreview(data.price);
+        setSpotPreviewAt(data.timestamp ?? null);
+      })
+      .catch((err: any) => {
+        if (!alive) return;
+        setSpotPreview(null);
+        setSpotPreviewAt(null);
+        setSpotPreviewError(err?.message ?? "No pude cargar precio spot");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setSpotPreviewLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [assetCode, isTrade]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!isTradeBuy) return;
+    setClpBalanceLoading(true);
+    fetch("/api/treasury/summary", { cache: "no-store" })
+      .then((res) => res.json().catch(() => ({})))
+      .then((data) => {
+        if (!alive) return;
+        const raw = data?.balances?.CLP ?? "0";
+        setClpBalance(String(raw ?? "0"));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setClpBalance("0");
+      })
+      .finally(() => {
+        if (!alive) return;
+        setClpBalanceLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [isTradeBuy]);
 
   async function triggerRetry() {
     if (!receipt?.movementId) return;
@@ -532,19 +613,67 @@ function onPickReceipt(file: File | null) {
     </div>
   )}
 
-  <div>
-    <label className="text-xs text-neutral-400">Monto ({assetCode})</label>
-              <input
-                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-700"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                inputMode="decimal"
-                placeholder={assetCode === "BTC" ? "0.001" : assetCode === "CLP" ? "10000" : "10"}
-                required
-              />
-              <div className="mt-1 text-xs text-neutral-500">
-                {assetCode === "BTC" ? "Usa punto decimal. Ej: 0.001" : "Monto > 0"}
+            <div>
+              <label className="text-xs text-neutral-400">
+                Monto ({isTradeClpInput ? "CLP" : assetCode})
+              </label>
+              <div className="relative mt-1">
+                <input
+                  className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-700"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  inputMode="decimal"
+                  placeholder={
+                    isTradeClpInput
+                      ? "10000"
+                      : assetCode === "BTC"
+                      ? "0.001"
+                      : assetCode === "CLP"
+                      ? "10000"
+                      : "10"
+                  }
+                  required
+                />
+                {isTradeBuy && (
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-white/10 px-2 py-1 text-xs text-neutral-200 hover:bg-white/10 disabled:opacity-60"
+                    disabled={clpBalanceLoading}
+                    onClick={() => {
+                      const n = Number(String(clpBalance ?? "0").replace(",", "."));
+                      if (!Number.isFinite(n) || n <= 0) return;
+                      setAmount(Math.floor(n).toString());
+                    }}
+                  >
+                    MAX
+                  </button>
+                )}
               </div>
+              <div className="mt-1 text-xs text-neutral-500">
+                {isTradeClpInput
+                  ? "Ingresa el monto en CLP."
+                  : assetCode === "BTC"
+                  ? "Usa punto decimal. Ej: 0.001"
+                  : "Monto > 0"}
+              </div>
+              {isTradeBuy && spotPreview && !spotPreviewError ? (
+                <div className="mt-2 text-xs text-neutral-400">
+                  Recibirás aprox:{" "}
+                  {(() => {
+                    const clp = Number(amount);
+                    const price = Number(spotPreview);
+                    const feePct = getTradeFeePercent(assetCode);
+                    if (!Number.isFinite(clp) || clp <= 0 || !Number.isFinite(price) || price <= 0) {
+                      return "—";
+                    }
+                    const qty =
+                      price > 0 ? clp / (price * (1 + feePct)) : 0;
+                    const decimals = assetCode === "BTC" ? 8 : 6;
+                    const label = assetCode === "USD" ? "USDT" : assetCode;
+                    return `${qty.toFixed(decimals)} ${label}`;
+                  })()}
+                </div>
+              ) : null}
             </div>
 
             {isDepositCLP && (
@@ -673,6 +802,7 @@ function onPickReceipt(file: File | null) {
           setEstimate(null);
         }}
         onConfirm={handleConfirm}
+        inputClp={isTradeClpInput ? amount : null}
       />
 
       <TradeReceiptModal
