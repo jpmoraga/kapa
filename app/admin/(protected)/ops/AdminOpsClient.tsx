@@ -74,6 +74,12 @@ function isTradeAsset(code: string) {
   return v === "BTC" || v === "USD";
 }
 
+function isClpWithdrawRow(row: MovementRow) {
+  const asset = String(row.assetCode ?? "").toUpperCase();
+  const typeValue = String(row.type ?? "").toLowerCase();
+  return asset === "CLP" && typeValue === "withdraw";
+}
+
 function deriveOperationLabel(row: MovementRow) {
   const typeValue = String(row.type ?? "").toLowerCase();
   const asset = String(row.assetCode ?? "").toUpperCase();
@@ -176,7 +182,7 @@ function resolveStatusLabel(row: MovementRow) {
 export default function AdminOpsClient({
   initialRows = [],
   disableAutoFetch = false,
-  initialStatusFilter = "PENDING",
+  initialStatusFilter = "ALL",
 }: AdminOpsClientProps) {
   const [rows, setRows] = useState<MovementRow[]>(initialRows);
   const [loading, setLoading] = useState(false);
@@ -289,6 +295,8 @@ export default function AdminOpsClient({
       return haystack.includes(query);
     });
   }, [rows, search, statusFilter, typeFilter, paidFilter]);
+
+  const showPaidColumn = useMemo(() => filtered.some((row) => isClpWithdrawRow(row)), [filtered]);
 
   const pendingCount = useMemo(() => {
     if (typeof pendingTotal === "number") return pendingTotal;
@@ -438,14 +446,16 @@ export default function AdminOpsClient({
     const statusValue = String(row.status ?? "").toUpperCase();
     const rawType = normalizeTypeValue(row.type);
     const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
-    const slipId = resolveSlipId(row);
-    const isClp = row.assetCode === "CLP";
-    const isClpDeposit = isClp && (rawType === "deposit" || (isSlip && rawType !== "withdraw"));
+    const isClp = String(row.assetCode ?? "").toUpperCase() === "CLP";
+    const isClpDeposit = isClp && (rawType === "deposit" || isSlip);
     const isClpWithdraw = isClp && rawType === "withdraw";
     const movementId = resolveMovementId(row);
-    const canApproveReject = statusValue === "PENDING" && Boolean(movementId || slipId);
+    const slipId = resolveSlipId(row);
+
+    const canApproveReject =
+      statusValue === "PENDING" && (isClpDeposit || (isSlip && Boolean(slipId || movementId)));
     const canMarkPaid =
-      (isClpDeposit || isClpWithdraw) && statusValue === "APPROVED" && row.paidOut !== true;
+      isClpWithdraw && statusValue === "APPROVED" && row.paidOut !== true;
     const canResync = canResyncMovement(row);
 
     return {
@@ -573,40 +583,44 @@ export default function AdminOpsClient({
                 <th className="px-4 py-3">Tipo</th>
                 <th className="px-4 py-3">Monto</th>
                 <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Pagado</th>
-                <th className="px-4 py-3">Fuente</th>
+                {showPaidColumn && <th className="px-4 py-3">Pagado</th>}
                 <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800">
               {filtered.map((row) => {
                 const rowBusy = Boolean(actioning[row.id]);
-                const typeMeta = deriveType(row);
                 const { canApproveReject, canMarkPaid, canResync } = getRowActions(row);
-                const statusLabel = resolveStatusLabel(row);
+                const statusLabel = String(row.status ?? "").toUpperCase() || "—";
+                const primaryAmount = formatPrimaryAmount(row);
 
                 return (
                   <tr key={row.id} className="text-neutral-200">
                     <td className="px-4 py-3 text-xs text-neutral-400">
-                      {new Date(row.createdAt).toLocaleString("es-CL")}
+                      {formatDateTime(row.createdAt)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm">{row.createdByEmail ?? "—"}</div>
+                      <div className="text-sm">
+                        {row.createdByEmail ?? row.userEmail ?? "—"}
+                      </div>
                       <div className="text-xs text-neutral-500">{row.companyName ?? "—"}</div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-neutral-300">{typeMeta.label}</td>
+                    <td className="px-4 py-3 text-xs text-neutral-300">
+                      {deriveOperationLabel(row)}
+                    </td>
                     <td className="px-4 py-3 text-sm font-medium">
-                      {formatAmount(row.amount, row.assetCode)}
+                      <span title={primaryAmount.tooltip ?? undefined}>
+                        {primaryAmount.label}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={statusPill(statusLabel)}>{statusLabel}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-neutral-300">
-                      {formatPaidOut(row.paidOut)}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-neutral-300">
-                      {resolveSourceLabel(row)}
-                    </td>
+                    {showPaidColumn && (
+                      <td className="px-4 py-3 text-xs text-neutral-300">
+                        {isClpWithdrawRow(row) ? formatPaidOut(row.paidOut) : "—"}
+                      </td>
+                    )}
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -659,14 +673,20 @@ export default function AdminOpsClient({
               })}
               {!filtered.length && !loading && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={8}>
+                  <td
+                    className="px-4 py-6 text-center text-sm text-neutral-500"
+                    colSpan={showPaidColumn ? 7 : 6}
+                  >
                     No hay movimientos.
                   </td>
                 </tr>
               )}
       {loading && (
         <tr>
-          <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={8}>
+          <td
+            className="px-4 py-6 text-center text-sm text-neutral-500"
+            colSpan={showPaidColumn ? 7 : 6}
+          >
             Cargando...
           </td>
         </tr>
