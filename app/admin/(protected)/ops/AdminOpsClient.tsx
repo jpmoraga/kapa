@@ -13,9 +13,16 @@ export type MovementRow = {
   note: string | null;
   createdAt: string;
   approvedAt?: string | null;
+  approvedByUserId?: string | null;
   executedAt?: string | null;
+  executedPrice?: string | null;
+  executedQuoteAmount?: string | null;
+  executedBaseAmount?: string | null;
+  executedFeeAmount?: string | null;
+  executedFeeCode?: string | null;
   executedSource?: string | null;
   externalVenue?: string | null;
+  externalOrderId?: string | null;
   paidOut?: boolean | null;
   paidOutAt?: string | null;
   createdByUserId?: string | null;
@@ -52,6 +59,72 @@ function formatAmount(amount: string, assetCode: string) {
     return `$${Math.round(numeric).toLocaleString("es-CL")} CLP`;
   }
   return `${numeric.toLocaleString("es-CL")} ${assetCode}`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("es-CL");
+}
+
+function isTradeAsset(code: string) {
+  const v = String(code ?? "").toUpperCase();
+  return v === "BTC" || v === "USD";
+}
+
+function deriveOperationLabel(row: MovementRow) {
+  const typeValue = String(row.type ?? "").toLowerCase();
+  const asset = String(row.assetCode ?? "").toUpperCase();
+  const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
+
+  if (isSlip) return "Comprobante CLP";
+  if (asset === "CLP" && typeValue === "deposit") return "Depósito CLP";
+  if (asset === "CLP" && typeValue === "withdraw") return "Retiro CLP";
+  if (asset === "BTC" && (typeValue === "deposit" || typeValue === "buy")) return "Compra BTC";
+  if (asset === "BTC" && (typeValue === "withdraw" || typeValue === "sell")) return "Venta BTC";
+  if (asset === "USD" && (typeValue === "deposit" || typeValue === "buy")) return "Compra USDT";
+  if (asset === "USD" && (typeValue === "withdraw" || typeValue === "sell")) return "Venta USDT";
+
+  const fallbackType = deriveType(row).label;
+  const displayAsset = asset === "USD" ? "USDT" : asset;
+  return `${fallbackType.toUpperCase()} ${displayAsset}`;
+}
+
+function formatPrimaryAmount(row: MovementRow) {
+  const asset = String(row.assetCode ?? "").toUpperCase();
+  const raw = row.amount;
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric)) {
+    return { label: `${raw} ${asset === "USD" ? "USDT" : asset}`, tooltip: null };
+  }
+
+  if (asset === "CLP") {
+    return { label: `$${Math.round(numeric).toLocaleString("es-CL")} CLP`, tooltip: null };
+  }
+
+  if (asset === "BTC") {
+    const sats = Math.round(numeric * 1e8);
+    const tooltip = `${numeric.toLocaleString("es-CL", {
+      minimumFractionDigits: 8,
+      maximumFractionDigits: 8,
+    })} BTC`;
+    const label = sats > 0 ? `${sats.toLocaleString("es-CL")} sats` : numeric > 0 ? "<1 sat" : "0 sats";
+    return { label, tooltip };
+  }
+
+  if (asset === "USD") {
+    const micro = Math.round(numeric * 1e6);
+    const tooltip = `${numeric.toLocaleString("es-CL", {
+      minimumFractionDigits: 6,
+      maximumFractionDigits: 6,
+    })} USDT`;
+    const label =
+      micro > 0 ? `${micro.toLocaleString("es-CL")} µUSDT` : numeric > 0 ? "<1 µUSDT" : "0 µUSDT";
+    return { label, tooltip };
+  }
+
+  return { label: `${numeric.toLocaleString("es-CL")} ${asset}`, tooltip: null };
 }
 
 function statusPill(status: string) {
@@ -228,37 +301,7 @@ export default function AdminOpsClient({
     return rows.find((row) => row.id === selectedId) ?? null;
   }, [rows, selectedId]);
 
-  const detailJson = useMemo(() => {
-    if (!selectedRow) return null;
-    return {
-      id: selectedRow.id,
-      movementId: resolveMovementId(selectedRow),
-      slipId: resolveSlipId(selectedRow),
-      companyId: selectedRow.companyId ?? null,
-      companyName: selectedRow.companyName ?? null,
-      userId: selectedRow.createdByUserId ?? null,
-      userEmail: selectedRow.createdByEmail ?? null,
-      type: deriveType(selectedRow).label,
-      assetCode: selectedRow.assetCode,
-      amount: selectedRow.amount,
-      status: selectedRow.status,
-      paidOut: selectedRow.paidOut ?? null,
-      paidOutAt: selectedRow.paidOutAt ?? null,
-      createdAt: selectedRow.createdAt,
-      approvedAt: selectedRow.approvedAt ?? null,
-      executedAt: selectedRow.executedAt ?? null,
-      executedSource: selectedRow.executedSource ?? null,
-      externalVenue: selectedRow.externalVenue ?? null,
-      attachmentUrl: selectedRow.attachmentUrl ?? null,
-      slipPath: selectedRow.slipPath ?? null,
-      note: selectedRow.note ?? null,
-      internalReason: selectedRow.internalReason ?? null,
-      internalState: selectedRow.internalState ?? null,
-      lastError: selectedRow.lastError ?? null,
-      retryCount: selectedRow.retryCount ?? null,
-      nextRetryAt: selectedRow.nextRetryAt ?? null,
-    };
-  }, [selectedRow]);
+  const detailJson = useMemo(() => selectedRow ?? null, [selectedRow]);
 
   function resolveMovementId(row: MovementRow) {
     return row.movementId ?? row.id ?? null;
@@ -656,8 +699,20 @@ export default function AdminOpsClient({
             <div className="k21-card h-full overflow-y-auto p-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-xs text-neutral-400">Detalle</div>
-                  <h2 className="text-xl font-semibold text-neutral-50">Movimiento</h2>
+                  <div className="text-xs text-neutral-400">Detalle operativo</div>
+                  <h2 className="text-xl font-semibold text-neutral-50">
+                    {deriveOperationLabel(selectedRow)}
+                  </h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+                    <span className={statusPill(resolveStatusLabel(selectedRow))}>
+                      {resolveStatusLabel(selectedRow)}
+                    </span>
+                    <span>{formatDateTime(selectedRow.createdAt)}</span>
+                  </div>
+                  <div className="mt-2 text-sm text-neutral-300">
+                    {selectedRow.createdByEmail ?? selectedRow.userEmail ?? "—"}
+                    {selectedRow.companyName ? ` · ${selectedRow.companyName}` : ""}
+                  </div>
                 </div>
                 <button
                   className="k21-btn-secondary px-3 py-1.5 text-xs"
@@ -667,57 +722,150 @@ export default function AdminOpsClient({
                 </button>
               </div>
 
-              <div className="mt-4 grid gap-3 text-sm text-neutral-200">
-                <div className="text-xs text-neutral-400">movementId</div>
-                <div className="break-all">{resolveMovementId(selectedRow) ?? "—"}</div>
+              {(() => {
+                const hasFinancial =
+                  Boolean(selectedRow.amount) ||
+                  Boolean(selectedRow.executedPrice) ||
+                  Boolean(selectedRow.executedSource);
+                if (!hasFinancial) return null;
 
-                <div className="text-xs text-neutral-400">depositSlipId</div>
-                <div className="break-all">{resolveSlipId(selectedRow) ?? "—"}</div>
+                const primaryAmount = formatPrimaryAmount(selectedRow);
+                const executedPrice =
+                  selectedRow.executedPrice && Number.isFinite(Number(selectedRow.executedPrice))
+                    ? `$${Math.round(Number(selectedRow.executedPrice)).toLocaleString("es-CL")} CLP`
+                    : null;
+                const executedSource = selectedRow.executedSource ?? null;
+                const feeAmount =
+                  selectedRow.executedFeeAmount && Number.isFinite(Number(selectedRow.executedFeeAmount))
+                    ? selectedRow.executedFeeAmount
+                    : null;
+                const feeCode = selectedRow.executedFeeCode ?? null;
+                const quoteAmount =
+                  selectedRow.executedQuoteAmount &&
+                  Number.isFinite(Number(selectedRow.executedQuoteAmount))
+                    ? Number(selectedRow.executedQuoteAmount)
+                    : null;
+                const feeAmountNumber =
+                  feeAmount && Number.isFinite(Number(feeAmount)) ? Number(feeAmount) : null;
+                const totalClp =
+                  quoteAmount != null
+                    ? feeCode === "CLP" && feeAmountNumber != null
+                      ? quoteAmount + feeAmountNumber
+                      : quoteAmount
+                    : null;
 
-                <div className="text-xs text-neutral-400">companyId</div>
-                <div className="break-all">{selectedRow.companyId ?? "—"}</div>
+                return (
+                  <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="text-xs uppercase tracking-wide text-neutral-500">
+                      Resumen financiero
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-xs text-neutral-500">Monto principal</div>
+                        <div className="mt-1 font-medium" title={primaryAmount.tooltip ?? undefined}>
+                          {primaryAmount.label}
+                        </div>
+                      </div>
+                      {executedPrice ? (
+                        <div>
+                          <div className="text-xs text-neutral-500">Precio ejecución</div>
+                          <div className="mt-1 font-medium">{executedPrice}</div>
+                        </div>
+                      ) : null}
+                      {executedSource ? (
+                        <div>
+                          <div className="text-xs text-neutral-500">Fuente precio</div>
+                          <div className="mt-1 font-medium">{executedSource}</div>
+                        </div>
+                      ) : null}
+                      {feeAmount ? (
+                        <div>
+                          <div className="text-xs text-neutral-500">Fee</div>
+                          <div className="mt-1 font-medium">
+                            {feeCode ? `${feeAmount} ${feeCode}` : feeAmount}
+                          </div>
+                        </div>
+                      ) : null}
+                      {totalClp != null ? (
+                        <div>
+                          <div className="text-xs text-neutral-500">Total CLP</div>
+                          <div className="mt-1 font-medium">
+                            ${Math.round(totalClp).toLocaleString("es-CL")} CLP
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })()}
 
-                <div className="text-xs text-neutral-400">userId</div>
-                <div className="break-all">{selectedRow.createdByUserId ?? "—"}</div>
-
-                <div className="text-xs text-neutral-400">tipo</div>
-                <div>{deriveType(selectedRow).label}</div>
-
-                <div className="text-xs text-neutral-400">asset</div>
-                <div>{selectedRow.assetCode}</div>
-
-                <div className="text-xs text-neutral-400">amount</div>
-                <div>{formatAmount(selectedRow.amount, selectedRow.assetCode)}</div>
-
-                <div className="text-xs text-neutral-400">status</div>
-                <div>{resolveStatusLabel(selectedRow)}</div>
-
-                <div className="text-xs text-neutral-400">paidOut</div>
-                <div>{formatPaidOut(selectedRow.paidOut)}</div>
-
-                <div className="text-xs text-neutral-400">timestamps</div>
-                <div className="grid gap-1 text-xs text-neutral-300">
-                  <div>createdAt: {selectedRow.createdAt ?? "—"}</div>
-                  <div>approvedAt: {selectedRow.approvedAt ?? "—"}</div>
-                  <div>executedAt: {selectedRow.executedAt ?? "—"}</div>
-                  <div>paidOutAt: {selectedRow.paidOutAt ?? "—"}</div>
-                </div>
-
-                <div className="text-xs text-neutral-400">lastError</div>
-                <div className="break-all">{selectedRow.lastError ?? "—"}</div>
-
-                <div className="text-xs text-neutral-400">retry</div>
-                <div className="text-xs text-neutral-300">
-                  retryCount: {selectedRow.retryCount ?? "—"} | nextRetryAt:{" "}
-                  {selectedRow.nextRetryAt ?? "—"}
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs uppercase tracking-wide text-neutral-500">Estado operacional</div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-xs text-neutral-500">Status</div>
+                    <div className="mt-1 font-medium">{resolveStatusLabel(selectedRow)}</div>
+                  </div>
+                  {(() => {
+                    const typeValue = String(selectedRow.type ?? "").toLowerCase();
+                    const showPaid = selectedRow.assetCode === "CLP" && typeValue === "withdraw";
+                    if (!showPaid) return null;
+                    return (
+                      <div>
+                        <div className="text-xs text-neutral-500">Pagado</div>
+                        <div className="mt-1 font-medium">{formatPaidOut(selectedRow.paidOut)}</div>
+                      </div>
+                    );
+                  })()}
+                  {selectedRow.approvedAt ? (
+                    <div>
+                      <div className="text-xs text-neutral-500">approvedAt</div>
+                      <div className="mt-1 font-medium">{formatDateTime(selectedRow.approvedAt)}</div>
+                    </div>
+                  ) : null}
+                  {selectedRow.executedAt ? (
+                    <div>
+                      <div className="text-xs text-neutral-500">executedAt</div>
+                      <div className="mt-1 font-medium">{formatDateTime(selectedRow.executedAt)}</div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button className="k21-btn-secondary px-3 py-1.5 text-xs" onClick={copyDetailJson}>
-                  Copiar JSON
-                </button>
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs uppercase tracking-wide text-neutral-500">Acciones realizadas</div>
+                <div className="mt-3 text-sm text-neutral-200">
+                  {(() => {
+                    const statusValue = String(selectedRow.status ?? "").toUpperCase();
+                    if (statusValue === "APPROVED") {
+                      if (selectedRow.approvedAt && selectedRow.approvedByUserId) {
+                        return "Aprobado por admin";
+                      }
+                      if (selectedRow.approvedAt) return "Aprobado automáticamente";
+                      return "Aprobado";
+                    }
+                    if (statusValue === "REJECTED") return "Rechazado";
+                    if (statusValue === "PROCESSING") return "En proceso";
+                    if (statusValue === "PENDING") return "Pendiente";
+                    return statusValue || "—";
+                  })()}
+                </div>
+                {(selectedRow.externalVenue || selectedRow.externalOrderId) && (
+                  <details className="mt-3 rounded-xl border border-white/10 bg-neutral-950/60 p-3 text-xs text-neutral-300">
+                    <summary className="cursor-pointer text-neutral-400">Metadatos externos</summary>
+                    <div className="mt-2 grid gap-2">
+                      {selectedRow.externalVenue ? (
+                        <div>Venue: {selectedRow.externalVenue}</div>
+                      ) : null}
+                      {selectedRow.externalOrderId ? (
+                        <div>Order ID: {selectedRow.externalOrderId}</div>
+                      ) : null}
+                    </div>
+                  </details>
+                )}
+              </div>
 
+              <div className="mt-5 flex flex-wrap gap-2">
                 {(() => {
                   const movementId = resolveMovementId(selectedRow);
                   if (!movementId) return null;
@@ -750,9 +898,7 @@ export default function AdminOpsClient({
                 <div className="flex flex-wrap gap-2">
                   {(() => {
                     const rowBusy = Boolean(actioning[selectedRow.id]);
-                    const { canApproveReject, canMarkPaid, canResync } = getRowActions(
-                      selectedRow
-                    );
+                    const { canApproveReject, canMarkPaid, canResync } = getRowActions(selectedRow);
                     return (
                       <>
                         {canApproveReject && (
@@ -795,6 +941,25 @@ export default function AdminOpsClient({
                     );
                   })()}
                 </div>
+              </div>
+
+              <div className="mt-6">
+                <details className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <summary className="cursor-pointer text-xs uppercase tracking-wide text-neutral-500">
+                    Bloque técnico
+                  </summary>
+                  <div className="mt-3">
+                    <pre className="max-h-64 overflow-auto rounded-xl bg-neutral-950 p-3 text-xs text-neutral-300">
+                      {JSON.stringify(detailJson, null, 2)}
+                    </pre>
+                    <button
+                      className="k21-btn-secondary mt-3 px-3 py-1.5 text-xs"
+                      onClick={copyDetailJson}
+                    >
+                      Copiar JSON
+                    </button>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
