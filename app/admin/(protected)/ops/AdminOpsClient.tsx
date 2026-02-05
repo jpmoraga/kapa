@@ -525,7 +525,10 @@ export default function AdminOpsClient({
     const canApproveReject =
       statusValue === "PENDING" && (isClpDeposit || (isSlip && Boolean(slipId || movementId)));
     const canMarkPaid =
-      isClpWithdraw && statusValue === "APPROVED" && row.paidOut !== true;
+      isClpWithdraw &&
+      (statusValue === "APPROVED" || statusValue === "PROCESSING") &&
+      row.paidOut !== true &&
+      Boolean(movementId);
     const canResync = canResyncMovement(row);
 
     return {
