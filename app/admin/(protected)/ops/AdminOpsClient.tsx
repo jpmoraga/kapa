@@ -58,6 +58,7 @@ function statusPill(status: string) {
   const normalized = status.toUpperCase();
   if (normalized === "APPROVED") return "k21-pill-approved";
   if (normalized === "REJECTED") return "k21-pill-rejected";
+  if (normalized === "FAILED") return "k21-pill-rejected";
   return "k21-pill-pending";
 }
 
@@ -89,6 +90,13 @@ function formatPaidOut(value?: boolean | null) {
   if (value === true) return "Sí";
   if (value === false) return "No";
   return "—";
+}
+
+function resolveStatusLabel(row: MovementRow) {
+  const statusValue = String(row.status ?? "").toUpperCase();
+  if (statusValue === "FAILED") return "FAILED";
+  if (row.internalState === "FAILED_TEMPORARY") return "FAILED";
+  return statusValue || "—";
 }
 
 export default function AdminOpsClient({
@@ -235,14 +243,17 @@ export default function AdminOpsClient({
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  async function runAction(row: MovementRow, action: "approve" | "reject" | "paid" | "reconcile") {
+  async function runAction(
+    row: MovementRow,
+    action: "approve" | "reject" | "paid" | "resync"
+  ) {
     setNotice(null);
     setActioning((prev) => ({ ...prev, [row.id]: true }));
     try {
       const movementId = resolveMovementId(row);
       const slipId = resolveSlipId(row);
 
-      if (!movementId && (action === "paid" || action === "reconcile")) {
+      if (!movementId && (action === "paid" || action === "resync")) {
         setNotice({ type: "error", message: "Acción no disponible para este registro." });
         return;
       }
@@ -297,7 +308,10 @@ export default function AdminOpsClient({
           setNotice({ type: "error", message: "Movimiento inválido." });
           return;
         }
-        endpoint = `/api/treasury/movements/${movementId}/${action}`;
+        endpoint =
+          action === "resync"
+            ? `/api/admin/movements/${movementId}/resync`
+            : `/api/treasury/movements/${movementId}/${action}`;
       }
 
       const res = await fetch(endpoint, {
@@ -328,17 +342,18 @@ export default function AdminOpsClient({
     const isClp = row.assetCode === "CLP";
     const isClpDeposit = isClp && (rawType === "deposit" || (isSlip && rawType !== "withdraw"));
     const isClpWithdraw = isClp && rawType === "withdraw";
-    const isTrade = row.assetCode === "BTC" || row.assetCode === "USD";
     const canApproveReject = isClpDeposit && statusValue === "PENDING";
     const canMarkPaid =
       (isClpDeposit || isClpWithdraw) && statusValue === "APPROVED" && row.paidOut !== true;
-    const canReconcile = isTrade && statusValue === "PROCESSING";
+    const isTrade = row.assetCode === "BTC" || row.assetCode === "USD";
+    const canResync =
+      isTrade && (statusValue === "PENDING" || statusValue === "PROCESSING");
 
     return {
       isSlip,
       canApproveReject,
       canMarkPaid,
-      canReconcile,
+      canResync,
     };
   }
 
@@ -465,7 +480,8 @@ export default function AdminOpsClient({
               {filtered.map((row) => {
                 const rowBusy = Boolean(actioning[row.id]);
                 const typeMeta = deriveType(row);
-                const { canApproveReject, canMarkPaid, canReconcile } = getRowActions(row);
+                const { canApproveReject, canMarkPaid, canResync } = getRowActions(row);
+                const statusLabel = resolveStatusLabel(row);
 
                 return (
                   <tr key={row.id} className="text-neutral-200">
@@ -481,7 +497,7 @@ export default function AdminOpsClient({
                       {formatAmount(row.amount, row.assetCode)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={statusPill(row.status)}>{row.status}</span>
+                      <span className={statusPill(statusLabel)}>{statusLabel}</span>
                     </td>
                     <td className="px-4 py-3 text-xs text-neutral-300">
                       {formatPaidOut(row.paidOut)}
@@ -525,11 +541,11 @@ export default function AdminOpsClient({
                             Marcar pagado
                           </button>
                         )}
-                        {canReconcile && (
+                        {canResync && (
                           <button
                             className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                             disabled={rowBusy}
-                            onClick={() => runAction(row, "reconcile")}
+                            onClick={() => runAction(row, "resync")}
                           >
                             Resync
                           </button>
@@ -604,7 +620,7 @@ export default function AdminOpsClient({
                 <div>{formatAmount(selectedRow.amount, selectedRow.assetCode)}</div>
 
                 <div className="text-xs text-neutral-400">status</div>
-                <div>{selectedRow.status}</div>
+                <div>{resolveStatusLabel(selectedRow)}</div>
 
                 <div className="text-xs text-neutral-400">paidOut</div>
                 <div>{formatPaidOut(selectedRow.paidOut)}</div>
@@ -664,7 +680,7 @@ export default function AdminOpsClient({
                 <div className="flex flex-wrap gap-2">
                   {(() => {
                     const rowBusy = Boolean(actioning[selectedRow.id]);
-                    const { canApproveReject, canMarkPaid, canReconcile } = getRowActions(
+                    const { canApproveReject, canMarkPaid, canResync } = getRowActions(
                       selectedRow
                     );
                     return (
@@ -696,11 +712,11 @@ export default function AdminOpsClient({
                             Marcar pagado
                           </button>
                         )}
-                        {canReconcile && (
+                        {canResync && (
                           <button
                             className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                             disabled={rowBusy}
-                            onClick={() => runAction(selectedRow, "reconcile")}
+                            onClick={() => runAction(selectedRow, "resync")}
                           >
                             Resync
                           </button>

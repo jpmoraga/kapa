@@ -204,6 +204,71 @@ export async function POST(req: Request) {
     }
   }
 
+  const isTradeFlow =
+    (assetCode === AssetCode.BTC || assetCode === AssetCode.USD) &&
+    (type === "deposit" || type === "withdraw");
+
+  if (isTradeFlow) {
+    // Mantener la transacción ultra mínima para evitar timeouts; el procesamiento se hace fuera y es reintetable.
+    const movement = await prisma.$transaction(async (tx) =>
+      tx.treasuryMovement.create({
+        data: {
+          companyId: activeCompanyId,
+          assetCode,
+          type,
+          amount,
+          createdByUserId: user.id,
+          status: TreasuryMovementStatus.PROCESSING,
+        },
+        select: { id: true, status: true },
+      })
+    );
+
+    logEvent("trade:movement_created", {
+      correlationId,
+      companyId: activeCompanyId,
+      userId: user.id,
+      movementId: movement.id,
+      status: movement.status,
+      type,
+      assetCode,
+      amount: amount.toString(),
+    });
+
+    // Procesamiento asíncrono (no bloquea respuesta HTTP).
+    void (async () => {
+      try {
+        logEvent("trade:approve_attempt", {
+          correlationId,
+          companyId: activeCompanyId,
+          userId: user.id,
+          movementId: movement.id,
+        });
+        await approveMovementAsSystem({
+          movementId: movement.id,
+          companyId: activeCompanyId,
+          actorUserId: user.id,
+          correlationId,
+        });
+      } catch (e: any) {
+        logEvent("trade:approve_error", {
+          correlationId,
+          companyId: activeCompanyId,
+          userId: user.id,
+          movementId: movement.id,
+          error: e?.message ?? "Error ejecutando trade",
+        });
+      }
+    })();
+
+    return NextResponse.json({
+      ok: true,
+      traceId: correlationId,
+      movementId: movement.id,
+      status: movement.status,
+    });
+  }
+
   const isDepositSlip = type === "deposit" && assetCode === AssetCode.CLP;
   if (isDepositSlip) {
     console.info("deposit_slip:create_entry", {
@@ -373,30 +438,12 @@ export async function POST(req: Request) {
               };
             }
 
-      // 3) Si es BTC/USD y es deposit/withdraw => queda PENDING y se intenta aprobar fuera
-      const isTradeAsset = assetCode === AssetCode.BTC || assetCode === AssetCode.USD;
-      const isBuy = type === "deposit";
-      const isSell = type === "withdraw";
-
-      if (isTradeAsset && (isBuy || isSell)) {
-        return {
-          movementId: movement.id,
-          status: movement.status,
-          attachmentUrl,
-          autoExecuted: false,
-          isTrade: true,
-          assetCode,
-          type,
-        };
-      }
-    
       // 4) default: queda PENDING
       return {
         movementId: movement.id,
         status: movement.status,
         attachmentUrl,
         autoExecuted: false,
-        isTrade: false,
         assetCode,
         type,
       };
@@ -412,49 +459,6 @@ export async function POST(req: Request) {
       assetCode,
       amount: amount.toString(),
     });
-
-    // Ejecutar auto-aprobación para trades BTC/USD
-    if (out.isTrade) {
-      try {
-        logEvent("trade:approve_attempt", {
-          correlationId,
-          companyId: activeCompanyId,
-          userId: user.id,
-          movementId: out.movementId,
-        });
-        const approved = await approveMovementAsSystem({
-          movementId: out.movementId,
-          companyId: activeCompanyId,
-          actorUserId: user.id,
-          correlationId,
-        });
-
-        return NextResponse.json({
-          ok: true,
-          traceId: correlationId,
-          movementId: out.movementId,
-          status: (approved as any)?.updated?.status ?? out.status,
-          executionMode: (approved as any)?.venue ?? "unknown",
-        });
-      } catch (e: any) {
-        logEvent("trade:approve_error", {
-          correlationId,
-          companyId: activeCompanyId,
-          userId: user.id,
-          movementId: out.movementId,
-          error: e?.message ?? "Error ejecutando trade",
-        });
-        return NextResponse.json(
-          {
-            ok: false,
-            traceId: correlationId,
-            movementId: out.movementId,
-            error: e?.message ?? "Error ejecutando trade",
-          },
-          { status: 400 }
-        );
-      }
-    }
 
     let finalStatus = out.status;
 
