@@ -27,6 +27,7 @@ export type MovementRow = {
   paidOutAt?: string | null;
   createdByUserId?: string | null;
   createdByEmail?: string | null;
+  userEmail?: string | null;
   companyId?: string | null;
   companyName?: string | null;
   attachmentUrl?: string | null;
