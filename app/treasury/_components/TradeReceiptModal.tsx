@@ -58,6 +58,7 @@ export default function TradeReceiptModal({
   onClose,
   onRefresh,
   onRetry,
+  pendingMessage,
 }: {
   open: boolean;
   receipt: Receipt | null;
@@ -65,6 +66,7 @@ export default function TradeReceiptModal({
   onClose: () => void;
   onRefresh: () => void;
   onRetry: () => void;
+  pendingMessage?: string | null;
 }) {
   const title = useMemo(() => {
     if (!receipt) return "Detalle de operación";
@@ -82,7 +84,36 @@ export default function TradeReceiptModal({
   const isPendingLiquidity =
     receipt?.status === "PENDING" && receipt?.internalReason === "INSUFFICIENT_LIQUIDITY";
 
-  if (!open || !receipt) return null;
+  if (!open) return null;
+  if (!receipt) {
+    if (!pendingMessage) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
+        <button
+          type="button"
+          className="absolute inset-0"
+          aria-label="Cerrar"
+          onClick={onClose}
+        />
+        <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-neutral-950 p-6 text-neutral-100 shadow-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Voucher</h2>
+              <p className="mt-1 text-sm text-neutral-400">{pendingMessage}</p>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={onClose}
+              className="k21-btn-secondary"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!isApproved && !isProcessing && !isPendingLiquidity) return null;
 
   return (

@@ -98,6 +98,7 @@ export default function MovementForm({
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [receipt, setReceipt] = useState<TradeReceipt | null>(null);
+  const [receiptPendingMessage, setReceiptPendingMessage] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [estimate, setEstimate] = useState<TradeEstimate | null>(null);
@@ -310,10 +311,18 @@ function onPickReceipt(file: File | null) {
       }
 
       if (shouldOpenVoucher(next)) {
+        setReceiptPendingMessage(null);
         setReceiptOpen(true);
         setConfirmOpen(false);
         setEstimate(null);
         console.log("trade:receipt_ok", { status: next?.status, movementId });
+      } else if (isReceiptPendingNotReady(next)) {
+        setReceiptPendingMessage(
+          "Voucher aún no disponible (operación en proceso). Reintenta en unos segundos."
+        );
+        setReceiptOpen(true);
+        setConfirmOpen(false);
+        setEstimate(null);
       } else {
         setError("No pude obtener el voucher. Reintenta.");
         setConfirmOpen(false);
@@ -337,10 +346,17 @@ function onPickReceipt(file: File | null) {
         setReceipt(data as TradeReceipt);
         return data as TradeReceipt;
       }
+      setReceipt(null);
       return null;
     } finally {
       setReceiptLoading(false);
     }
+  }
+
+  function isReceiptPendingNotReady(next: TradeReceipt | null) {
+    if (!next) return true;
+    const status = String(next.status ?? "").toUpperCase();
+    return status === "PENDING" || status === "PROCESSING";
   }
 
   function isReceiptComplete(next: TradeReceipt | null) {
@@ -809,9 +825,11 @@ function onPickReceipt(file: File | null) {
         open={receiptOpen}
         receipt={receipt}
         loading={receiptLoading}
+        pendingMessage={receiptPendingMessage}
         onClose={async () => {
           setReceiptOpen(false);
           setReceipt(null);
+          setReceiptPendingMessage(null);
           try {
             await fetch("/api/treasury/summary", { cache: "no-store" });
           } catch {}
