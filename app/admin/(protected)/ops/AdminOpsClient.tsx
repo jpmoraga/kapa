@@ -114,25 +114,74 @@ export default function AdminOpsClient({
   const [search, setSearch] = useState("");
   const [actioning, setActioning] = useState<Record<string, boolean>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [pendingTotal, setPendingTotal] = useState<number | null>(null);
 
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/treasury/movements/pending?admin=1", {
-        cache: "no-store",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error ?? "No se pudieron cargar los movimientos.");
-        setRows([]);
-        return;
+  const fetchRows = useCallback(
+    async (opts?: { append?: boolean; cursor?: string | null }) => {
+      const append = opts?.append === true;
+      const statusValue = String(statusFilter ?? "PENDING").toUpperCase();
+      const usePendingEndpoint = statusValue === "PENDING" || statusValue === "PROCESSING";
+
+      if (!append) {
+        setNextCursor(null);
       }
-      setRows(Array.isArray(data?.pending) ? data.pending : []);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+
+      setLoading(true);
+      setError(null);
+      try {
+        if (usePendingEndpoint) {
+          const res = await fetch("/api/treasury/movements/pending?admin=1", {
+            cache: "no-store",
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setError(data?.error ?? "No se pudieron cargar los movimientos.");
+            setRows([]);
+            return;
+          }
+          const pendingRows: MovementRow[] = Array.isArray(data?.pending) ? data.pending : [];
+          setRows(pendingRows);
+          setNextCursor(null);
+          const pendingOnly = pendingRows.filter(
+            (row: MovementRow) => String(row.status ?? "").toUpperCase() === "PENDING"
+          ).length;
+          setPendingTotal(pendingOnly);
+          return;
+        }
+
+        const params = new URLSearchParams();
+        params.set("status", statusFilter);
+        params.set("type", typeFilter);
+        if (paidFilter === "PAID") params.set("paidOut", "true");
+        else if (paidFilter === "UNPAID") params.set("paidOut", "false");
+        else params.set("paidOut", "ALL");
+        const q = search.trim();
+        if (q) params.set("q", q);
+        params.set("limit", "50");
+        if (append && opts?.cursor) params.set("cursor", opts.cursor);
+
+        const res = await fetch(`/api/admin/movements?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(data?.message ?? data?.error ?? "No se pudieron cargar los movimientos.");
+          if (!append) setRows([]);
+          return;
+        }
+        const listRows = Array.isArray(data?.rows) ? data.rows : [];
+        setRows((prev) => (append ? [...prev, ...listRows] : listRows));
+        setNextCursor(data?.nextCursor ?? null);
+        if (typeof data?.pendingCount === "number") {
+          setPendingTotal(data.pendingCount);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [statusFilter, typeFilter, paidFilter, search]
+  );
 
   useEffect(() => {
     if (disableAutoFetch) return;
@@ -168,8 +217,11 @@ export default function AdminOpsClient({
   }, [rows, search, statusFilter, typeFilter, paidFilter]);
 
   const pendingCount = useMemo(() => {
+    if (typeof pendingTotal === "number") return pendingTotal;
     return rows.filter((row) => String(row.status ?? "").toUpperCase() === "PENDING").length;
-  }, [rows]);
+  }, [rows, pendingTotal]);
+
+  const resultsCount = useMemo(() => rows.length, [rows]);
 
   const selectedRow = useMemo(() => {
     if (!selectedId) return null;
@@ -342,11 +394,12 @@ export default function AdminOpsClient({
     const statusValue = String(row.status ?? "").toUpperCase();
     const rawType = normalizeTypeValue(row.type);
     const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
+    const slipId = resolveSlipId(row);
     const isClp = row.assetCode === "CLP";
     const isClpDeposit = isClp && (rawType === "deposit" || (isSlip && rawType !== "withdraw"));
     const isClpWithdraw = isClp && rawType === "withdraw";
     const movementId = resolveMovementId(row);
-    const canApproveReject = statusValue === "PENDING" && Boolean(movementId);
+    const canApproveReject = statusValue === "PENDING" && Boolean(movementId || slipId);
     const canMarkPaid =
       (isClpDeposit || isClpWithdraw) && statusValue === "APPROVED" && row.paidOut !== true;
     const canResync = canResyncMovement(row);
@@ -376,7 +429,10 @@ export default function AdminOpsClient({
           <div className="text-sm text-neutral-400">Cava Admin</div>
           <h1 className="text-3xl font-semibold tracking-tight text-neutral-50">Operaciones</h1>
         </div>
-        <div className="k21-badge">Pendientes: {pendingCount}</div>
+        <div className="flex flex-wrap gap-2">
+          <div className="k21-badge">Pendientes: {pendingCount}</div>
+          <div className="k21-badge">Resultados: {resultsCount}</div>
+        </div>
       </div>
 
       <div className="mt-6 k21-card p-4">
@@ -437,7 +493,7 @@ export default function AdminOpsClient({
           <button
             className="k21-btn-secondary mt-5"
             type="button"
-            onClick={fetchRows}
+            onClick={() => fetchRows()}
             disabled={loading}
           >
             {loading ? "Actualizando..." : "Refresh"}
@@ -560,21 +616,33 @@ export default function AdminOpsClient({
               {!filtered.length && !loading && (
                 <tr>
                   <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={8}>
-                    No hay movimientos pendientes.
+                    No hay movimientos.
                   </td>
                 </tr>
               )}
-              {loading && (
-                <tr>
-                  <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={8}>
-                    Cargando...
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {loading && (
+        <tr>
+          <td className="px-4 py-6 text-center text-sm text-neutral-500" colSpan={8}>
+            Cargando...
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
+{nextCursor && (
+  <div className="border-t border-neutral-800 bg-neutral-950/80 px-4 py-3 text-right">
+    <button
+      className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+      type="button"
+      disabled={loading}
+      onClick={() => fetchRows({ append: true, cursor: nextCursor })}
+    >
+      {loading ? "Cargando..." : "Cargar más"}
+    </button>
+  </div>
+)}
+</div>
 
       {selectedRow && (
         <div className="fixed inset-0 z-50">
