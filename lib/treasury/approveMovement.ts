@@ -115,6 +115,10 @@ export async function approveMovementAsSystem(opts: {
           amount: true,
           note: true,
           externalOrderId: true,
+          executedPrice: true,
+          executedQuoteAmount: true,
+          executedQuoteCode: true,
+          executedSource: true,
         },
       })
     );
@@ -298,35 +302,73 @@ export async function approveMovementAsSystem(opts: {
       }
     }
 
-    const snap = await getBestPriceSnapshot(prisma, movement.assetCode, AssetCode.CLP, timed);
-    if (!snap?.price) {
-      const updated = await timed("db.movement.update.price_missing", () =>
-        prisma.treasuryMovement.update({
-          where: { id: movement.id },
-          data: {
-            status: TreasuryMovementStatus.PENDING,
-            internalReason: InternalMovementReason.PRICE_MISSING,
-            internalState: InternalMovementState.FAILED_TEMPORARY,
-            lastError: "PRICE_MISSING",
-          },
-          select: { id: true, status: true, internalReason: true, internalState: true },
-        })
-      );
-      const out = { updated, venue: "missing-price" };
-      logResult(out);
-      return out;
-    }
+    const presetQuote =
+      movement.executedQuoteAmount != null
+        ? new Prisma.Decimal(movement.executedQuoteAmount as any)
+        : null;
+    const presetPrice =
+      movement.executedPrice != null
+        ? new Prisma.Decimal(movement.executedPrice as any)
+        : null;
+    const presetSource = movement.executedSource ?? null;
+    const presetQuoteCode = movement.executedQuoteCode ?? AssetCode.CLP;
 
-    const executedPrice = new Prisma.Decimal(snap.price);
-    const executedSource = snap.source ?? null;
-    const executedQuoteCode = AssetCode.CLP;
+    let executedPrice: Prisma.Decimal | null = null;
+    let executedSource: string | null = null;
+    let estClp: Prisma.Decimal | null = null;
+    const executedQuoteCode = presetQuoteCode ?? AssetCode.CLP;
     const executedAt = new Date();
 
-    const isBuy = movement.type === "deposit";
-    const isSell = movement.type === "withdraw";
+    let priceSourceUsed: "preset_quote" | "preset_price" | "snapshot" = "snapshot";
+    if (presetQuote && presetQuote.gt(0)) {
+      estClp = presetQuote;
+      executedPrice = presetPrice && presetPrice.gt(0) ? presetPrice : presetQuote.div(amount);
+      executedSource = presetSource ?? "requested-quote";
+      priceSourceUsed = "preset_quote";
+    } else if (presetPrice && presetPrice.gt(0)) {
+      executedPrice = presetPrice;
+      estClp = amount.mul(executedPrice);
+      executedSource = presetSource ?? "requested-price";
+      priceSourceUsed = "preset_price";
+    } else {
+      const snap = await getBestPriceSnapshot(prisma, movement.assetCode, AssetCode.CLP, timed);
+      if (!snap?.price) {
+        const updated = await timed("db.movement.update.price_missing", () =>
+          prisma.treasuryMovement.update({
+            where: { id: movement.id },
+            data: {
+              status: TreasuryMovementStatus.PENDING,
+              internalReason: InternalMovementReason.PRICE_MISSING,
+              internalState: InternalMovementState.FAILED_TEMPORARY,
+              lastError: "PRICE_MISSING",
+            },
+            select: { id: true, status: true, internalReason: true, internalState: true },
+          })
+        );
+        const out = { updated, venue: "missing-price" };
+        logResult(out);
+        return out;
+      }
+
+      executedPrice = new Prisma.Decimal(snap.price);
+      estClp = amount.mul(executedPrice);
+      executedSource = snap.source ?? null;
+      priceSourceUsed = "snapshot";
+    }
+
+    console.log("TRADE_PRICE_SOURCE", {
+      movementId: movement.id,
+      used: priceSourceUsed,
+      executedPrice: executedPrice?.toString(),
+      estClp: estClp?.toString(),
+      source: executedSource,
+    });
+
+    const typeValue = String(movement.type ?? "").toLowerCase();
+    const isBuy = typeValue === "deposit" || typeValue === "buy";
+    const isSell = typeValue === "withdraw" || typeValue === "sell";
     if (!isBuy && !isSell) throw new Error("BAD_TYPE");
 
-    const estClp = amount.mul(executedPrice);
     const feePct = getTradeFeePercent(movement.assetCode);
     const feeOnQuote = computeTradeFee(estClp, feePct);
     const feeOnBase = computeTradeFee(amount, feePct);

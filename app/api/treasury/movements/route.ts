@@ -31,6 +31,14 @@ function normalizeAssetCode(input: any): AssetCode {
   return AssetCode.BTC;
 }
 
+function normalizeMovementType(input: any): MovementType | null {
+  const v = String(input ?? "").trim().toLowerCase();
+  if (v === "buy") return "deposit";
+  if (v === "sell") return "withdraw";
+  if (v === "deposit" || v === "withdraw" || v === "adjust") return v as MovementType;
+  return null;
+}
+
 function isMultipart(req: Request) {
   const ct = req.headers.get("content-type") || "";
   return ct.toLowerCase().includes("multipart/form-data");
@@ -43,6 +51,32 @@ function safeExtFromMime(mime: string) {
   if (m === "image/png") return "png";
   if (m === "image/webp") return "webp";
   return null;
+}
+
+async function fetchSpotPriceForTradeAsset(assetCode: AssetCode) {
+  const marketId = assetCode === AssetCode.BTC ? "btc-clp" : "usdt-clp";
+  const budaUrl = `https://www.buda.com/api/v2/markets/${marketId}/trades?limit=50`;
+  const res = await fetch(budaUrl, {
+    cache: "no-store",
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(`BUDA_${res.status}`);
+  const data = await res.json().catch(() => null);
+  const entries = data?.trades?.entries ?? [];
+  if (!Array.isArray(entries) || entries.length === 0) throw new Error("NO_TRADES");
+  const latest = entries.reduce(
+    (acc: any[] | null, curr: any[]) => {
+      if (!Array.isArray(curr) || curr.length < 3) return acc;
+      if (!acc) return curr;
+      return Number(curr[0]) > Number(acc[0]) ? curr : acc;
+    },
+    null
+  );
+  if (!latest) throw new Error("NO_TRADES");
+  const priceStr = latest[2];
+  const n = Number(String(priceStr ?? "").replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0) throw new Error("BAD_PRICE");
+  return String(priceStr);
 }
 
 async function uploadReceiptToSupabase(opts: {
@@ -136,10 +170,11 @@ export async function POST(req: Request) {
   let amountStr = "";
   let assetCode: AssetCode = AssetCode.BTC;
   let receiptFile: File | null = null;
+  let rawType: string | null = null;
 
   if (isMultipart(req)) {
     const fd = await req.formData();
-    type = String(fd.get("type") ?? "").trim() as MovementType;
+    rawType = String(fd.get("type") ?? "").trim();
     note = String(fd.get("note") ?? "").trim() || null;
     amountStr = String(fd.get("amount") ?? "").trim();
     assetCode = normalizeAssetCode(fd.get("assetCode"));
@@ -147,19 +182,22 @@ export async function POST(req: Request) {
     receiptFile = f instanceof File ? f : null;
   } else {
     const body = await req.json().catch(() => ({}));
-    type = String(body.type ?? "").trim() as MovementType;
+    rawType = String(body.type ?? "").trim();
     note = String(body.note ?? "").trim() || null;
     amountStr = String(body.amount ?? "").trim();
     assetCode = normalizeAssetCode(body.assetCode);
   }
 
+  const normalizedType = normalizeMovementType(rawType);
+  if (!normalizedType) {
+    return NextResponse.json({ error: "Tipo inválido" }, { status: 400 });
+  }
+  type = normalizedType;
+
   if (type === "deposit" && receiptFile) {
     assetCode = AssetCode.CLP;
   }
 
-  if (!["deposit", "withdraw", "adjust"].includes(type)) {
-    return NextResponse.json({ error: "Tipo inválido" }, { status: 400 });
-  }
   if (!amountStr) {
     return NextResponse.json({ error: "Monto requerido" }, { status: 400 });
   }
@@ -209,6 +247,22 @@ export async function POST(req: Request) {
     (type === "deposit" || type === "withdraw");
 
   if (isTradeFlow) {
+    let requestedPrice: Prisma.Decimal | null = null;
+    let requestedQuoteAmount: Prisma.Decimal | null = null;
+    try {
+      const spotPriceStr = await fetchSpotPriceForTradeAsset(assetCode);
+      requestedPrice = new Prisma.Decimal(spotPriceStr);
+      requestedQuoteAmount = requestedPrice.mul(amount);
+      console.log("TRADE_SPOT_PREFETCH", {
+        assetCode,
+        spotPrice: requestedPrice.toString(),
+        executedQuoteAmount: requestedQuoteAmount.toString(),
+      });
+    } catch {
+      requestedPrice = null;
+      requestedQuoteAmount = null;
+    }
+
     // Mantener la transacción ultra mínima para evitar timeouts; el procesamiento se hace fuera y es reintetable.
     const movement = await prisma.$transaction(async (tx) =>
       tx.treasuryMovement.create({
@@ -219,6 +273,10 @@ export async function POST(req: Request) {
           amount,
           createdByUserId: user.id,
           status: TreasuryMovementStatus.PROCESSING,
+          executedPrice: requestedPrice ?? undefined,
+          executedQuoteAmount: requestedQuoteAmount ?? undefined,
+          executedQuoteCode: requestedPrice ? AssetCode.CLP : undefined,
+          executedSource: requestedPrice ? "buda_trades" : undefined,
         },
         select: { id: true, status: true },
       })
