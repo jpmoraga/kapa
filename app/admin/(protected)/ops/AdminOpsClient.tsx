@@ -220,6 +220,16 @@ export default function AdminOpsClient({
     return null;
   }
 
+  function canResyncMovement(row: MovementRow) {
+    const movementId = resolveMovementId(row);
+    if (!movementId) return false;
+    const statusValue = String(row.status ?? "").toUpperCase();
+    const assetCode = String(row.assetCode ?? "").toUpperCase();
+    const isTradeAsset = assetCode === "BTC" || assetCode === "USD";
+    const isResyncStatus = statusValue === "PENDING" || statusValue === "PROCESSING";
+    return isTradeAsset && isResyncStatus;
+  }
+
   function resolveSlipAmount(row: MovementRow) {
     const parsed = row.parsedAmountClp ? Number(row.parsedAmountClp) : null;
     if (parsed && Number.isFinite(parsed) && parsed > 0) return Math.round(parsed);
@@ -321,7 +331,10 @@ export default function AdminOpsClient({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setNotice({ type: "error", message: data?.error ?? "No se pudo ejecutar la acción." });
+        setNotice({
+          type: "error",
+          message: data?.message ?? data?.error ?? "No se pudo ejecutar la acción.",
+        });
         return;
       }
       setNotice({ type: "success", message: "Acción ejecutada." });
@@ -345,9 +358,7 @@ export default function AdminOpsClient({
     const canApproveReject = isClpDeposit && statusValue === "PENDING";
     const canMarkPaid =
       (isClpDeposit || isClpWithdraw) && statusValue === "APPROVED" && row.paidOut !== true;
-    const isTrade = row.assetCode === "BTC" || row.assetCode === "USD";
-    const canResync =
-      isTrade && (statusValue === "PENDING" || statusValue === "PROCESSING");
+    const canResync = canResyncMovement(row);
 
     return {
       isSlip,
