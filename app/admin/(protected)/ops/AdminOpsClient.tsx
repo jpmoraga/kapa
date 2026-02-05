@@ -209,9 +209,7 @@ export default function AdminOpsClient({
   }, [selectedRow]);
 
   function resolveMovementId(row: MovementRow) {
-    if (row.movementId) return row.movementId;
-    if (row.source === "movement") return row.id;
-    return null;
+    return row.movementId ?? row.id ?? null;
   }
 
   function resolveSlipId(row: MovementRow) {
@@ -261,10 +259,13 @@ export default function AdminOpsClient({
     setActioning((prev) => ({ ...prev, [row.id]: true }));
     try {
       const movementId = resolveMovementId(row);
+      const rawMovementId = row.movementId ?? null;
       const slipId = resolveSlipId(row);
+      const rowDebug = JSON.stringify(row);
+      const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
 
       if (!movementId && (action === "paid" || action === "resync")) {
-        setNotice({ type: "error", message: "Acción no disponible para este registro." });
+        setNotice({ type: "error", message: `Movimiento inválido. row=${rowDebug}` });
         return;
       }
 
@@ -272,7 +273,7 @@ export default function AdminOpsClient({
       let body: Record<string, any> | undefined;
       const rawType = normalizeTypeValue(row.type);
 
-      if (row.source === "deposit_slip" && !movementId) {
+      if (isSlip && !rawMovementId) {
         if (!slipId) {
           setNotice({ type: "error", message: "Slip inválido." });
           return;
@@ -300,7 +301,7 @@ export default function AdminOpsClient({
         }
       } else if (row.assetCode === "CLP" && rawType === "deposit") {
         if (!movementId) {
-          setNotice({ type: "error", message: "Movimiento inválido." });
+          setNotice({ type: "error", message: `Movimiento inválido. row=${rowDebug}` });
           return;
         }
         if (action === "approve") {
@@ -315,7 +316,7 @@ export default function AdminOpsClient({
         }
       } else {
         if (!movementId) {
-          setNotice({ type: "error", message: "Movimiento inválido." });
+          setNotice({ type: "error", message: `Movimiento inválido. row=${rowDebug}` });
           return;
         }
         endpoint =

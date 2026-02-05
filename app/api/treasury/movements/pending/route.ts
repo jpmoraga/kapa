@@ -2,9 +2,67 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/adminAuth";
 import { TreasuryMovementStatus } from "@prisma/client";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const isAdminMode = url.searchParams.get("admin") === "1";
+
+  if (isAdminMode) {
+    const admin = await requireAdmin();
+    if (!admin.ok) return admin.response;
+
+    const rows = await prisma.treasuryMovement.findMany({
+      where: {
+        status: { in: [TreasuryMovementStatus.PENDING, TreasuryMovementStatus.PROCESSING] },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      select: {
+        id: true,
+        companyId: true,
+        company: { select: { name: true } },
+        createdByUserId: true,
+        createdBy: { select: { email: true } },
+        status: true,
+        assetCode: true,
+        type: true,
+        amount: true,
+        note: true,
+        createdAt: true,
+        paidOut: true,
+        paidOutAt: true,
+        attachmentUrl: true,
+      },
+    });
+
+    const pending = rows.map((m) => ({
+      id: m.id,
+      movementId: m.id,
+      companyId: m.companyId,
+      createdByUserId: m.createdByUserId ?? null,
+      userId: m.createdByUserId ?? null,
+      createdByEmail: m.createdBy?.email ?? null,
+      userEmail: m.createdBy?.email ?? null,
+      companyName: m.company?.name ?? null,
+      status: m.status,
+      assetCode: m.assetCode,
+      type: m.type,
+      amount: m.amount.toString(),
+      note: m.note ?? null,
+      createdAt: m.createdAt.toISOString(),
+      paidOut: m.paidOut,
+      paidOutAt: m.paidOutAt?.toISOString() ?? null,
+      attachmentUrl: m.attachmentUrl ?? null,
+      source: "movement" as const,
+    }));
+
+    console.info(`ADMIN_OPS_PENDING_COUNT count=${pending.length}`);
+
+    return NextResponse.json({ ok: true, pending });
+  }
+
   const session = await getServerSession(authOptions);
   const email = session?.user?.email?.toLowerCase().trim();
   const activeCompanyId = (session as any)?.activeCompanyId as string | undefined;
