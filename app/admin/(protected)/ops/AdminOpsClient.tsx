@@ -264,11 +264,6 @@ export default function AdminOpsClient({
       const rowDebug = JSON.stringify(row);
       const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
 
-      if (!movementId && (action === "paid" || action === "resync")) {
-        setNotice({ type: "error", message: `Movimiento inválido. row=${rowDebug}` });
-        return;
-      }
-
       let endpoint = "";
       let body: Record<string, any> | undefined;
       const rawType = normalizeTypeValue(row.type);
@@ -299,30 +294,24 @@ export default function AdminOpsClient({
           setNotice({ type: "error", message: "Acción no disponible para este comprobante." });
           return;
         }
-      } else if (row.assetCode === "CLP" && rawType === "deposit") {
-        if (!movementId) {
-          setNotice({ type: "error", message: `Movimiento inválido. row=${rowDebug}` });
-          return;
-        }
-        if (action === "approve") {
-          const amountClp = resolveSlipAmount(row);
-          endpoint = `/api/admin/movements/${movementId}/approve`;
-          body = amountClp ? { amountClp } : undefined;
-        } else if (action === "reject") {
-          endpoint = `/api/admin/movements/${movementId}/reject`;
-        } else {
-          setNotice({ type: "error", message: "Acción no disponible para este depósito." });
-          return;
-        }
       } else {
         if (!movementId) {
           setNotice({ type: "error", message: `Movimiento inválido. row=${rowDebug}` });
           return;
         }
-        endpoint =
-          action === "resync"
-            ? `/api/admin/movements/${movementId}/resync`
-            : `/api/treasury/movements/${movementId}/${action}`;
+        if (action === "approve") {
+          const isClpDeposit = row.assetCode === "CLP" && rawType === "deposit";
+          const amountClp = isClpDeposit ? resolveSlipAmount(row) : null;
+          endpoint = `/api/admin/movements/${movementId}/approve`;
+          body = amountClp ? { amountClp } : undefined;
+        } else if (action === "reject") {
+          endpoint = `/api/admin/movements/${movementId}/reject`;
+        } else {
+          endpoint =
+            action === "resync"
+              ? `/api/admin/movements/${movementId}/resync`
+              : `/api/treasury/movements/${movementId}/${action}`;
+        }
       }
 
       const res = await fetch(endpoint, {
@@ -356,7 +345,8 @@ export default function AdminOpsClient({
     const isClp = row.assetCode === "CLP";
     const isClpDeposit = isClp && (rawType === "deposit" || (isSlip && rawType !== "withdraw"));
     const isClpWithdraw = isClp && rawType === "withdraw";
-    const canApproveReject = isClpDeposit && statusValue === "PENDING";
+    const movementId = resolveMovementId(row);
+    const canApproveReject = statusValue === "PENDING" && Boolean(movementId);
     const canMarkPaid =
       (isClpDeposit || isClpWithdraw) && statusValue === "APPROVED" && row.paidOut !== true;
     const canResync = canResyncMovement(row);

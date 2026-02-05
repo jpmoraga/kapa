@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       source: "movement" as const,
     }));
 
-    console.info(`ADMIN_OPS_PENDING_COUNT count=${pending.length}`);
+    console.log("ADMIN_OPS_PENDING_COUNT", { count: pending.length });
 
     return NextResponse.json({ ok: true, pending });
   }
