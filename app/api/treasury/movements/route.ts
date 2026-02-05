@@ -247,20 +247,27 @@ export async function POST(req: Request) {
     (type === "deposit" || type === "withdraw");
 
   if (isTradeFlow) {
+    let movementAmount = amount;
     let requestedPrice: Prisma.Decimal | null = null;
     let requestedQuoteAmount: Prisma.Decimal | null = null;
-    try {
-      const spotPriceStr = await fetchSpotPriceForTradeAsset(assetCode);
-      requestedPrice = new Prisma.Decimal(spotPriceStr);
-      requestedQuoteAmount = requestedPrice.mul(amount);
-      console.log("TRADE_SPOT_PREFETCH", {
-        assetCode,
-        spotPrice: requestedPrice.toString(),
-        executedQuoteAmount: requestedQuoteAmount.toString(),
-      });
-    } catch {
-      requestedPrice = null;
-      requestedQuoteAmount = null;
+
+    if (type === "deposit") {
+      try {
+        const spotPriceStr = await fetchSpotPriceForTradeAsset(assetCode);
+        requestedPrice = new Prisma.Decimal(spotPriceStr);
+        if (requestedPrice.lte(0)) {
+          return NextResponse.json({ error: "Precio spot inválido" }, { status: 502 });
+        }
+        requestedQuoteAmount = amount;
+        movementAmount = amount.div(requestedPrice);
+        console.log("TRADE_SPOT_PREFETCH", {
+          assetCode,
+          spotPrice: requestedPrice.toString(),
+          executedQuoteAmount: requestedQuoteAmount.toString(),
+        });
+      } catch {
+        return NextResponse.json({ error: "No se pudo obtener precio spot" }, { status: 502 });
+      }
     }
 
     // Mantener la transacción ultra mínima para evitar timeouts; el procesamiento se hace fuera y es reintetable.
@@ -270,13 +277,13 @@ export async function POST(req: Request) {
           companyId: activeCompanyId,
           assetCode,
           type,
-          amount,
+          amount: movementAmount,
           createdByUserId: user.id,
           status: TreasuryMovementStatus.PROCESSING,
           executedPrice: requestedPrice ?? undefined,
           executedQuoteAmount: requestedQuoteAmount ?? undefined,
-          executedQuoteCode: requestedPrice ? AssetCode.CLP : undefined,
-          executedSource: requestedPrice ? "buda_trades" : undefined,
+          executedQuoteCode: requestedQuoteAmount ? AssetCode.CLP : undefined,
+          executedSource: requestedQuoteAmount ? "buda_trades" : undefined,
         },
         select: { id: true, status: true },
       })
