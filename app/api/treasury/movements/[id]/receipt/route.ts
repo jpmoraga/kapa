@@ -61,30 +61,58 @@ export async function GET(
   const baseAmount = new Prisma.Decimal(movement.executedBaseAmount ?? movement.amount ?? 0);
   const price = movement.executedPrice ? new Prisma.Decimal(movement.executedPrice) : null;
 
-  const grossQuote =
+  const feePct = getTradeFeePercent(movement.assetCode);
+
+  // BUY uses executed amounts as source of truth. Do not recompute.
+  const executedQuote =
     movement.executedQuoteAmount != null
       ? new Prisma.Decimal(movement.executedQuoteAmount as any)
-      : price
-      ? price.mul(baseAmount)
       : null;
-
-  const feePct = getTradeFeePercent(movement.assetCode);
-  const feeAmount =
+  const executedFee =
     movement.executedFeeAmount != null
       ? new Prisma.Decimal(movement.executedFeeAmount as any)
-      : isBuy
-      ? grossQuote
-        ? computeTradeFee(grossQuote, feePct)
-        : null
-      : computeTradeFee(baseAmount, feePct);
-
-  const grossAmount = isBuy ? grossQuote : baseAmount;
-  const netAmount =
-    grossAmount && feeAmount
-      ? isBuy
-        ? grossAmount.plus(feeAmount)
-        : grossAmount.minus(feeAmount)
       : null;
+
+  let grossPaidClp: Prisma.Decimal | null = null;
+  let feeClp: Prisma.Decimal | null = null;
+  let netClp: Prisma.Decimal | null = null;
+  let grossAmount: Prisma.Decimal | null = null;
+  let feeAmount: Prisma.Decimal | null = null;
+  let netAmount: Prisma.Decimal | null = null;
+
+  if (isBuy && executedQuote && executedFee) {
+    grossPaidClp = executedQuote.plus(executedFee);
+    feeClp = executedFee;
+    netClp = grossPaidClp;
+    grossAmount = grossPaidClp;
+    feeAmount = feeClp;
+    netAmount = netClp;
+  } else {
+    const grossQuote =
+      movement.executedQuoteAmount != null
+        ? new Prisma.Decimal(movement.executedQuoteAmount as any)
+        : price
+        ? price.mul(baseAmount)
+        : null;
+
+    const fallbackFeeAmount =
+      movement.executedFeeAmount != null
+        ? new Prisma.Decimal(movement.executedFeeAmount as any)
+        : isBuy
+        ? grossQuote
+          ? computeTradeFee(grossQuote, feePct)
+          : null
+        : computeTradeFee(baseAmount, feePct);
+
+    grossAmount = isBuy ? grossQuote : baseAmount;
+    feeAmount = fallbackFeeAmount;
+    netAmount =
+      grossAmount && feeAmount
+        ? isBuy
+          ? grossAmount.plus(feeAmount)
+          : grossAmount.minus(feeAmount)
+        : null;
+  }
 
   const hasExecuted = Boolean(movement.executedAt);
   const isEstimated = movement.status !== "APPROVED" || !hasExecuted;
