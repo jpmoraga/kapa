@@ -113,11 +113,21 @@ export default function ConfirmTradeModal({
   const inputClpValue = inputClp ? Number(inputClp) : null;
   const qtyFallback = Number(estimate.qty);
   let computedQty: number | null = Number.isFinite(qtyFallback) ? qtyFallback : null;
+  const buyFeeClp =
+    estimate.side === "buy" &&
+    inputClpValue &&
+    Number.isFinite(inputClpValue) &&
+    Number.isFinite(feePercent)
+      ? inputClpValue * feePercent
+      : null;
+  const buyGrossClp =
+    estimate.side === "buy" && buyFeeClp !== null && inputClpValue != null
+      ? inputClpValue - buyFeeClp
+      : null;
 
   if (spotValue && inputClpValue && Number.isFinite(inputClpValue) && inputClpValue > 0) {
     if (estimate.side === "buy") {
-      const denom = spotValue * (1 + (Number.isFinite(feePercent) ? feePercent : 0));
-      computedQty = denom > 0 ? inputClpValue / denom : null;
+      computedQty = spotValue > 0 && buyGrossClp !== null ? buyGrossClp / spotValue : null;
     } else {
       computedQty = spotValue > 0 ? inputClpValue / spotValue : null;
     }
@@ -137,10 +147,17 @@ export default function ConfirmTradeModal({
   const feeOnBase =
     qtyForDisplay && Number.isFinite(feePercent) ? qtyForDisplay * feePercent : null;
   const displayPrice = priceForDisplay ? priceForDisplay.toString() : estimate.price;
-  const displayGross = grossQuote !== null ? grossQuote.toString() : estimate.grossQuote;
+  const displayGross =
+    estimate.side === "buy" && buyGrossClp !== null
+      ? buyGrossClp.toString()
+      : grossQuote !== null
+      ? grossQuote.toString()
+      : estimate.grossQuote;
   const displayFee =
     estimate.side === "buy"
-      ? feeOnQuote !== null
+      ? buyFeeClp !== null
+        ? buyFeeClp.toString()
+        : feeOnQuote !== null
         ? feeOnQuote.toString()
         : estimate.feeAmount
       : feeOnBase !== null
@@ -148,8 +165,8 @@ export default function ConfirmTradeModal({
       : estimate.feeAmount;
   const displayNet =
     estimate.side === "buy"
-      ? grossQuote !== null && feeOnQuote !== null
-        ? (grossQuote + feeOnQuote).toString()
+      ? inputClpValue !== null && Number.isFinite(inputClpValue)
+        ? inputClpValue.toString()
         : estimate.netAmount
       : qtyForDisplay !== null && feeOnBase !== null
       ? (qtyForDisplay - feeOnBase).toString()
@@ -194,7 +211,9 @@ export default function ConfirmTradeModal({
                 </div>
               </div>
               <div>
-                <div className="text-xs text-neutral-500">CLP bruto</div>
+                <div className="text-xs text-neutral-500">
+                  {estimate?.side === "buy" ? "CLP bruto (trade)" : "CLP bruto"}
+                </div>
                 <div className="mt-1 font-medium">
                   {estimate ? formatAmount(displayGross, "CLP") : "—"}
                 </div>
@@ -208,7 +227,7 @@ export default function ConfirmTradeModal({
               </div>
               <div>
                 <div className="text-xs text-neutral-500">
-                  {estimate?.side === "buy" ? "CLP neto" : "Neto base"}
+                  {estimate?.side === "buy" ? "Pagas" : "Neto base"}
                 </div>
                 <div className="mt-1 font-medium">
                   {estimate ? formatAmount(displayNet, estimate.netCurrency) : "—"}

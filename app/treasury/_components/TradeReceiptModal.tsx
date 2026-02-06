@@ -83,6 +83,13 @@ export default function TradeReceiptModal({
   const isProcessing = receipt?.status === "PROCESSING" && Boolean(receipt?.externalOrderId);
   const isPendingLiquidity =
     receipt?.status === "PENDING" && receipt?.internalReason === "INSUFFICIENT_LIQUIDITY";
+  const buyGrossTradeClp = useMemo(() => {
+    if (!receipt || receipt.side !== "buy") return null;
+    const grossPaid = Number(receipt.grossAmount ?? "");
+    const fee = Number(receipt.feeAmount ?? "");
+    if (!Number.isFinite(grossPaid) || !Number.isFinite(fee)) return null;
+    return (grossPaid - fee).toString();
+  }, [receipt]);
 
   if (!open) return null;
   if (!receipt) {
@@ -155,12 +162,14 @@ export default function TradeReceiptModal({
               </div>
               <div>
                 <div className="text-xs text-neutral-500">
-                  {receipt?.side === "sell" ? "Monto base" : "CLP bruto"}
+                  {receipt?.side === "sell" ? "Monto base" : "CLP bruto (trade)"}
                 </div>
                 <div className="mt-1 font-medium">
                   {receipt
                     ? formatAmount(
-                        receipt.grossAmount,
+                        receipt.side === "buy" && buyGrossTradeClp
+                          ? buyGrossTradeClp
+                          : receipt.grossAmount,
                         receipt.side === "sell" ? receipt.baseAsset : "CLP"
                       )
                     : "—"}
@@ -175,12 +184,12 @@ export default function TradeReceiptModal({
               </div>
               <div>
                 <div className="text-xs text-neutral-500">
-                  {receipt?.side === "sell" ? "Neto base" : "CLP neto"}
+                  {receipt?.side === "sell" ? "Neto base" : "Pagas"}
                 </div>
                 <div className="mt-1 font-medium">
                   {receipt
                     ? formatAmount(
-                        receipt.netAmount,
+                        receipt.side === "buy" ? receipt.grossAmount : receipt.netAmount,
                         receipt.side === "sell" ? receipt.baseAsset : "CLP"
                       )
                     : "—"}

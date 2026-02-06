@@ -370,10 +370,35 @@ export async function approveMovementAsSystem(opts: {
     if (!isBuy && !isSell) throw new Error("BAD_TYPE");
 
     const feePct = getTradeFeePercent(movement.assetCode);
-    const feeOnQuote = computeTradeFee(estClp, feePct);
+    let feeOnQuote = computeTradeFee(estClp, feePct);
     const feeOnBase = computeTradeFee(amount, feePct);
-    const totalBuyClp = estClp.plus(feeOnQuote);
+    let totalBuyClp = estClp.plus(feeOnQuote);
+    let grossBuyClp = estClp;
+    let buyBaseAmount = amount;
+    let inputSpendClp = estClp;
+
+    const useInclusiveFee = isBuy;
+    if (useInclusiveFee) {
+      inputSpendClp = estClp;
+      feeOnQuote = computeTradeFee(inputSpendClp, feePct);
+      grossBuyClp = inputSpendClp.minus(feeOnQuote);
+      totalBuyClp = inputSpendClp;
+      if (executedPrice && executedPrice.gt(0)) {
+        buyBaseAmount = grossBuyClp.div(executedPrice);
+      }
+      logEvent("trade:buy_fee_model", {
+        ...baseLog,
+        inputSpendClp: inputSpendClp.toString(),
+        feeClp: feeOnQuote.toString(),
+        grossBuyClp: grossBuyClp.toString(),
+        executedPrice: executedPrice?.toString() ?? null,
+        baseQtyCredited: buyBaseAmount.toString(),
+        totalDebitClp: totalBuyClp.toString(),
+      });
+    }
+
     const totalSellBase = amount.plus(feeOnBase);
+    const baseAmountForExecution = isBuy ? buyBaseAmount : amount;
 
     const { companyId: systemCompanyId } = await timed("db.system_wallet.ensure", () =>
       prisma.$transaction(async (tx) => ensureSystemWallet(tx))
@@ -415,6 +440,20 @@ export async function approveMovementAsSystem(opts: {
     const sysAsset = new Prisma.Decimal(sysAssetAcc.balance);
     const sysClp = new Prisma.Decimal(sysClpAcc.balance);
 
+    logEvent("trade:wallet_snapshot", {
+      ...baseLog,
+      assetCode: movement.assetCode,
+      side: movement.type,
+      clientAsset: curAsset.toString(),
+      clientClp: curClp.toString(),
+      systemAsset: sysAsset.toString(),
+      systemClp: sysClp.toString(),
+      estClp: estClp.toString(),
+      totalBuyClp: totalBuyClp.toString(),
+      totalSellBase: totalSellBase.toString(),
+      baseAmountForExecution: baseAmountForExecution.toString(),
+    });
+
     if (isBuy && curClp.lt(totalBuyClp)) {
       const updated = await prisma.treasuryMovement.update({
         where: { id: movement.id },
@@ -447,7 +486,14 @@ export async function approveMovementAsSystem(opts: {
     }
 
     const canFillFromWallet =
-      (isBuy && sysAsset.gte(amount)) || (isSell && sysClp.gte(estClp));
+      (isBuy && sysAsset.gte(baseAmountForExecution)) || (isSell && sysClp.gte(estClp));
+
+    logEvent("trade:execution_decision", {
+      ...baseLog,
+      canFillFromWallet,
+      side: movement.type,
+      assetCode: movement.assetCode,
+    });
 
     if (canFillFromWallet) {
       const out = await timed("tx.system_wallet_fill", () =>
@@ -465,8 +511,8 @@ export async function approveMovementAsSystem(opts: {
               executedQuoteCode,
               executedSource: executedSource ?? "internal",
               executedAt,
-              executedBaseAmount: amount,
-              executedQuoteAmount: estClp,
+              executedBaseAmount: baseAmountForExecution,
+              executedQuoteAmount: isBuy ? grossBuyClp : estClp,
               executedFeeAmount: isBuy ? feeOnQuote : feeOnBase,
               executedFeeCode: isBuy ? AssetCode.CLP : movement.assetCode,
               internalReason: InternalMovementReason.NONE,
@@ -497,15 +543,15 @@ export async function approveMovementAsSystem(opts: {
               where: {
                 companyId: systemCompanyId,
                 assetCode: movement.assetCode,
-                balance: { gte: amount },
+                balance: { gte: baseAmountForExecution },
               },
-              data: { balance: { decrement: amount } },
+              data: { balance: { decrement: baseAmountForExecution } },
             });
             if (!debitSystem.count) throw new Error("SYSTEM_WALLET_INSUFFICIENT");
 
             await tx.treasuryAccount.update({
               where: { companyId_assetCode: { companyId, assetCode: movement.assetCode } },
-              data: { balance: { increment: amount } },
+              data: { balance: { increment: baseAmountForExecution } },
             });
 
             await tx.treasuryAccount.update({
@@ -575,8 +621,8 @@ export async function approveMovementAsSystem(opts: {
     const MIN_USDT = new Prisma.Decimal(process.env.BUDA_MIN_USDT ?? "5");
 
     const isBelowBudaMin =
-      (movement.assetCode === AssetCode.BTC && amount.lt(MIN_BTC)) ||
-      (movement.assetCode === AssetCode.USD && amount.lt(MIN_USDT));
+      (movement.assetCode === AssetCode.BTC && baseAmountForExecution.lt(MIN_BTC)) ||
+      (movement.assetCode === AssetCode.USD && baseAmountForExecution.lt(MIN_USDT));
 
     if (isBelowBudaMin) {
       const updated = await prisma.treasuryMovement.update({
@@ -595,7 +641,10 @@ export async function approveMovementAsSystem(opts: {
     }
 
     const marketId = marketForAsset(movement.assetCode);
-    const baseAmountStr = movement.assetCode === AssetCode.BTC ? amount.toFixed(8) : amount.toFixed(2);
+    const baseAmountStr =
+      movement.assetCode === AssetCode.BTC
+        ? baseAmountForExecution.toFixed(8)
+        : baseAmountForExecution.toFixed(2);
     const existingOrderId = movement.externalOrderId ?? null;
 
     let budaOrderId = existingOrderId;
@@ -667,8 +716,8 @@ export async function approveMovementAsSystem(opts: {
             executedQuoteCode,
             executedSource: executedSource ?? "buda",
             executedAt,
-            executedBaseAmount: amount,
-            executedQuoteAmount: estClp,
+            executedBaseAmount: baseAmountForExecution,
+            executedQuoteAmount: isBuy ? grossBuyClp : estClp,
             executedFeeAmount: isBuy ? feeOnQuote : feeOnBase,
             executedFeeCode: isBuy ? AssetCode.CLP : movement.assetCode,
             internalReason: InternalMovementReason.NONE,
@@ -698,7 +747,7 @@ export async function approveMovementAsSystem(opts: {
 
           await tx.treasuryAccount.update({
             where: { companyId_assetCode: { companyId, assetCode: movement.assetCode } },
-            data: { balance: { increment: amount } },
+            data: { balance: { increment: baseAmountForExecution } },
           });
         } else {
           const debitClient = await tx.treasuryAccount.updateMany({

@@ -188,6 +188,7 @@ function onPickReceipt(file: File | null) {
     baseAsset: "BTC" | "USD";
     qty: number;
     price: number;
+    inputClp?: number | null;
   }): TradeEstimate {
     const feePercent = getTradeFeePercent(opts.baseAsset);
     const grossQuote = opts.qty * opts.price;
@@ -195,17 +196,24 @@ function onPickReceipt(file: File | null) {
     const feeOnBase = opts.qty * feePercent;
 
     if (opts.side === "buy") {
+      const inputClp =
+        opts.inputClp !== null && opts.inputClp !== undefined && Number.isFinite(opts.inputClp)
+          ? opts.inputClp
+          : null;
+      const feeOnInput = inputClp !== null ? inputClp * feePercent : feeOnQuote;
+      const grossOnInput = inputClp !== null ? inputClp - feeOnInput : grossQuote;
+      const netOnInput = inputClp !== null ? inputClp : grossOnInput + feeOnInput;
       return {
         side: "buy",
         baseAsset: opts.baseAsset,
         quoteAsset: "CLP",
         qty: opts.qty.toString(),
         price: opts.price.toString(),
-        grossQuote: grossQuote.toString(),
+        grossQuote: grossOnInput.toString(),
         feePercent: feePercent.toString(),
-        feeAmount: feeOnQuote.toString(),
+        feeAmount: feeOnInput.toString(),
         feeCurrency: "CLP",
-        netAmount: (grossQuote + feeOnQuote).toString(),
+        netAmount: netOnInput.toString(),
         netCurrency: "CLP",
       };
     }
@@ -241,8 +249,8 @@ function onPickReceipt(file: File | null) {
       if (isTradeClpInput && previewPrice && Number.isFinite(previewPrice) && previewPrice > 0) {
         const feePct = getTradeFeePercent(assetCode);
         if (mode === "buy") {
-          const denom = previewPrice * (1 + feePct);
-          qtyForEstimate = denom > 0 ? qty / denom : 0;
+          const grossBuyClp = qty * (1 - feePct);
+          qtyForEstimate = previewPrice > 0 ? grossBuyClp / previewPrice : 0;
         } else {
           qtyForEstimate = previewPrice > 0 ? qty / previewPrice : 0;
         }
@@ -252,6 +260,7 @@ function onPickReceipt(file: File | null) {
         baseAsset: assetCode as "BTC" | "USD",
         qty: qtyForEstimate,
         price: previewPrice && previewPrice > 0 ? previewPrice : 0,
+        inputClp: mode === "buy" ? qty : null,
       });
       if (isTradeClpInput) {
         estimateValue.inputClp = isTradeBuy ? String(qty) : amount;
@@ -691,8 +700,7 @@ function onPickReceipt(file: File | null) {
                     if (!Number.isFinite(clp) || clp <= 0 || !Number.isFinite(price) || price <= 0) {
                       return "—";
                     }
-                    const qty =
-                      price > 0 ? clp / (price * (1 + feePct)) : 0;
+                    const qty = price > 0 ? (clp * (1 - feePct)) / price : 0;
                     const decimals = assetCode === "BTC" ? 8 : 6;
                     const label = assetCode === "USD" ? "USDT" : assetCode;
                     return `${qty.toFixed(decimals)} ${label}`;
