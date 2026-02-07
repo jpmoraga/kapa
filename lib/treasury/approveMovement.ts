@@ -318,7 +318,6 @@ export async function approveMovementAsSystem(opts: {
         const out = { updated, venue: "missing-price" };
         execPath = "buda";
         execReason = "price_missing";
-        logExecPath();
         logResult(out);
         return out;
       }
@@ -454,7 +453,6 @@ export async function approveMovementAsSystem(opts: {
       });
       const out = { updated, venue: "insufficient-clp" };
       execReason = execReason ?? "insufficient_clp";
-      logExecPath();
       logResult(out);
       return out;
     }
@@ -471,7 +469,6 @@ export async function approveMovementAsSystem(opts: {
       });
       const out = { updated, venue: "insufficient-funds" };
       execReason = execReason ?? "insufficient_funds";
-      logExecPath();
       logResult(out);
       return out;
     }
@@ -578,7 +575,6 @@ export async function approveMovementAsSystem(opts: {
         })
       );
 
-      logExecPath();
       logResult(out);
       return out;
     }
@@ -596,7 +592,6 @@ export async function approveMovementAsSystem(opts: {
       });
       const out = { updated, venue: "missing-buda-keys" };
       execReason = "missing_buda_keys";
-      logExecPath();
       logResult(out);
       return out;
     }
@@ -680,7 +675,6 @@ export async function approveMovementAsSystem(opts: {
       });
       const out = { updated, venue: "below-min" };
       execReason = "below_buda_min";
-      logExecPath();
       logResult(out);
       return out;
     }
@@ -721,7 +715,6 @@ export async function approveMovementAsSystem(opts: {
         });
         const out = { updated, venue: "buda-error" };
         execReason = isLiquidity ? "buda_insufficient_liquidity" : "buda_error";
-        logExecPath();
         logResult(out);
         return out;
       }
@@ -746,7 +739,6 @@ export async function approveMovementAsSystem(opts: {
       });
       const out = { updated, venue: "buda-error" };
       execReason = "missing_buda_order_id";
-      logExecPath();
       logResult(out);
       return out;
     }
@@ -821,7 +813,6 @@ export async function approveMovementAsSystem(opts: {
     );
 
     logResult(out);
-    logExecPath();
     return out;
   } catch (e: any) {
     const lastError = String(e?.message ?? "UNKNOWN_ERROR");
