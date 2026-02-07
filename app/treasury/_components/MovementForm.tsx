@@ -106,7 +106,6 @@ export default function MovementForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [estimate, setEstimate] = useState<TradeEstimate | null>(null);
-  const pollAttemptsRef = useRef(0);
   const timingRef = useRef<{
     start?: number;
     post?: number;
@@ -114,11 +113,6 @@ export default function MovementForm({
     approved?: number;
     complete?: number;
   }>({});
-
-  useEffect(() => {
-    if (!receipt?.movementId) return;
-    pollAttemptsRef.current = 0;
-  }, [receipt?.movementId]);
 
   const type = modeToType(mode);
   const labels = modeLabels(mode, assetCode);
@@ -340,43 +334,30 @@ function onPickReceipt(file: File | null) {
 
       console.log("trade:post_ok", { movementId });
 
-      let first: TradeReceipt | null = null;
-      try {
-        first = await fetchReceipt(movementId);
-      } catch {
-        setError("No pude obtener el comprobante. Reintenta.");
-        setConfirmOpen(false);
-        setEstimate(null);
-        return;
-      }
-      if (process.env.NODE_ENV !== "production") {
-        const now = Date.now();
-        const start = timingRef.current.start;
-        if (start && first?.status && !timingRef.current.firstReceipt) {
-          timingRef.current.firstReceipt = now;
-          console.log("trade:timing", { step: "first_receipt", ms: now - start, status: first.status });
-        }
-      }
-
-      const status = String(first?.status ?? "").toUpperCase();
+      const receiptPayload = data?.receipt ?? data;
+      const nextReceipt =
+        receiptPayload && typeof receiptPayload === "object"
+          ? { ...receiptPayload, movementId: receiptPayload?.movementId ?? movementId }
+          : null;
+      const status = String(nextReceipt?.status ?? data?.status ?? "").toUpperCase();
 
       if (status === "APPROVED") {
-        pollAttemptsRef.current = 0;
+        setReceipt(nextReceipt as TradeReceipt);
         setReceiptOpen(true);
         setConfirmOpen(false);
         setEstimate(null);
-        console.log("trade:receipt_ok", { status: first?.status, movementId });
+        console.log("trade:receipt_ok", { status: nextReceipt?.status, movementId });
         return;
       }
 
       if (status === "REJECTED" || status === "FAILED" || status === "ERROR") {
-        setError(first?.message ?? first?.internalReason ?? "Operación rechazada");
+        setError(nextReceipt?.message ?? nextReceipt?.internalReason ?? "Operación rechazada");
         setConfirmOpen(false);
         setEstimate(null);
         return;
       }
 
-      setError("No pude obtener el comprobante. Reintenta.");
+      setError(data?.error ?? data?.message ?? "Operación no aprobada.");
       setConfirmOpen(false);
       setEstimate(null);
     } catch (err: any) {
@@ -387,91 +368,6 @@ function onPickReceipt(file: File | null) {
       setLoading(false);
     }
   }
-
-  async function fetchReceipt(movementId: string) {
-    setReceiptLoading(true);
-    try {
-      const res = await fetch(`/api/treasury/movements/${movementId}/receipt`, { cache: "no-store" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setReceipt(data as TradeReceipt);
-        if (process.env.NODE_ENV !== "production") {
-          const now = Date.now();
-          const start = timingRef.current.start;
-          if (start && data?.status && !timingRef.current.firstReceipt) {
-            timingRef.current.firstReceipt = now;
-            console.log("trade:timing", { step: "first_receipt", ms: now - start, status: data.status });
-          }
-          if (start && String(data?.status ?? "").toUpperCase() === "APPROVED" && !timingRef.current.approved) {
-            timingRef.current.approved = now;
-            console.log("trade:timing", { step: "approved", ms: now - start });
-          }
-          if (start && isReceiptComplete(data) && !timingRef.current.complete) {
-            timingRef.current.complete = now;
-            console.log("trade:timing", { step: "receipt_complete", ms: now - start });
-          }
-        }
-        return data as TradeReceipt;
-      }
-      setReceipt(null);
-      return null;
-    } finally {
-      setReceiptLoading(false);
-    }
-  }
-
-  function isReceiptComplete(next: TradeReceipt | null) {
-    if (!next) return false;
-    return (
-      Boolean(next.status) &&
-      next.grossAmount !== null &&
-      next.feeAmount !== null &&
-      next.netAmount !== null &&
-      next.price !== null &&
-      Boolean(next.qty)
-    );
-  }
-  function isTerminalStatus(next: TradeReceipt | null) {
-    if (!next?.status) return false;
-    const status = String(next.status).toUpperCase();
-    return status === "APPROVED" || status === "REJECTED" || status === "FAILED" || status === "ERROR";
-  }
-
-  function shouldOpenVoucher(next: TradeReceipt | null) {
-    if (!next) return false;
-    const status = String(next.status ?? "").toUpperCase();
-    if (status === "APPROVED") return true;
-    if (status === "PROCESSING") return true;
-    if (status === "PENDING") return true;
-    if (status === "REJECTED" || status === "FAILED" || status === "ERROR") return true;
-    return false;
-  }
-
-  useEffect(() => {
-    if (!receiptOpen) {
-      pollAttemptsRef.current = 0;
-      return;
-    }
-    if (!receipt?.movementId) return;
-    const status = String(receipt?.status ?? "").toUpperCase();
-    if (isTerminalStatus(receipt)) return;
-    if (pollAttemptsRef.current >= 12) return;
-
-    const id = receipt.movementId;
-    const interval = setInterval(async () => {
-      pollAttemptsRef.current += 1;
-      const next = await fetchReceipt(id);
-      if (isTerminalStatus(next)) {
-        clearInterval(interval);
-        return;
-      }
-      if (pollAttemptsRef.current >= 12) {
-        clearInterval(interval);
-      }
-    }, 1500);
-
-    return () => clearInterval(interval);
-  }, [receiptOpen, receipt?.movementId]);
 
   useEffect(() => {
     let alive = true;
@@ -525,17 +421,6 @@ function onPickReceipt(file: File | null) {
     };
   }, [isTradeBuy]);
 
-  async function triggerRetry() {
-    if (!receipt?.movementId) return;
-    setReceiptLoading(true);
-    try {
-      await fetch("/api/treasury/sync-wallet", { method: "POST" });
-    } finally {
-      setReceiptLoading(false);
-    }
-    fetchReceipt(receipt.movementId);
-  }
-
   async function createMovement() {
     setError(null);
     setLoading(true);
@@ -580,16 +465,6 @@ function onPickReceipt(file: File | null) {
 
       // ✅ para que el dashboard no vuelva a BTC por defecto
       localStorage.setItem("activeAsset", assetCode);
-
-      if (isTrade && data?.movementId) {
-        const next = await fetchReceipt(String(data.movementId));
-        if (shouldOpenVoucher(next)) {
-          setReceiptOpen(true);
-        } else {
-          setReceiptOpen(false);
-        }
-        return;
-      }
 
       if (variant === "modal") {
         onClose?.();
