@@ -88,8 +88,9 @@ export async function approveMovementAsSystem(opts: {
   actorUserId?: string | null; // el user que queda como approvedBy
   skipSync?: boolean;
   correlationId?: string;
+  requireSystemWallet?: boolean;
 }) {
-  const { movementId, companyId, actorUserId, skipSync, correlationId } = opts;
+  const { movementId, companyId, actorUserId, skipSync, correlationId, requireSystemWallet } = opts;
   const baseLog = { correlationId, movementId, companyId };
   logEvent("trade:approve_start", baseLog);
   const strictSystemWallet = process.env.STRICT_SYSTEM_WALLET !== "false";
@@ -575,6 +576,22 @@ export async function approveMovementAsSystem(opts: {
         })
       );
 
+      logResult(out);
+      return out;
+    }
+
+    if (requireSystemWallet) {
+      const updated = await prisma.treasuryMovement.update({
+        where: { id: movement.id },
+        data: {
+          status: TreasuryMovementStatus.PENDING,
+          internalReason: InternalMovementReason.INSUFFICIENT_LIQUIDITY,
+          internalState: InternalMovementState.FAILED_TEMPORARY,
+          lastError: "NOT_EXECUTED_INLINE",
+        },
+        select: { id: true, status: true, internalReason: true, internalState: true },
+      });
+      const out = { updated, venue: "system-wallet-required" };
       logResult(out);
       return out;
     }

@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { getOnboardingStatus } from "@/lib/onboardingStatus";
 import { AssetCode, Prisma, TreasuryMovementStatus } from "@prisma/client";
+import { computeTradeFee, getTradeFeePercent } from "@/lib/fees";
 import { supabaseServer } from "@/lib/supabaseServer";
 import twilio from "twilio";
 import { sendDepositSlipWhatsApp } from "@/lib/whatsapp";
@@ -270,7 +271,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Mantener la transacción ultra mínima para evitar timeouts; el procesamiento se hace fuera y es reintetable.
+    // Mantener la transacción ultra mínima para evitar timeouts.
     const movement = await prisma.$transaction(async (tx) =>
       tx.treasuryMovement.create({
         data: {
@@ -300,37 +301,172 @@ export async function POST(req: Request) {
       amount: amount.toString(),
     });
 
-    // Procesamiento asíncrono (no bloquea respuesta HTTP).
-    void (async () => {
-      try {
-        logEvent("trade:approve_attempt", {
-          correlationId,
-          companyId: activeCompanyId,
-          userId: user.id,
-          movementId: movement.id,
-        });
-        await approveMovementAsSystem({
-          movementId: movement.id,
-          companyId: activeCompanyId,
-          actorUserId: user.id,
-          correlationId,
-        });
-      } catch (e: any) {
-        logEvent("trade:approve_error", {
-          correlationId,
-          companyId: activeCompanyId,
-          userId: user.id,
-          movementId: movement.id,
-          error: e?.message ?? "Error ejecutando trade",
-        });
-      }
-    })();
+    logEvent("trade:approve_attempt", {
+      correlationId,
+      companyId: activeCompanyId,
+      userId: user.id,
+      movementId: movement.id,
+    });
+
+    let approved: any;
+    try {
+      approved = await approveMovementAsSystem({
+        movementId: movement.id,
+        companyId: activeCompanyId,
+        actorUserId: user.id,
+        correlationId,
+        skipSync: true,
+        requireSystemWallet: true,
+      });
+    } catch (e: any) {
+      logEvent("trade:approve_error", {
+        correlationId,
+        companyId: activeCompanyId,
+        userId: user.id,
+        movementId: movement.id,
+        error: e?.message ?? "Error ejecutando trade",
+      });
+      return NextResponse.json(
+        { ok: false, movementId: movement.id, error: "No se pudo ejecutar de inmediato. Intenta más tarde." },
+        { status: 409 }
+      );
+    }
+
+    const approvedStatus = (approved as any)?.updated?.status ?? movement.status;
+    if (approvedStatus !== TreasuryMovementStatus.APPROVED) {
+      console.info("TRADE_CONFIRM_RESULT", {
+        movementId: movement.id,
+        path: "system_wallet",
+        status: approvedStatus,
+        isEstimated: true,
+        executedAt: null,
+      });
+      return NextResponse.json(
+        { ok: false, movementId: movement.id, error: "No se pudo ejecutar de inmediato. Intenta más tarde." },
+        { status: 409 }
+      );
+    }
+
+    const approvedMovement = await prisma.treasuryMovement.findFirst({
+      where: { id: movement.id, companyId: activeCompanyId },
+      select: {
+        id: true,
+        type: true,
+        assetCode: true,
+        amount: true,
+        status: true,
+        createdAt: true,
+        executedAt: true,
+        executedPrice: true,
+        executedBaseAmount: true,
+        executedQuoteAmount: true,
+        executedFeeAmount: true,
+        executedFeeCode: true,
+        internalReason: true,
+        externalOrderId: true,
+        externalVenue: true,
+      },
+    });
+
+    if (!approvedMovement) {
+      return NextResponse.json(
+        { ok: false, movementId: movement.id, error: "No se pudo ejecutar de inmediato. Intenta más tarde." },
+        { status: 409 }
+      );
+    }
+
+    const isBuy = approvedMovement.type === "deposit";
+    const baseAmount = new Prisma.Decimal(approvedMovement.executedBaseAmount ?? approvedMovement.amount ?? 0);
+    const price = approvedMovement.executedPrice ? new Prisma.Decimal(approvedMovement.executedPrice) : null;
+    const feePct = getTradeFeePercent(approvedMovement.assetCode);
+    const executedQuote =
+      approvedMovement.executedQuoteAmount != null
+        ? new Prisma.Decimal(approvedMovement.executedQuoteAmount as any)
+        : null;
+    const executedFee =
+      approvedMovement.executedFeeAmount != null
+        ? new Prisma.Decimal(approvedMovement.executedFeeAmount as any)
+        : null;
+
+    let grossPaidClp: Prisma.Decimal | null = null;
+    let feeClp: Prisma.Decimal | null = null;
+    let netClp: Prisma.Decimal | null = null;
+    let grossAmount: Prisma.Decimal | null = null;
+    let feeAmount: Prisma.Decimal | null = null;
+    let netAmount: Prisma.Decimal | null = null;
+
+    if (isBuy && executedQuote && executedFee) {
+      grossPaidClp = executedQuote.plus(executedFee);
+      feeClp = executedFee;
+      netClp = grossPaidClp;
+      grossAmount = grossPaidClp;
+      feeAmount = feeClp;
+      netAmount = netClp;
+    } else {
+      const grossQuote =
+        approvedMovement.executedQuoteAmount != null
+          ? new Prisma.Decimal(approvedMovement.executedQuoteAmount as any)
+          : price
+          ? price.mul(baseAmount)
+          : null;
+
+      const fallbackFeeAmount =
+        approvedMovement.executedFeeAmount != null
+          ? new Prisma.Decimal(approvedMovement.executedFeeAmount as any)
+          : isBuy
+          ? grossQuote
+            ? computeTradeFee(grossQuote, feePct)
+            : null
+          : computeTradeFee(baseAmount, feePct);
+
+      grossAmount = isBuy ? grossQuote : baseAmount;
+      feeAmount = fallbackFeeAmount;
+      netAmount =
+        grossAmount && feeAmount
+          ? isBuy
+            ? grossAmount.plus(feeAmount)
+            : grossAmount.minus(feeAmount)
+          : null;
+    }
+
+    const hasExecuted = Boolean(approvedMovement.executedAt);
+    const isEstimated = approvedMovement.status !== "APPROVED" || !hasExecuted;
+
+    console.info("TRADE_CONFIRM_RESULT", {
+      movementId: approvedMovement.id,
+      path: "system_wallet",
+      status: approvedMovement.status,
+      isEstimated,
+      executedAt: approvedMovement.executedAt,
+    });
 
     return NextResponse.json({
       ok: true,
       traceId: correlationId,
-      movementId: movement.id,
-      status: movement.status,
+      movementId: approvedMovement.id,
+      status: approvedMovement.status,
+      receipt: {
+        ok: true,
+        movementId: approvedMovement.id,
+        side: isBuy ? "buy" : "sell",
+        baseAsset: approvedMovement.assetCode,
+        quoteAsset: "CLP",
+        grossAmount: grossAmount ? grossAmount.toString() : null,
+        feePercent: feePct.toString(),
+        feeAmount: feeAmount ? feeAmount.toString() : null,
+        feeCurrency: isBuy ? "CLP" : approvedMovement.assetCode,
+        netAmount: netAmount ? netAmount.toString() : null,
+        qty: baseAmount.toString(),
+        price: price ? price.toString() : null,
+        status: approvedMovement.status,
+        createdAt: approvedMovement.createdAt,
+        executedAt: approvedMovement.executedAt,
+        isEstimated,
+        message: null,
+        internalReason: approvedMovement.internalReason,
+        externalOrderId: approvedMovement.externalOrderId,
+        externalVenue: approvedMovement.externalVenue,
+      },
     });
   }
 
