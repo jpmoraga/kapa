@@ -44,6 +44,7 @@ export async function budaCreateMarketOrder(params: {
   const encodedBody = base64Body(bodyStr);
   const signature = signMessage("POST", pathUrl, encodedBody, nonce);
 
+  const started = Date.now();
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -55,10 +56,17 @@ export async function budaCreateMarketOrder(params: {
     body: bodyStr,
     cache: "no-store",
   });
+  console.info("BUDA_FETCH", { path: pathUrl, ms: Date.now() - started });
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = json?.error || json?.message || `BUDA_${res.status}`;
+    console.warn("BUDA_ERROR", {
+      path: pathUrl,
+      status: res.status,
+      nonce,
+      isBadNonce: /bad_nonce|not_authorized/i.test(String(msg)),
+    });
     throw new Error(`${msg} | payload=${JSON.stringify(json)}`);
   }
   return json;
@@ -74,6 +82,7 @@ export async function budaGetOrder(orderId: string) {
   const nonce = nonceMicros();
   const signature = signMessage("GET", pathUrl, null, nonce);
 
+  const started = Date.now();
   const res = await fetch(url, {
     method: "GET",
     headers: {
@@ -84,10 +93,17 @@ export async function budaGetOrder(orderId: string) {
     },
     cache: "no-store",
   });
+  console.info("BUDA_FETCH", { path: pathUrl, ms: Date.now() - started });
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = json?.error || json?.message || `BUDA_${res.status}`;
+    console.warn("BUDA_ERROR", {
+      path: pathUrl,
+      status: res.status,
+      nonce,
+      isBadNonce: /bad_nonce|not_authorized/i.test(String(msg)),
+    });
     throw new Error(`${msg} | payload=${JSON.stringify(json)}`);
   }
   return json;
@@ -104,6 +120,7 @@ export async function budaGetBalances() {
   const nonce = nonceMicros();
   const signature = signMessage("GET", pathUrl, null, nonce);
 
+  const started = Date.now();
   const res = await fetch(url, {
     method: "GET",
     headers: {
@@ -114,10 +131,17 @@ export async function budaGetBalances() {
     },
     cache: "no-store",
   });
+  console.info("BUDA_FETCH", { path: pathUrl, ms: Date.now() - started });
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = json?.error || json?.message || `BUDA_${res.status}`;
+    console.warn("BUDA_ERROR", {
+      path: pathUrl,
+      status: res.status,
+      nonce,
+      isBadNonce: /bad_nonce|not_authorized/i.test(String(msg)),
+    });
     throw new Error(`${msg} | payload=${JSON.stringify(json)}`);
   }
 
@@ -159,6 +183,7 @@ export async function budaGetOHLC(params: {
   const nonce = nonceMicros();
   const signature = signMessage("GET", pathUrl, null, nonce);
 
+  const started = Date.now();
   const res = await fetch(url, {
     method: "GET",
     headers: {
@@ -169,10 +194,17 @@ export async function budaGetOHLC(params: {
     },
     cache: "no-store",
   });
+  console.info("BUDA_FETCH", { path: pathUrl, ms: Date.now() - started });
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = json?.error || json?.message || `BUDA_${res.status}`;
+    console.warn("BUDA_ERROR", {
+      path: pathUrl,
+      status: res.status,
+      nonce,
+      isBadNonce: /bad_nonce|not_authorized/i.test(String(msg)),
+    });
     throw new Error(`${msg} | payload=${JSON.stringify(json)}`);
   }
 

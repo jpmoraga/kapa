@@ -69,15 +69,6 @@ export default function DashboardBonito({
 }) {
   const router = useRouter();
 
-  // ✅ HOTFIX producción: refresca data server-side sin F5
-  useEffect(() => {
-    const id = setInterval(() => {
-      router.refresh();
-    }, 10_000); // 10s (cámbialo a 5_000 si quieres)
-
-    return () => clearInterval(id);
-  }, [router]);
-
   const [quote, setQuote] = useState<QuoteCurrency>("CLP");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [btcUnit, setBtcUnit] = useState<"BTC" | "SATS">("BTC");
@@ -102,6 +93,17 @@ export default function DashboardBonito({
     mode: Mode;
     assetCode: AssetCode;
   } | null>(null);
+  const [isTradeBusy, setIsTradeBusy] = useState(false);
+
+  // ✅ HOTFIX producción: refresca data server-side sin F5 (pausa si hay modal o trade activo)
+  useEffect(() => {
+    if (movementModal?.open || isTradeBusy) return;
+    const id = setInterval(() => {
+      router.refresh();
+    }, 10_000); // 10s (cámbialo a 5_000 si quieres)
+
+    return () => clearInterval(id);
+  }, [router, movementModal?.open, isTradeBusy]);
 
   function openMovementModalFromHref(href: string) {
     // Solo interceptamos el flujo de /treasury/new-movement
@@ -664,6 +666,7 @@ useEffect(() => {
                   assetCode={movementModal.assetCode}
                   variant="modal"
                   onClose={() => setMovementModal(null)}
+                  onTradeBusyChange={setIsTradeBusy}
                 />
               </div>
             </div>

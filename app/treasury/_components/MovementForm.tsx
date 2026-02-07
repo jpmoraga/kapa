@@ -81,11 +81,13 @@ export default function MovementForm({
   assetCode = "BTC",
   variant = "page",
   onClose,
+  onTradeBusyChange,
 }: {
   mode: Mode;
   assetCode?: AssetCode;
   variant?: "page" | "modal";
   onClose?: () => void;
+  onTradeBusyChange?: (busy: boolean) => void;
 }) {
   const router = useRouter();
 
@@ -288,7 +290,9 @@ function onPickReceipt(file: File | null) {
     console.log("trade:confirm_clicked", { assetCode, amount, mode });
     setError(null);
     setLoading(true);
+    onTradeBusyChange?.(true);
     timingRef.current = { start: Date.now() };
+    let movementId: string | null = null;
     try {
       const clpToSend = isTradeBuy ? parseClpInput(amount) : null;
       const amountToSend = isTradeBuy ? clpToSend : qtyOverride ?? (isTradeClpInput ? null : amount);
@@ -331,7 +335,7 @@ function onPickReceipt(file: File | null) {
 
       localStorage.setItem("activeAsset", assetCode);
 
-      const movementId = data?.movementId ? String(data.movementId) : null;
+      movementId = data?.movementId ? String(data.movementId) : null;
       if (!movementId) {
         setError("No pude crear la operacion");
         setConfirmOpen(false);
@@ -341,7 +345,18 @@ function onPickReceipt(file: File | null) {
 
       console.log("trade:post_ok", { movementId });
 
-      const first = await fetchReceipt(movementId);
+      let first: TradeReceipt | null = null;
+      try {
+        first = await fetchReceipt(movementId);
+      } catch {
+        setReceipt(null);
+        setReceiptPendingMessage("Buscando comprobante…");
+        setReceiptPendingAction("movements");
+        setReceiptOpen(true);
+        setConfirmOpen(false);
+        setEstimate(null);
+        return;
+      }
       if (process.env.NODE_ENV !== "production") {
         const now = Date.now();
         const start = timingRef.current.start;
@@ -388,11 +403,21 @@ function onPickReceipt(file: File | null) {
       setConfirmOpen(false);
       setEstimate(null);
     } catch (err: any) {
-      setError(err?.message ?? "Error inesperado");
-      setConfirmOpen(false);
-      setEstimate(null);
+      if (movementId) {
+        setReceipt(null);
+        setReceiptPendingMessage("Buscando comprobante…");
+        setReceiptPendingAction("movements");
+        setReceiptOpen(true);
+        setConfirmOpen(false);
+        setEstimate(null);
+      } else {
+        setError(err?.message ?? "Error inesperado");
+        setConfirmOpen(false);
+        setEstimate(null);
+      }
     } finally {
       setLoading(false);
+      onTradeBusyChange?.(false);
     }
   }
 

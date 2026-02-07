@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { AssetCode, Prisma, TreasuryMovementStatus } from "@prisma/client";
 import { getScriptPrisma } from "./_prisma";
-import { syncSystemWalletFromBuda } from "../lib/syncSystemWallet";
+import { syncSystemWalletFromBudaBalances } from "../lib/syncSystemWallet";
 import { budaGetBalances } from "../lib/buda";
 import { getTradeFeePercent, computeTradeFee } from "../lib/fees";
 
@@ -140,7 +140,8 @@ async function main() {
 
     if (execute && systemCompany) {
       try {
-        await prisma.$transaction(async (tx) => syncSystemWalletFromBuda(tx));
+        const balances = await budaGetBalances();
+        await prisma.$transaction(async (tx) => syncSystemWalletFromBudaBalances(tx, balances));
         console.log("system_wallet_sync: ok");
       } catch (e: any) {
         console.warn("system_wallet_sync: error", e?.message ?? e);

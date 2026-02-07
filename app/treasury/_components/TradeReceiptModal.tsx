@@ -85,6 +85,7 @@ export default function TradeReceiptModal({
   const status = String(receipt?.status ?? "").toUpperCase();
   const isProcessing = status === "PROCESSING";
   const isRejected = status === "REJECTED" || status === "FAILED" || status === "ERROR";
+  const showMovementsAction = pendingAction === "movements";
 
   const title = useMemo(() => {
     if (!receipt) return "Detalle de operación";
@@ -126,7 +127,15 @@ export default function TradeReceiptModal({
               <p className="mt-1 text-sm text-neutral-400">{message}</p>
             </div>
           </div>
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-2">
+            {showMovementsAction ? (
+              <button
+                onClick={goMovements}
+                className="k21-btn-secondary"
+              >
+                Ver en Movimientos
+              </button>
+            ) : null}
             <button
               onClick={onClose}
               className="k21-btn-secondary"

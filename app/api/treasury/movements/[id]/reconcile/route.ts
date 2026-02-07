@@ -63,8 +63,64 @@ export async function POST(
   const { id: movementId } = await context.params;
 
   try {
+    const m = await prisma.treasuryMovement.findFirst({
+      where: { id: movementId, companyId: activeCompanyId },
+      select: {
+        id: true,
+        status: true,
+        type: true,
+        assetCode: true,
+        amount: true,
+        note: true,
+        externalOrderId: true,
+        executedPrice: true,
+        executedQuoteCode: true,
+        executedSource: true,
+        executedAt: true,
+        executedBaseAmount: true,
+        executedQuoteAmount: true,
+        executedFeeAmount: true,
+      },
+    });
+
+    if (!m) throw new Error("NOT_FOUND");
+    if (m.status === TreasuryMovementStatus.APPROVED) {
+      return NextResponse.json({ ok: true, already: true });
+    }
+    if (m.status !== TreasuryMovementStatus.PROCESSING) throw new Error("NOT_PROCESSING");
+
+    // reconcile solo aplica a trades en Buda (BTC y USD/USDT)
+    if (m.assetCode !== AssetCode.BTC && m.assetCode !== AssetCode.USD) {
+      throw new Error("NOT_TRADE_ASSET");
+    }
+
+    const orderId = m.externalOrderId ?? extractOrderIdFromNote(m.note);
+    if (!orderId) throw new Error("MISSING_ORDER_ID");
+
+    const payload = await budaGetOrder(orderId);
+    const order = payload?.order ?? payload;
+
+    // ✅ Sin state: usamos montos realmente transados
+    const tradedBase = toNumberMaybe(order?.traded_amount);       // BTC o USDT (base)
+    const totalExchanged = toNumberMaybe(order?.total_exchanged); // CLP (quote)
+
+    // “Aún no se ejecuta” (puede estar abierta o parcial 0)
+    if (!tradedBase || !totalExchanged || tradedBase <= 0 || totalExchanged <= 0) {
+      return NextResponse.json({ ok: true, done: false, orderId, tradedBase, totalExchanged });
+    }
+
+    const tradedBaseDec = new Prisma.Decimal(tradedBase);
+    const clpDec = new Prisma.Decimal(totalExchanged);
+
+    // precio ejecutado (CLP por BTC/USDT)
+    const executedPrice = clpDec.div(tradedBaseDec);
+    const feePct = getTradeFeePercent(m.assetCode);
+    const feeOnQuote = computeTradeFee(clpDec, feePct);
+    const feeOnBase = computeTradeFee(tradedBaseDec, feePct);
+
+    const txStarted = Date.now();
     const out = await prisma.$transaction(async (tx) => {
-      const m = await tx.treasuryMovement.findFirst({
+      const fresh = await tx.treasuryMovement.findFirst({
         where: { id: movementId, companyId: activeCompanyId },
         select: {
           id: true,
@@ -84,46 +140,17 @@ export async function POST(
         },
       });
 
-      if (!m) throw new Error("NOT_FOUND");
-      if (m.status === TreasuryMovementStatus.APPROVED) {
+      if (!fresh) throw new Error("NOT_FOUND");
+      if (fresh.status === TreasuryMovementStatus.APPROVED) {
         return { ok: true, already: true };
       }
-      if (m.status !== TreasuryMovementStatus.PROCESSING) throw new Error("NOT_PROCESSING");
-
-      // reconcile solo aplica a trades en Buda (BTC y USD/USDT)
-      if (m.assetCode !== AssetCode.BTC && m.assetCode !== AssetCode.USD) {
-        throw new Error("NOT_TRADE_ASSET");
-      }
-
-      const orderId = m.externalOrderId ?? extractOrderIdFromNote(m.note);
-      if (!orderId) throw new Error("MISSING_ORDER_ID");
-
-      const payload = await budaGetOrder(orderId);
-      const order = payload?.order ?? payload;
-
-      // ✅ Sin state: usamos montos realmente transados
-      const tradedBase = toNumberMaybe(order?.traded_amount);       // BTC o USDT (base)
-      const totalExchanged = toNumberMaybe(order?.total_exchanged); // CLP (quote)
-
-      // “Aún no se ejecuta” (puede estar abierta o parcial 0)
-      if (!tradedBase || !totalExchanged || tradedBase <= 0 || totalExchanged <= 0) {
-        return { ok: true, done: false, orderId, tradedBase, totalExchanged };
-      }
-
-      const tradedBaseDec = new Prisma.Decimal(tradedBase);
-      const clpDec = new Prisma.Decimal(totalExchanged);
-
-      // precio ejecutado (CLP por BTC/USDT)
-      const executedPrice = clpDec.div(tradedBaseDec);
-      const feePct = getTradeFeePercent(m.assetCode);
-      const feeOnQuote = computeTradeFee(clpDec, feePct);
-      const feeOnBase = computeTradeFee(tradedBaseDec, feePct);
+      if (fresh.status !== TreasuryMovementStatus.PROCESSING) throw new Error("NOT_PROCESSING");
 
       // upsert cuentas
       const accAsset = await tx.treasuryAccount.upsert({
-        where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: m.assetCode } },
+        where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: fresh.assetCode } },
         update: {},
-        create: { companyId: activeCompanyId, assetCode: m.assetCode, balance: new Prisma.Decimal(0) },
+        create: { companyId: activeCompanyId, assetCode: fresh.assetCode, balance: new Prisma.Decimal(0) },
         select: { balance: true },
       });
 
@@ -138,15 +165,15 @@ export async function POST(
       const currentClp = new Prisma.Decimal(accClp.balance);
 
       // ✅ reglas contables según tipo
-      const isBuy = m.type === "deposit";
-      const isSell = m.type === "withdraw";
+      const isBuy = fresh.type === "deposit";
+      const isSell = fresh.type === "withdraw";
       if (!isBuy && !isSell) throw new Error("BAD_TYPE");
 
-      const reservedBase = new Prisma.Decimal(m.executedBaseAmount ?? 0);
-      const reservedQuote = new Prisma.Decimal(m.executedQuoteAmount ?? 0);
+      const reservedBase = new Prisma.Decimal(fresh.executedBaseAmount ?? 0);
+      const reservedQuote = new Prisma.Decimal(fresh.executedQuoteAmount ?? 0);
       const reservedFee =
-        m.executedFeeAmount !== null && m.executedFeeAmount !== undefined
-          ? new Prisma.Decimal(m.executedFeeAmount as any)
+        fresh.executedFeeAmount !== null && fresh.executedFeeAmount !== undefined
+          ? new Prisma.Decimal(fresh.executedFeeAmount as any)
           : isBuy
           ? computeTradeFee(reservedQuote, feePct)
           : computeTradeFee(reservedBase, feePct);
@@ -165,7 +192,7 @@ export async function POST(
           data: { balance: nextClp },
         });
         await tx.treasuryAccount.update({
-          where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: m.assetCode } },
+          where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: fresh.assetCode } },
           data: { balance: nextAsset },
         });
       } else {
@@ -174,7 +201,7 @@ export async function POST(
         if (nextAsset.lt(0)) throw new Error("INSUFFICIENT_FUNDS");
 
         await tx.treasuryAccount.update({
-          where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: m.assetCode } },
+          where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: fresh.assetCode } },
           data: { balance: nextAsset },
         });
         await tx.treasuryAccount.update({
@@ -185,17 +212,17 @@ export async function POST(
 
       // marcar movimiento aprobado + precio congelado real
       const updated = await tx.treasuryMovement.update({
-        where: { id: m.id },
+        where: { id: fresh.id },
         data: {
           status: TreasuryMovementStatus.APPROVED,
           executedPrice,
           executedQuoteCode: AssetCode.CLP,
-          executedSource: m.assetCode === AssetCode.BTC ? "buda-btc" : "buda-usdt",
+          executedSource: fresh.assetCode === AssetCode.BTC ? "buda-btc" : "buda-usdt",
           executedAt: new Date(),
           executedBaseAmount: tradedBaseDec,
           executedQuoteAmount: clpDec,
           executedFeeAmount: isBuy ? feeOnQuote : feeOnBase,
-          executedFeeCode: isBuy ? AssetCode.CLP : m.assetCode,
+          executedFeeCode: isBuy ? AssetCode.CLP : fresh.assetCode,
           approvedAt: new Date(),
           approvedByUserId: user.id,
         },
@@ -204,6 +231,7 @@ export async function POST(
 
       return { ok: true, done: true, updated, orderId, tradedBase, totalExchanged };
     });
+    console.info("PRISMA_TX", { op: "reconcile", ms: Date.now() - txStarted });
 
     return NextResponse.json(out);
   } catch (e: any) {

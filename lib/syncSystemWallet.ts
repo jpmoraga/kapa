@@ -9,12 +9,14 @@ import { prisma } from "@/lib/prisma";
  *
  * Esto mantiene el "remanente" como caja de la empresa.
  */
-export async function syncSystemWalletFromBuda(tx: Prisma.TransactionClient) {
+export async function syncSystemWalletFromBudaBalances(
+  tx: Prisma.TransactionClient,
+  balances: { byCurrency: Record<string, string>; raw?: any }
+) {
   // 0) asegurar company + cuentas
   const { companyId: systemCompanyId } = await ensureSystemWallet(tx);
 
-  // 1) leer saldos en Buda
-  const { byCurrency, raw } = await budaGetBalances();
+  const { byCurrency, raw } = balances;
 
   // En Buda "USD" en realidad suele ser "USDT".
   const budaClp = new Prisma.Decimal(byCurrency["CLP"] ?? "0");
@@ -71,8 +73,18 @@ export async function syncSystemWalletFromBuda(tx: Prisma.TransactionClient) {
 }
 
 export async function syncSystemWalletAndRetry() {
-  const snapshot = await prisma.$transaction(async (tx) => syncSystemWalletFromBuda(tx));
+  const snapshot = await syncSystemWalletFromBuda();
   await retryPendingLiquidityTrades();
+  return snapshot;
+}
+
+export async function syncSystemWalletFromBuda() {
+  const balances = await budaGetBalances();
+  const started = Date.now();
+  const snapshot = await prisma.$transaction(async (tx) =>
+    syncSystemWalletFromBudaBalances(tx, balances)
+  );
+  console.info("PRISMA_TX", { op: "sync_system_wallet", ms: Date.now() - started });
   return snapshot;
 }
 

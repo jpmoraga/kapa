@@ -239,83 +239,35 @@ export async function approveMovementAsSystem(opts: {
 
     if (!isTradeAsset(movement.assetCode)) throw new Error("UNSUPPORTED_ASSET");
 
-    if (!skipSync) {
-      if (!hasBudaKeys && strictSystemWallet) {
-        const updated = await timed("db.movement.missing_buda_keys", () =>
-          prisma.treasuryMovement.update({
-            where: { id: movement.id },
-            data: {
-              status: TreasuryMovementStatus.PENDING,
-              internalReason: InternalMovementReason.BUDA_API_ERROR,
-              internalState: InternalMovementState.FAILED_TEMPORARY,
-              lastError: "MISSING_BUDA_KEYS",
-            },
-            select: { id: true, status: true, internalReason: true, internalState: true },
-          })
-        );
-        const out = { updated, venue: "missing-buda-keys" };
-        logResult(out);
-        return out;
+    let execPath: "system_wallet" | "buda" | null = null;
+    let execReason: string | null = null;
+    let budaCalls = 0;
+    let execPathLogged = false;
+    const logExecPath = () => {
+      if (execPathLogged || !execPath) return;
+      execPathLogged = true;
+      logEvent("TRADE_EXEC_PATH", {
+        ...baseLog,
+        side: movement.type,
+        asset: movement.assetCode,
+        path: execPath,
+        budaCalls,
+        reason: execReason,
+      });
+    };
+    const bumpBudaCall = (kind: string) => {
+      if (execPath === "system_wallet") {
+        logEvent("BUDA_CALL_BLOCKED", {
+          ...baseLog,
+          side: movement.type,
+          asset: movement.assetCode,
+          kind,
+          reason: "system_wallet_path",
+        });
+        throw new Error("BUDA_CALL_FORBIDDEN_ON_SYSTEM_WALLET_PATH");
       }
-
-      if (hasBudaKeys) {
-        const balances = await timed("ext.buda.balances", () => budaGetBalances());
-        await timed("tx.sync_system_wallet", () =>
-          prisma.$transaction(async (tx) => {
-            const { companyId: systemCompanyId } = await ensureSystemWallet(tx);
-            const budaClp = new Prisma.Decimal(balances.byCurrency?.CLP ?? "0");
-            const budaBtc = new Prisma.Decimal(balances.byCurrency?.BTC ?? "0");
-            const budaUsdt = new Prisma.Decimal(
-              balances.byCurrency?.USDT ?? balances.byCurrency?.USD ?? "0"
-            );
-
-            const sums = await tx.treasuryAccount.groupBy({
-              by: ["assetCode"],
-              where: {
-                companyId: { not: systemCompanyId },
-                assetCode: { in: [AssetCode.CLP, AssetCode.BTC, AssetCode.USD] },
-              },
-              _sum: { balance: true },
-            });
-
-            const sumClient = (a: AssetCode) => {
-              const row = sums.find((x) => x.assetCode === a);
-              return new Prisma.Decimal((row?._sum?.balance as any) ?? 0);
-            };
-
-            const clientsClp = sumClient(AssetCode.CLP);
-            const clientsBtc = sumClient(AssetCode.BTC);
-            const clientsUsd = sumClient(AssetCode.USD);
-
-            const sysClp = Prisma.Decimal.max(
-              budaClp.minus(clientsClp),
-              new Prisma.Decimal(0)
-            );
-            const sysBtc = Prisma.Decimal.max(
-              budaBtc.minus(clientsBtc),
-              new Prisma.Decimal(0)
-            );
-            const sysUsd = Prisma.Decimal.max(
-              budaUsdt.minus(clientsUsd),
-              new Prisma.Decimal(0)
-            );
-
-            await tx.treasuryAccount.update({
-              where: { companyId_assetCode: { companyId: systemCompanyId, assetCode: AssetCode.CLP } },
-              data: { balance: sysClp },
-            });
-            await tx.treasuryAccount.update({
-              where: { companyId_assetCode: { companyId: systemCompanyId, assetCode: AssetCode.BTC } },
-              data: { balance: sysBtc },
-            });
-            await tx.treasuryAccount.update({
-              where: { companyId_assetCode: { companyId: systemCompanyId, assetCode: AssetCode.USD } },
-              data: { balance: sysUsd },
-            });
-          })
-        );
-      }
-    }
+      budaCalls += 1;
+    };
 
     const presetQuote =
       movement.executedQuoteAmount != null
@@ -364,6 +316,9 @@ export async function approveMovementAsSystem(opts: {
           })
         );
         const out = { updated, venue: "missing-price" };
+        execPath = "buda";
+        execReason = "price_missing";
+        logExecPath();
         logResult(out);
         return out;
       }
@@ -473,6 +428,19 @@ export async function approveMovementAsSystem(opts: {
       baseAmountForExecution: baseAmountForExecution.toString(),
     });
 
+    const canFillFromWallet =
+      (isBuy && sysAsset.gte(baseAmountForExecution)) || (isSell && sysClp.gte(estClp));
+
+    execPath = canFillFromWallet ? "system_wallet" : "buda";
+    execReason = canFillFromWallet ? "system_wallet_sufficient" : "system_wallet_insufficient";
+
+    logEvent("trade:execution_decision", {
+      ...baseLog,
+      canFillFromWallet,
+      side: movement.type,
+      assetCode: movement.assetCode,
+    });
+
     if (isBuy && curClp.lt(totalBuyClp)) {
       const updated = await prisma.treasuryMovement.update({
         where: { id: movement.id },
@@ -485,6 +453,8 @@ export async function approveMovementAsSystem(opts: {
         select: { id: true, status: true, internalReason: true, internalState: true },
       });
       const out = { updated, venue: "insufficient-clp" };
+      execReason = execReason ?? "insufficient_clp";
+      logExecPath();
       logResult(out);
       return out;
     }
@@ -500,19 +470,11 @@ export async function approveMovementAsSystem(opts: {
         select: { id: true, status: true, internalReason: true, internalState: true },
       });
       const out = { updated, venue: "insufficient-funds" };
+      execReason = execReason ?? "insufficient_funds";
+      logExecPath();
       logResult(out);
       return out;
     }
-
-    const canFillFromWallet =
-      (isBuy && sysAsset.gte(baseAmountForExecution)) || (isSell && sysClp.gte(estClp));
-
-    logEvent("trade:execution_decision", {
-      ...baseLog,
-      canFillFromWallet,
-      side: movement.type,
-      assetCode: movement.assetCode,
-    });
 
     if (canFillFromWallet) {
       const out = await timed("tx.system_wallet_fill", () =>
@@ -616,6 +578,7 @@ export async function approveMovementAsSystem(opts: {
         })
       );
 
+      logExecPath();
       logResult(out);
       return out;
     }
@@ -632,8 +595,69 @@ export async function approveMovementAsSystem(opts: {
         select: { id: true, status: true, internalReason: true, internalState: true },
       });
       const out = { updated, venue: "missing-buda-keys" };
+      execReason = "missing_buda_keys";
+      logExecPath();
       logResult(out);
       return out;
+    }
+
+    if (!skipSync && hasBudaKeys) {
+      bumpBudaCall("balances");
+      const balances = await timed("ext.buda.balances", () => budaGetBalances());
+      await timed("tx.sync_system_wallet", () =>
+        prisma.$transaction(async (tx) => {
+          const { companyId: systemCompanyId } = await ensureSystemWallet(tx);
+          const budaClp = new Prisma.Decimal(balances.byCurrency?.CLP ?? "0");
+          const budaBtc = new Prisma.Decimal(balances.byCurrency?.BTC ?? "0");
+          const budaUsdt = new Prisma.Decimal(
+            balances.byCurrency?.USDT ?? balances.byCurrency?.USD ?? "0"
+          );
+
+          const sums = await tx.treasuryAccount.groupBy({
+            by: ["assetCode"],
+            where: {
+              companyId: { not: systemCompanyId },
+              assetCode: { in: [AssetCode.CLP, AssetCode.BTC, AssetCode.USD] },
+            },
+            _sum: { balance: true },
+          });
+
+          const sumClient = (a: AssetCode) => {
+            const row = sums.find((x) => x.assetCode === a);
+            return new Prisma.Decimal((row?._sum?.balance as any) ?? 0);
+          };
+
+          const clientsClp = sumClient(AssetCode.CLP);
+          const clientsBtc = sumClient(AssetCode.BTC);
+          const clientsUsd = sumClient(AssetCode.USD);
+
+          const sysClp = Prisma.Decimal.max(
+            budaClp.minus(clientsClp),
+            new Prisma.Decimal(0)
+          );
+          const sysBtc = Prisma.Decimal.max(
+            budaBtc.minus(clientsBtc),
+            new Prisma.Decimal(0)
+          );
+          const sysUsd = Prisma.Decimal.max(
+            budaUsdt.minus(clientsUsd),
+            new Prisma.Decimal(0)
+          );
+
+          await tx.treasuryAccount.update({
+            where: { companyId_assetCode: { companyId: systemCompanyId, assetCode: AssetCode.CLP } },
+            data: { balance: sysClp },
+          });
+          await tx.treasuryAccount.update({
+            where: { companyId_assetCode: { companyId: systemCompanyId, assetCode: AssetCode.BTC } },
+            data: { balance: sysBtc },
+          });
+          await tx.treasuryAccount.update({
+            where: { companyId_assetCode: { companyId: systemCompanyId, assetCode: AssetCode.USD } },
+            data: { balance: sysUsd },
+          });
+        })
+      );
     }
 
     const MIN_BTC = new Prisma.Decimal(process.env.BUDA_MIN_BTC ?? "0.001");
@@ -655,6 +679,8 @@ export async function approveMovementAsSystem(opts: {
         select: { id: true, status: true, internalReason: true, internalState: true },
       });
       const out = { updated, venue: "below-min" };
+      execReason = "below_buda_min";
+      logExecPath();
       logResult(out);
       return out;
     }
@@ -670,6 +696,7 @@ export async function approveMovementAsSystem(opts: {
     if (!budaOrderId) {
       let resp: any;
       try {
+        bumpBudaCall("order");
         resp = await budaCreateMarketOrder({
           marketId,
           type: isBuy ? "Bid" : "Ask",
@@ -693,6 +720,8 @@ export async function approveMovementAsSystem(opts: {
           select: { id: true, status: true, internalReason: true, internalState: true },
         });
         const out = { updated, venue: "buda-error" };
+        execReason = isLiquidity ? "buda_insufficient_liquidity" : "buda_error";
+        logExecPath();
         logResult(out);
         return out;
       }
@@ -716,6 +745,8 @@ export async function approveMovementAsSystem(opts: {
         select: { id: true, status: true, internalReason: true, internalState: true },
       });
       const out = { updated, venue: "buda-error" };
+      execReason = "missing_buda_order_id";
+      logExecPath();
       logResult(out);
       return out;
     }
@@ -790,6 +821,7 @@ export async function approveMovementAsSystem(opts: {
     );
 
     logResult(out);
+    logExecPath();
     return out;
   } catch (e: any) {
     const lastError = String(e?.message ?? "UNKNOWN_ERROR");
@@ -803,6 +835,7 @@ export async function approveMovementAsSystem(opts: {
         lastError,
       },
     });
+    logExecPath();
     throw e;
   }
 }

@@ -11,7 +11,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { AssetCode, Prisma, TreasuryMovementStatus } from "@prisma/client";
 import { getScriptPrisma } from "./_prisma";
-import { syncSystemWalletFromBuda } from "../lib/syncSystemWallet";
+import { syncSystemWalletFromBudaBalances } from "../lib/syncSystemWallet";
 import { budaGetBalances } from "../lib/buda";
 import { getTradeFeePercent, computeTradeFee } from "../lib/fees";
 
@@ -175,7 +175,8 @@ async function recomputeBalances(prisma: ReturnType<typeof getScriptPrisma>, com
   let systemWalletReport: any = null;
   if (doExecute && systemCompany) {
     try {
-      await prisma.$transaction(async (tx) => syncSystemWalletFromBuda(tx));
+      const balances = await budaGetBalances();
+      await prisma.$transaction(async (tx) => syncSystemWalletFromBudaBalances(tx, balances));
       systemWalletUpdated = true;
     } catch (e: any) {
       systemWalletError = String(e?.message ?? "SYNC_ERROR");
