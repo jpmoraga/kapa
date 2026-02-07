@@ -311,6 +311,9 @@ export async function approveMovementAsSystem(opts: {
         ? new Prisma.Decimal(movement.executedPrice as any)
         : null;
     const presetSource = movement.executedSource ?? null;
+    const isManualSource = String(presetSource ?? "")
+      .toLowerCase()
+      .startsWith("manual:");
     const presetQuoteCode = movement.executedQuoteCode ?? AssetCode.CLP;
 
     let executedPrice: Prisma.Decimal | null = null;
@@ -320,12 +323,12 @@ export async function approveMovementAsSystem(opts: {
     const executedAt = new Date();
 
     let priceSourceUsed: "preset_quote" | "preset_price" | "snapshot" = "snapshot";
-    if (presetQuote && presetQuote.gt(0)) {
+    if (!isManualSource && presetQuote && presetQuote.gt(0)) {
       estClp = presetQuote;
       executedPrice = presetPrice && presetPrice.gt(0) ? presetPrice : presetQuote.div(amount);
       executedSource = presetSource ?? "requested-quote";
       priceSourceUsed = "preset_quote";
-    } else if (presetPrice && presetPrice.gt(0)) {
+    } else if (!isManualSource && presetPrice && presetPrice.gt(0)) {
       executedPrice = presetPrice;
       estClp = amount.mul(executedPrice);
       executedSource = presetSource ?? "requested-price";
@@ -359,6 +362,7 @@ export async function approveMovementAsSystem(opts: {
     console.log("TRADE_PRICE_SOURCE", {
       movementId: movement.id,
       used: priceSourceUsed,
+      ignoredPresetSource: isManualSource ? presetSource : null,
       executedPrice: executedPrice?.toString(),
       estClp: estClp?.toString(),
       source: executedSource,
