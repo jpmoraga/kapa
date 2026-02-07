@@ -445,6 +445,16 @@ function onPickReceipt(file: File | null) {
     return status === "APPROVED" || status === "REJECTED" || status === "FAILED" || status === "ERROR";
   }
 
+  function shouldOpenVoucher(next: TradeReceipt | null) {
+    if (!next) return false;
+    const status = String(next.status ?? "").toUpperCase();
+    if (status === "APPROVED") return true;
+    if (status === "PROCESSING") return true;
+    if (status === "PENDING") return true;
+    if (status === "REJECTED" || status === "FAILED" || status === "ERROR") return true;
+    return false;
+  }
+
   useEffect(() => {
     if (!receiptOpen) {
       pollAttemptsRef.current = 0;
