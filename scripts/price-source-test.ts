@@ -4,6 +4,7 @@ import { PrismaClient, AssetCode, Prisma, TreasuryMovementStatus } from "@prisma
 import { approveMovementAsSystem } from "../lib/treasury/approveMovement";
 import { ensureSystemWallet } from "../lib/systemWallet";
 import { computeTradeFee, getTradeFeePercent } from "../lib/fees";
+import { GET as getCurrentPrice } from "../app/api/prices/current/route";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: true });
@@ -15,25 +16,6 @@ function assertTrue(label: string, ok: boolean, detail?: string) {
   } else {
     console.log(`PASS ${label}${detail ? ` | ${detail}` : ""}`);
   }
-}
-
-async function getBestSnapshot(prisma: PrismaClient, assetCode: AssetCode) {
-  const manual = await prisma.priceSnapshot.findFirst({
-    where: {
-      assetCode,
-      quoteCode: AssetCode.CLP,
-      source: { contains: "manual", mode: "insensitive" },
-    },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, price: true, source: true, createdAt: true },
-  });
-  if (manual) return manual;
-
-  return prisma.priceSnapshot.findFirst({
-    where: { assetCode, quoteCode: AssetCode.CLP },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, price: true, source: true, createdAt: true },
-  });
 }
 
 function captureTradePriceSource<T>(fn: () => Promise<T>) {
@@ -140,23 +122,28 @@ async function main() {
       create: { companyId: company.id, assetCode: AssetCode.BTC, balance: new Prisma.Decimal("5") },
     });
 
-    // Ensure snapshot exists
-    let snapshot = await getBestSnapshot(prisma, AssetCode.BTC);
-    if (!snapshot) {
-      const createdSnapshot = await prisma.priceSnapshot.create({
-        data: {
-          assetCode: AssetCode.BTC,
-          quoteCode: AssetCode.CLP,
-          price: new Prisma.Decimal("60000000"),
-          source: "buda:price_source_test",
-        },
-        select: { id: true, price: true, source: true, createdAt: true },
-      });
-      created.priceSnapshotIds.push(createdSnapshot.id);
-      snapshot = createdSnapshot;
-    }
+    const marketSnapshot = await prisma.priceSnapshot.create({
+      data: {
+        assetCode: AssetCode.BTC,
+        quoteCode: AssetCode.CLP,
+        price: new Prisma.Decimal("60000000"),
+        source: "buda:price_source_test",
+      },
+      select: { id: true, price: true },
+    });
+    created.priceSnapshotIds.push(marketSnapshot.id);
+    const manualSnapshot = await prisma.priceSnapshot.create({
+      data: {
+        assetCode: AssetCode.BTC,
+        quoteCode: AssetCode.CLP,
+        price: new Prisma.Decimal("50000000"),
+        source: "manual:smoke_sell_btc",
+      },
+      select: { id: true, price: true },
+    });
+    created.priceSnapshotIds.push(manualSnapshot.id);
 
-    const snapshotPrice = new Prisma.Decimal(snapshot.price as any);
+    const snapshotPrice = new Prisma.Decimal(marketSnapshot.price as any);
 
     // Case A: manual preset ignored -> snapshot
     {
@@ -271,8 +258,8 @@ async function main() {
 
     // Case C: preset_quote allowed (non-manual)
     {
-      const amount = new Prisma.Decimal("0.0001");
-      const executedQuoteAmount = new Prisma.Decimal("12345");
+      const amount = new Prisma.Decimal("0.01");
+      const executedQuoteAmount = new Prisma.Decimal("600000");
       const feePct = getTradeFeePercent(AssetCode.BTC);
       const fee = computeTradeFee(executedQuoteAmount, feePct);
       const expectedGrossBuyClp = executedQuoteAmount.minus(fee);
@@ -324,6 +311,35 @@ async function main() {
       );
       console.log(
         `CASE C: ${used === "preset_quote" ? "PASS" : "FAIL"} (used=${used}, quote=${executedQuoteAmount.toString()})`
+      );
+    }
+
+    // Case D: prices/current ignores manual by default, allows manual when mode=manual
+    {
+      const reqDefault = new Request("http://localhost/api/prices/current?pair=BTC_CLP");
+      const resDefault = await getCurrentPrice(reqDefault);
+      const dataDefault = await resDefault.json().catch(() => ({}));
+      const priceDefault = dataDefault?.price ? new Prisma.Decimal(dataDefault.price) : null;
+      assertTrue(
+        "CASE D default uses market snapshot",
+        Boolean(priceDefault && priceDefault.eq(snapshotPrice)),
+        `price=${priceDefault?.toString() ?? "null"}`
+      );
+      console.log(
+        `CASE D: ${priceDefault && priceDefault.eq(snapshotPrice) ? "PASS" : "FAIL"} (used=market, price=${priceDefault?.toString() ?? "null"})`
+      );
+
+      const reqManual = new Request("http://localhost/api/prices/current?pair=BTC_CLP&mode=manual");
+      const resManual = await getCurrentPrice(reqManual);
+      const dataManual = await resManual.json().catch(() => ({}));
+      const manualPrice = dataManual?.price ? new Prisma.Decimal(dataManual.price) : null;
+      assertTrue(
+        "CASE D manual mode uses manual snapshot",
+        Boolean(manualPrice && manualPrice.eq(new Prisma.Decimal("50000000"))),
+        `price=${manualPrice?.toString() ?? "null"}`
+      );
+      console.log(
+        `CASE D: ${manualPrice && manualPrice.eq(new Prisma.Decimal("50000000")) ? "PASS" : "FAIL"} (used=manual, price=${manualPrice?.toString() ?? "null"})`
       );
     }
   } finally {

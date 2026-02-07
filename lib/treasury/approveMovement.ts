@@ -14,27 +14,42 @@ import { computeTradeFee, getTradeFeePercent } from "@/lib/fees";
 
 type TimedFn = <T>(step: string, fn: () => Promise<T>) => Promise<T>;
 
+function isManualSource(source: string | null | undefined) {
+  return String(source ?? "").toLowerCase().startsWith("manual:");
+}
+
 async function getBestPriceSnapshot(
   client: Prisma.TransactionClient | PrismaClient,
   assetCode: AssetCode,
   quoteCode: AssetCode,
-  timed?: TimedFn
+  timed?: TimedFn,
+  opts?: { allowManual?: boolean }
 ) {
   const run = timed ?? (async <T,>(_step: string, fn: () => Promise<T>) => fn());
 
-  const manual = await run("db.priceSnapshot.findManual", () =>
-    client.priceSnapshot.findFirst({
-      where: { assetCode, quoteCode, source: { contains: "manual", mode: "insensitive" } },
-      orderBy: { createdAt: "desc" },
-      select: { price: true, source: true },
-    })
-  );
-  if (manual) return manual;
+  if (opts?.allowManual) {
+    const manual = await run("db.priceSnapshot.findManual", () =>
+      client.priceSnapshot.findFirst({
+        where: {
+          assetCode,
+          quoteCode,
+          source: { startsWith: "manual:", mode: "insensitive" },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { price: true, source: true },
+      })
+    );
+    if (manual) return manual;
+  }
 
   return (
     (await run("db.priceSnapshot.findLatest", () =>
       client.priceSnapshot.findFirst({
-        where: { assetCode, quoteCode },
+        where: {
+          assetCode,
+          quoteCode,
+          NOT: { source: { startsWith: "manual:", mode: "insensitive" } },
+        },
         orderBy: { createdAt: "desc" },
         select: { price: true, source: true },
       })
@@ -311,9 +326,7 @@ export async function approveMovementAsSystem(opts: {
         ? new Prisma.Decimal(movement.executedPrice as any)
         : null;
     const presetSource = movement.executedSource ?? null;
-    const isManualSource = String(presetSource ?? "")
-      .toLowerCase()
-      .startsWith("manual:");
+    const isManualPresetSource = isManualSource(presetSource);
     const presetQuoteCode = movement.executedQuoteCode ?? AssetCode.CLP;
 
     let executedPrice: Prisma.Decimal | null = null;
@@ -323,18 +336,20 @@ export async function approveMovementAsSystem(opts: {
     const executedAt = new Date();
 
     let priceSourceUsed: "preset_quote" | "preset_price" | "snapshot" = "snapshot";
-    if (!isManualSource && presetQuote && presetQuote.gt(0)) {
+    if (!isManualPresetSource && presetQuote && presetQuote.gt(0)) {
       estClp = presetQuote;
       executedPrice = presetPrice && presetPrice.gt(0) ? presetPrice : presetQuote.div(amount);
       executedSource = presetSource ?? "requested-quote";
       priceSourceUsed = "preset_quote";
-    } else if (!isManualSource && presetPrice && presetPrice.gt(0)) {
+    } else if (!isManualPresetSource && presetPrice && presetPrice.gt(0)) {
       executedPrice = presetPrice;
       estClp = amount.mul(executedPrice);
       executedSource = presetSource ?? "requested-price";
       priceSourceUsed = "preset_price";
     } else {
-      const snap = await getBestPriceSnapshot(prisma, movement.assetCode, AssetCode.CLP, timed);
+      const snap = await getBestPriceSnapshot(prisma, movement.assetCode, AssetCode.CLP, timed, {
+        allowManual: false,
+      });
       if (!snap?.price) {
         const updated = await timed("db.movement.update.price_missing", () =>
           prisma.treasuryMovement.update({
@@ -362,7 +377,7 @@ export async function approveMovementAsSystem(opts: {
     console.log("TRADE_PRICE_SOURCE", {
       movementId: movement.id,
       used: priceSourceUsed,
-      ignoredPresetSource: isManualSource ? presetSource : null,
+      ignoredPresetSource: isManualPresetSource ? presetSource : null,
       executedPrice: executedPrice?.toString(),
       estClp: estClp?.toString(),
       source: executedSource,

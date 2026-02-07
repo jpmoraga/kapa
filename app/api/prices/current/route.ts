@@ -38,8 +38,7 @@ function pairMeta(pair: Pair) {
 
 function isManualSource(src: string | null | undefined) {
   const s = String(src ?? "").toLowerCase();
-  // acepta "manual", "manual-test", "manual-xxx"
-  return s.startsWith("manual");
+  return s.startsWith("manual:");
 }
 
 function ageSecondsOf(d: Date) {
@@ -66,6 +65,8 @@ async function fetchBudaPrice(marketId: string): Promise<string> {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const pair = normalizePair(url.searchParams.get("pair"));
+  const mode = String(url.searchParams.get("mode") ?? "").trim().toLowerCase();
+  const allowManual = mode === "manual";
 
   if (!pair) {
     return NextResponse.json(
@@ -76,39 +77,39 @@ export async function GET(req: Request) {
 
   const { assetCode, quoteCode, marketId, source } = pairMeta(pair);
 
-  // A) PRIORIDAD 1: MANUAL reciente (si existe)
-  const manualSince = new Date(Date.now() - MANUAL_TTL_SECONDS * 1000);
-
-  const manual = await prisma.priceSnapshot.findFirst({
-    where: {
-      assetCode,
-      quoteCode,
-      createdAt: { gte: manualSince },
-      // no hay "startsWith" en Prisma para todos los providers de forma consistente en Decimal models,
-      // así que filtramos por prefijo en JS: traemos el último y revisamos el source.
-    },
-    orderBy: { createdAt: "desc" },
-    select: { price: true, source: true, createdAt: true },
-  });
-
-  if (manual && isManualSource(manual.source)) {
-    const ageSeconds = ageSecondsOf(manual.createdAt);
-    return NextResponse.json({
-      ok: true,
-      pair,
-      assetCode,
-      quoteCode,
-      price: manual.price.toString(),
-      source: manual.source,
-      createdAt: manual.createdAt.toISOString(),
-      cached: true,
-      ageSeconds,
-      stale: ageSeconds > MANUAL_TTL_SECONDS,
-      sourcePriority: "manual",
+  // A) PRIORIDAD 1: MANUAL reciente (solo si mode=manual)
+  if (allowManual) {
+    const manualSince = new Date(Date.now() - MANUAL_TTL_SECONDS * 1000);
+    const manual = await prisma.priceSnapshot.findFirst({
+      where: {
+        assetCode,
+        quoteCode,
+        createdAt: { gte: manualSince },
+        source: { startsWith: "manual:", mode: "insensitive" },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { price: true, source: true, createdAt: true },
     });
+
+    if (manual && isManualSource(manual.source)) {
+      const ageSeconds = ageSecondsOf(manual.createdAt);
+      return NextResponse.json({
+        ok: true,
+        pair,
+        assetCode,
+        quoteCode,
+        price: manual.price.toString(),
+        source: manual.source,
+        createdAt: manual.createdAt.toISOString(),
+        cached: true,
+        ageSeconds,
+        stale: ageSeconds > MANUAL_TTL_SECONDS,
+        sourcePriority: "manual",
+      });
+    }
   }
 
-  // B) PRIORIDAD 2: cache automático (buda) dentro del TTL
+  // B) PRIORIDAD 2: cache automático (market) dentro del TTL
   const since = new Date(Date.now() - TTL_SECONDS * 1000);
 
   const cached = await prisma.priceSnapshot.findFirst({
@@ -116,6 +117,7 @@ export async function GET(req: Request) {
       assetCode,
       quoteCode,
       createdAt: { gte: since },
+      NOT: { source: { startsWith: "manual:", mode: "insensitive" } },
     },
     orderBy: { createdAt: "desc" },
     select: { price: true, source: true, createdAt: true },
@@ -134,11 +136,11 @@ export async function GET(req: Request) {
       cached: true,
       ageSeconds,
       stale: false,
-      sourcePriority: isManualSource(cached.source) ? "manual" : "buda",
+      sourcePriority: "market",
     });
   }
 
-  // C) PRIORIDAD 3: fetch a Buda + guarda snapshot
+  // C) PRIORIDAD 3: fetch a Buda + guarda snapshot (market)
   try {
     const priceStr = await fetchBudaPrice(marketId);
 
@@ -168,9 +170,13 @@ export async function GET(req: Request) {
       sourcePriority: "buda",
     });
   } catch (e: any) {
-    // D) FALLBACK: último snapshot histórico (lo que haya, aunque sea viejo)
+    // D) FALLBACK: último snapshot market (aunque sea viejo)
     const last = await prisma.priceSnapshot.findFirst({
-      where: { assetCode, quoteCode },
+      where: {
+        assetCode,
+        quoteCode,
+        NOT: { source: { startsWith: "manual:", mode: "insensitive" } },
+      },
       orderBy: { createdAt: "desc" },
       select: { price: true, source: true, createdAt: true },
     });
@@ -188,13 +194,13 @@ export async function GET(req: Request) {
         cached: true,
         ageSeconds,
         stale: true,
-        sourcePriority: "db-fallback",
-        warning: "Buda falló, devolviendo último snapshot guardado",
+        sourcePriority: "market-fallback",
+        warning: "Buda falló, devolviendo último snapshot market",
       });
     }
 
     return NextResponse.json(
-      { error: "Price fetch failed and no cached snapshot exists" },
+      { ok: false, error: "No market snapshot available" },
       { status: 500 }
     );
   }
