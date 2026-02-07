@@ -835,7 +835,6 @@ export async function approveMovementAsSystem(opts: {
         lastError,
       },
     });
-    logExecPath();
     throw e;
   }
 }
