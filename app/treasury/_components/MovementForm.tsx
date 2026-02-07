@@ -81,13 +81,11 @@ export default function MovementForm({
   assetCode = "BTC",
   variant = "page",
   onClose,
-  onTradeBusyChange,
 }: {
   mode: Mode;
   assetCode?: AssetCode;
   variant?: "page" | "modal";
   onClose?: () => void;
-  onTradeBusyChange?: (busy: boolean) => void;
 }) {
   const router = useRouter();
 
@@ -105,8 +103,6 @@ export default function MovementForm({
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [receipt, setReceipt] = useState<TradeReceipt | null>(null);
-  const [receiptPendingMessage, setReceiptPendingMessage] = useState<string | null>(null);
-  const [receiptPendingAction, setReceiptPendingAction] = useState<"movements" | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [estimate, setEstimate] = useState<TradeEstimate | null>(null);
@@ -290,7 +286,6 @@ function onPickReceipt(file: File | null) {
     console.log("trade:confirm_clicked", { assetCode, amount, mode });
     setError(null);
     setLoading(true);
-    onTradeBusyChange?.(true);
     timingRef.current = { start: Date.now() };
     let movementId: string | null = null;
     try {
@@ -349,10 +344,7 @@ function onPickReceipt(file: File | null) {
       try {
         first = await fetchReceipt(movementId);
       } catch {
-        setReceipt(null);
-        setReceiptPendingMessage("Buscando comprobante…");
-        setReceiptPendingAction("movements");
-        setReceiptOpen(true);
+        setError("No pude obtener el comprobante. Reintenta.");
         setConfirmOpen(false);
         setEstimate(null);
         return;
@@ -369,10 +361,6 @@ function onPickReceipt(file: File | null) {
       const status = String(first?.status ?? "").toUpperCase();
 
       if (status === "APPROVED") {
-        setReceiptPendingAction(null);
-        setReceiptPendingMessage(
-          isReceiptComplete(first) ? null : "Estamos generando el comprobante…"
-        );
         pollAttemptsRef.current = 0;
         setReceiptOpen(true);
         setConfirmOpen(false);
@@ -388,36 +376,15 @@ function onPickReceipt(file: File | null) {
         return;
       }
 
-      setReceiptPendingAction(null);
-      setReceiptPendingMessage(
-        first?.status
-          ? status === "PROCESSING"
-            ? "Ejecutando…"
-            : status === "PENDING"
-            ? "En revisión / pendiente."
-            : "Buscando comprobante…"
-          : "Buscando comprobante…"
-      );
-      pollAttemptsRef.current = 0;
-      setReceiptOpen(true);
+      setError("No pude obtener el comprobante. Reintenta.");
       setConfirmOpen(false);
       setEstimate(null);
     } catch (err: any) {
-      if (movementId) {
-        setReceipt(null);
-        setReceiptPendingMessage("Buscando comprobante…");
-        setReceiptPendingAction("movements");
-        setReceiptOpen(true);
-        setConfirmOpen(false);
-        setEstimate(null);
-      } else {
-        setError(err?.message ?? "Error inesperado");
-        setConfirmOpen(false);
-        setEstimate(null);
-      }
+      setError(err?.message ?? "Error inesperado");
+      setConfirmOpen(false);
+      setEstimate(null);
     } finally {
       setLoading(false);
-      onTradeBusyChange?.(false);
     }
   }
 
@@ -487,50 +454,18 @@ function onPickReceipt(file: File | null) {
     }
     if (!receipt?.movementId) return;
     const status = String(receipt?.status ?? "").toUpperCase();
-    if (
-      isTerminalStatus(receipt) &&
-      (status !== "APPROVED" || isReceiptComplete(receipt))
-    ) {
-      return;
-    }
+    if (isTerminalStatus(receipt)) return;
     if (pollAttemptsRef.current >= 12) return;
 
     const id = receipt.movementId;
     const interval = setInterval(async () => {
       pollAttemptsRef.current += 1;
       const next = await fetchReceipt(id);
-      const status = String(next?.status ?? "").toUpperCase();
-      const isComplete = isReceiptComplete(next);
-
-      if (status === "APPROVED") {
-        setReceiptPendingAction(null);
-        setReceiptPendingMessage(isComplete ? null : "Estamos generando el comprobante…");
-      } else if (status === "REJECTED" || status === "FAILED" || status === "ERROR") {
-        setReceiptPendingAction(null);
-        setReceiptPendingMessage(next?.message ?? next?.internalReason ?? "Operación rechazada");
-      } else if (status === "PROCESSING") {
-        setReceiptPendingAction(null);
-        setReceiptPendingMessage("Ejecutando…");
-      } else if (status === "PENDING") {
-        setReceiptPendingAction(null);
-        setReceiptPendingMessage("En revisión / pendiente.");
-      } else if (!status) {
-        setReceiptPendingAction(null);
-        setReceiptPendingMessage("Buscando comprobante…");
-      }
-
-      if (isTerminalStatus(next) && (status !== "APPROVED" || isComplete)) {
+      if (isTerminalStatus(next)) {
         clearInterval(interval);
         return;
       }
-
       if (pollAttemptsRef.current >= 12) {
-        if (status === "PENDING" || status === "PROCESSING" || !status) {
-          setReceiptPendingMessage(
-            "Operación registrada, aún en proceso. Puedes verla en Movimientos."
-          );
-          setReceiptPendingAction("movements");
-        }
         clearInterval(interval);
       }
     }, 1500);
@@ -955,32 +890,15 @@ function onPickReceipt(file: File | null) {
         open={receiptOpen}
         receipt={receipt}
         loading={receiptLoading}
-        pendingMessage={receiptPendingMessage}
-        pendingAction={receiptPendingAction}
         onClose={async () => {
           setReceiptOpen(false);
           setReceipt(null);
-          setReceiptPendingMessage(null);
-          setReceiptPendingAction(null);
           try {
             await fetch("/api/treasury/summary", { cache: "no-store" });
           } catch {}
           router.refresh();
           console.log("trade:summary_refreshed");
         }}
-        onGoMovements={() => {
-          router.push("/treasury/pending");
-        }}
-        onRefresh={async () => {
-          if (!receipt?.movementId) return;
-          try {
-            await fetch(`/api/treasury/movements/${receipt.movementId}/reconcile`, {
-              method: "POST",
-            });
-          } catch {}
-          fetchReceipt(receipt.movementId);
-        }}
-        onRetry={triggerRetry}
       />
     </div>
   );
