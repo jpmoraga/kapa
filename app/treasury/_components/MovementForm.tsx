@@ -134,6 +134,14 @@ export default function MovementForm({
   const [clpBalance, setClpBalance] = useState<string>("0");
   const [clpBalanceLoading, setClpBalanceLoading] = useState(false);
 
+  useEffect(() => {
+    setError(null);
+    setConfirmOpen(false);
+    setReceiptOpen(false);
+    setEstimate(null);
+    setReceipt(null);
+  }, [mode, assetCode]);
+
   // Por ahora NO bloqueamos el retiro (la cuenta bancaria viene en otra capa)
   const bankNotConfigured = false;
 
@@ -485,6 +493,7 @@ function onPickReceipt(file: File | null) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (isTrade) {
+      setError(null);
       await openConfirm();
       return;
     }
@@ -571,7 +580,10 @@ function onPickReceipt(file: File | null) {
                 <input
                   className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-neutral-700"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setError(null);
+                    setAmount(e.target.value);
+                  }}
                   inputMode="decimal"
                   placeholder={
                     isTradeClpInput
@@ -727,6 +739,11 @@ function onPickReceipt(file: File | null) {
               <button
                 type="button"
                 onClick={() => {
+                  setError(null);
+                  setConfirmOpen(false);
+                  setReceiptOpen(false);
+                  setEstimate(null);
+                  setReceipt(null);
                   if (variant === "modal") {
                     onClose?.();
                     return;
