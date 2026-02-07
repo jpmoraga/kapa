@@ -342,6 +342,7 @@ function onPickReceipt(file: File | null) {
       const status = String(nextReceipt?.status ?? data?.status ?? "").toUpperCase();
 
       if (status === "APPROVED") {
+        setError(null);
         setReceipt(nextReceipt as TradeReceipt);
         setReceiptOpen(true);
         setConfirmOpen(false);
