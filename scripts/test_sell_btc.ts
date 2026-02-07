@@ -4,7 +4,7 @@
 // Execute:
 //   npx tsx -r dotenv/config scripts/test_sell_btc.ts --execute --companyId <id> --userId <id>
 // Options:
-//   --amountBtc 0.001 --priceClp 50000000 --mode internal|external
+//   --amountBtc 0.001 --priceClp <required> --mode internal|external
 
 import dotenv from "dotenv";
 import path from "path";
@@ -29,11 +29,16 @@ function getArg(name: string) {
 const companyId = getArg("--companyId");
 const userId = getArg("--userId");
 const amountStr = getArg("--amountBtc") ?? "0.001";
-const priceStr = getArg("--priceClp") ?? "50000000";
+const priceStr = getArg("--priceClp");
 const mode = (getArg("--mode") ?? "internal").toLowerCase();
 
 if (!companyId || !userId) {
   console.error("Missing --companyId or --userId");
+  process.exit(1);
+}
+
+if (!priceStr) {
+  console.error("Missing --priceClp (required).");
   process.exit(1);
 }
 
