@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 type Receipt = {
   movementId: string;
@@ -43,11 +44,11 @@ function formatQty(value: string, currency: "BTC" | "USD") {
 
 function statusLabel(status: string, side: "buy" | "sell", internalReason?: string | null) {
   if (status === "APPROVED") return side === "buy" ? "Compra ejecutada" : "Venta ejecutada";
-  if (status === "PROCESSING") return "Orden en proceso";
+  if (status === "PROCESSING") return "Ejecutando…";
   if (status === "PENDING" && internalReason === "INSUFFICIENT_LIQUIDITY") {
     return "Pendiente por liquidez";
   }
-  if (status === "PENDING") return "Pendiente";
+  if (status === "PENDING") return "En revisión / pendiente";
   return status;
 }
 
@@ -59,6 +60,8 @@ export default function TradeReceiptModal({
   onRefresh,
   onRetry,
   pendingMessage,
+  pendingAction,
+  onGoMovements,
 }: {
   open: boolean;
   receipt: Receipt | null;
@@ -67,20 +70,34 @@ export default function TradeReceiptModal({
   onRefresh: () => void;
   onRetry: () => void;
   pendingMessage?: string | null;
+  pendingAction?: "movements" | null;
+  onGoMovements?: () => void;
 }) {
+  const router = useRouter();
+  const goMovements = () => {
+    if (onGoMovements) {
+      onGoMovements();
+      return;
+    }
+    router.push("/treasury/pending");
+  };
+
+  const status = String(receipt?.status ?? "").toUpperCase();
+  const isProcessing = status === "PROCESSING";
+  const isRejected = status === "REJECTED" || status === "FAILED" || status === "ERROR";
+
   const title = useMemo(() => {
     if (!receipt) return "Detalle de operación";
     if (receipt.status === "APPROVED")
       return receipt.side === "buy" ? "Compra exitosa" : "Venta exitosa";
-    if (receipt.status === "PROCESSING") return "Orden en proceso";
-    if (receipt.status === "PENDING" && receipt.internalReason === "INSUFFICIENT_LIQUIDITY") {
-      return "Pendiente por liquidez";
+    if (receipt.status === "PROCESSING") return "Ejecutando…";
+    if (receipt.status === "PENDING") return "En revisión / pendiente";
+    if (receipt.status === "REJECTED" || receipt.status === "FAILED" || receipt.status === "ERROR") {
+      return "Operación rechazada";
     }
     return "Detalle de operación";
   }, [receipt]);
 
-  const isApproved = receipt?.status === "APPROVED";
-  const isProcessing = receipt?.status === "PROCESSING" && Boolean(receipt?.externalOrderId);
   const isPendingLiquidity =
     receipt?.status === "PENDING" && receipt?.internalReason === "INSUFFICIENT_LIQUIDITY";
   const buyGrossTradeClp = useMemo(() => {
@@ -93,7 +110,7 @@ export default function TradeReceiptModal({
 
   if (!open) return null;
   if (!receipt) {
-    if (!pendingMessage) return null;
+    const message = pendingMessage ?? "Buscando comprobante…";
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
         <button
@@ -106,7 +123,7 @@ export default function TradeReceiptModal({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Voucher</h2>
-              <p className="mt-1 text-sm text-neutral-400">{pendingMessage}</p>
+              <p className="mt-1 text-sm text-neutral-400">{message}</p>
             </div>
           </div>
           <div className="mt-6 flex justify-end">
@@ -121,7 +138,6 @@ export default function TradeReceiptModal({
       </div>
     );
   }
-  if (!isApproved && !isProcessing && !isPendingLiquidity) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
@@ -140,6 +156,9 @@ export default function TradeReceiptModal({
             </p>
             {receipt?.isEstimated ? (
               <p className="mt-1 text-xs text-neutral-500">Valores estimados hasta confirmar ejecución.</p>
+            ) : null}
+            {pendingMessage ? (
+              <p className="mt-1 text-xs text-neutral-400">{pendingMessage}</p>
             ) : null}
           </div>
         </div>
@@ -210,6 +229,12 @@ export default function TradeReceiptModal({
             </div>
           ) : null}
 
+          {isRejected ? (
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+              {receipt?.message ?? receipt?.internalReason ?? "Operación rechazada"}
+            </div>
+          ) : null}
+
           {receipt?.message ? (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-neutral-300">
               {receipt.message}
@@ -240,6 +265,14 @@ export default function TradeReceiptModal({
               className={loading ? "k21-btn-disabled" : "k21-btn-secondary"}
             >
               Reintentar
+            </button>
+          ) : null}
+          {pendingAction === "movements" ? (
+            <button
+              onClick={goMovements}
+              className="k21-btn-secondary"
+            >
+              Ver en Movimientos
             </button>
           ) : null}
         </div>

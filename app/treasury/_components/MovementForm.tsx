@@ -104,10 +104,18 @@ export default function MovementForm({
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [receipt, setReceipt] = useState<TradeReceipt | null>(null);
   const [receiptPendingMessage, setReceiptPendingMessage] = useState<string | null>(null);
+  const [receiptPendingAction, setReceiptPendingAction] = useState<"movements" | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [estimate, setEstimate] = useState<TradeEstimate | null>(null);
   const pollAttemptsRef = useRef(0);
+  const timingRef = useRef<{
+    start?: number;
+    post?: number;
+    firstReceipt?: number;
+    approved?: number;
+    complete?: number;
+  }>({});
 
   useEffect(() => {
     if (!receipt?.movementId) return;
@@ -280,6 +288,7 @@ function onPickReceipt(file: File | null) {
     console.log("trade:confirm_clicked", { assetCode, amount, mode });
     setError(null);
     setLoading(true);
+    timingRef.current = { start: Date.now() };
     try {
       const clpToSend = isTradeBuy ? parseClpInput(amount) : null;
       const amountToSend = isTradeBuy ? clpToSend : qtyOverride ?? (isTradeClpInput ? null : amount);
@@ -311,6 +320,15 @@ function onPickReceipt(file: File | null) {
         return;
       }
 
+      if (process.env.NODE_ENV !== "production") {
+        const now = Date.now();
+        const start = timingRef.current.start;
+        if (start && !timingRef.current.post) {
+          timingRef.current.post = now;
+          console.log("trade:timing", { step: "post_response", ms: now - start });
+        }
+      }
+
       localStorage.setItem("activeAsset", assetCode);
 
       const movementId = data?.movementId ? String(data.movementId) : null;
@@ -323,29 +341,52 @@ function onPickReceipt(file: File | null) {
 
       console.log("trade:post_ok", { movementId });
 
-      let next = await fetchReceipt(movementId);
-      if (!isReceiptComplete(next)) {
-        next = await pollReceiptComplete(movementId);
+      const first = await fetchReceipt(movementId);
+      if (process.env.NODE_ENV !== "production") {
+        const now = Date.now();
+        const start = timingRef.current.start;
+        if (start && first?.status && !timingRef.current.firstReceipt) {
+          timingRef.current.firstReceipt = now;
+          console.log("trade:timing", { step: "first_receipt", ms: now - start, status: first.status });
+        }
       }
 
-      if (shouldOpenVoucher(next)) {
-        setReceiptPendingMessage(null);
-        setReceiptOpen(true);
-        setConfirmOpen(false);
-        setEstimate(null);
-        console.log("trade:receipt_ok", { status: next?.status, movementId });
-      } else if (isReceiptPendingNotReady(next)) {
+      const status = String(first?.status ?? "").toUpperCase();
+
+      if (status === "APPROVED") {
+        setReceiptPendingAction(null);
         setReceiptPendingMessage(
-          "Voucher aún no disponible (operación en proceso). Reintenta en unos segundos."
+          isReceiptComplete(first) ? null : "Estamos generando el comprobante…"
         );
+        pollAttemptsRef.current = 0;
         setReceiptOpen(true);
         setConfirmOpen(false);
         setEstimate(null);
-      } else {
-        setError("No pude obtener el voucher. Reintenta.");
+        console.log("trade:receipt_ok", { status: first?.status, movementId });
+        return;
+      }
+
+      if (status === "REJECTED" || status === "FAILED" || status === "ERROR") {
+        setError(first?.message ?? first?.internalReason ?? "Operación rechazada");
         setConfirmOpen(false);
         setEstimate(null);
+        return;
       }
+
+      setReceiptPendingAction(null);
+      setReceiptPendingMessage(
+        first?.status
+          ? status === "PROCESSING"
+            ? "Ejecutando…"
+            : status === "PENDING"
+            ? "En revisión / pendiente."
+            : "Buscando comprobante…"
+          : "Buscando comprobante…"
+      );
+      pollAttemptsRef.current = 0;
+      setReceiptOpen(true);
+      setConfirmOpen(false);
+      setEstimate(null);
     } catch (err: any) {
       setError(err?.message ?? "Error inesperado");
       setConfirmOpen(false);
@@ -362,6 +403,22 @@ function onPickReceipt(file: File | null) {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setReceipt(data as TradeReceipt);
+        if (process.env.NODE_ENV !== "production") {
+          const now = Date.now();
+          const start = timingRef.current.start;
+          if (start && data?.status && !timingRef.current.firstReceipt) {
+            timingRef.current.firstReceipt = now;
+            console.log("trade:timing", { step: "first_receipt", ms: now - start, status: data.status });
+          }
+          if (start && String(data?.status ?? "").toUpperCase() === "APPROVED" && !timingRef.current.approved) {
+            timingRef.current.approved = now;
+            console.log("trade:timing", { step: "approved", ms: now - start });
+          }
+          if (start && isReceiptComplete(data) && !timingRef.current.complete) {
+            timingRef.current.complete = now;
+            console.log("trade:timing", { step: "receipt_complete", ms: now - start });
+          }
+        }
         return data as TradeReceipt;
       }
       setReceipt(null);
@@ -369,12 +426,6 @@ function onPickReceipt(file: File | null) {
     } finally {
       setReceiptLoading(false);
     }
-  }
-
-  function isReceiptPendingNotReady(next: TradeReceipt | null) {
-    if (!next) return true;
-    const status = String(next.status ?? "").toUpperCase();
-    return status === "PENDING" || status === "PROCESSING";
   }
 
   function isReceiptComplete(next: TradeReceipt | null) {
@@ -388,25 +439,10 @@ function onPickReceipt(file: File | null) {
       Boolean(next.qty)
     );
   }
-
-  async function pollReceiptComplete(movementId: string) {
-    const started = Date.now();
-    let last: TradeReceipt | null = null;
-    while (Date.now() - started < 10000) {
-      last = await fetchReceipt(movementId);
-      if (isReceiptComplete(last)) return last;
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    }
-    return last;
-  }
-
-  function shouldOpenVoucher(next: TradeReceipt | null) {
-    if (!next) return false;
-    if (!isReceiptComplete(next)) return false;
-    if (next.status === "APPROVED") return true;
-    if (next.status === "PROCESSING" && next.externalOrderId) return true;
-    if (next.status === "PENDING" && next.internalReason === "INSUFFICIENT_LIQUIDITY") return true;
-    return false;
+  function isTerminalStatus(next: TradeReceipt | null) {
+    if (!next?.status) return false;
+    const status = String(next.status).toUpperCase();
+    return status === "APPROVED" || status === "REJECTED" || status === "FAILED" || status === "ERROR";
   }
 
   useEffect(() => {
@@ -414,24 +450,58 @@ function onPickReceipt(file: File | null) {
       pollAttemptsRef.current = 0;
       return;
     }
-    if (!receipt || receipt.status !== "PROCESSING") {
-      pollAttemptsRef.current = 0;
+    if (!receipt?.movementId) return;
+    const status = String(receipt?.status ?? "").toUpperCase();
+    if (
+      isTerminalStatus(receipt) &&
+      (status !== "APPROVED" || isReceiptComplete(receipt))
+    ) {
       return;
     }
-    if (pollAttemptsRef.current >= 40) return;
+    if (pollAttemptsRef.current >= 12) return;
 
     const id = receipt.movementId;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       pollAttemptsRef.current += 1;
-      if (pollAttemptsRef.current > 40) {
+      const next = await fetchReceipt(id);
+      const status = String(next?.status ?? "").toUpperCase();
+      const isComplete = isReceiptComplete(next);
+
+      if (status === "APPROVED") {
+        setReceiptPendingAction(null);
+        setReceiptPendingMessage(isComplete ? null : "Estamos generando el comprobante…");
+      } else if (status === "REJECTED" || status === "FAILED" || status === "ERROR") {
+        setReceiptPendingAction(null);
+        setReceiptPendingMessage(next?.message ?? next?.internalReason ?? "Operación rechazada");
+      } else if (status === "PROCESSING") {
+        setReceiptPendingAction(null);
+        setReceiptPendingMessage("Ejecutando…");
+      } else if (status === "PENDING") {
+        setReceiptPendingAction(null);
+        setReceiptPendingMessage("En revisión / pendiente.");
+      } else if (!status) {
+        setReceiptPendingAction(null);
+        setReceiptPendingMessage("Buscando comprobante…");
+      }
+
+      if (isTerminalStatus(next) && (status !== "APPROVED" || isComplete)) {
         clearInterval(interval);
         return;
       }
-      fetchReceipt(id);
-    }, 1800);
+
+      if (pollAttemptsRef.current >= 12) {
+        if (status === "PENDING" || status === "PROCESSING" || !status) {
+          setReceiptPendingMessage(
+            "Operación registrada, aún en proceso. Puedes verla en Movimientos."
+          );
+          setReceiptPendingAction("movements");
+        }
+        clearInterval(interval);
+      }
+    }, 1500);
 
     return () => clearInterval(interval);
-  }, [receiptOpen, receipt?.status, receipt?.movementId]);
+  }, [receiptOpen, receipt?.movementId]);
 
   useEffect(() => {
     let alive = true;
@@ -851,15 +921,20 @@ function onPickReceipt(file: File | null) {
         receipt={receipt}
         loading={receiptLoading}
         pendingMessage={receiptPendingMessage}
+        pendingAction={receiptPendingAction}
         onClose={async () => {
           setReceiptOpen(false);
           setReceipt(null);
           setReceiptPendingMessage(null);
+          setReceiptPendingAction(null);
           try {
             await fetch("/api/treasury/summary", { cache: "no-store" });
           } catch {}
           router.refresh();
           console.log("trade:summary_refreshed");
+        }}
+        onGoMovements={() => {
+          router.push("/treasury/pending");
         }}
         onRefresh={async () => {
           if (!receipt?.movementId) return;
