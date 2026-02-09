@@ -46,10 +46,12 @@ function ltvBadge(ltvPct: number) {
 }
 
 export default function CreditoPage() {
-  const [btcAvailable, setBtcAvailable] = useState<number>(FALLBACK_BTC_AVAILABLE);
-  const [basePriceClp, setBasePriceClp] = useState<number>(FALLBACK_BTC_PRICE_CLP);
-  const [btcPriceClp, setBtcPriceClp] = useState<number>(FALLBACK_BTC_PRICE_CLP);
-  const [btcPriceInput, setBtcPriceInput] = useState<string>(formatClpNumber(FALLBACK_BTC_PRICE_CLP));
+  const [btcAvailable, setBtcAvailable] = useState<number | null>(null);
+  const [basePriceClp, setBasePriceClp] = useState<number | null>(null);
+  const [btcPriceClp, setBtcPriceClp] = useState<number | null>(null);
+  const [btcPriceInput, setBtcPriceInput] = useState<string>("");
+  const [loadingData, setLoadingData] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const [amountClp, setAmountClp] = useState<number>(0);
   const [amountInput, setAmountInput] = useState<string>("");
@@ -59,13 +61,30 @@ export default function CreditoPage() {
 
   useEffect(() => {
     const loadSummary = async () => {
+      setLoadingData(true);
+      setDataError(null);
       try {
-        const res = await fetch("/api/treasury/summary", { cache: "no-store" });
+        const res = await fetch("/api/credito/sim-data", { cache: "no-store" });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.ok) return;
+        if (!res.ok || !data?.ok) {
+          setDataError(data?.error ?? "No pudimos cargar datos del simulador.");
+          return;
+        }
 
-        const btcBal = parseNumberLike(data?.balances?.BTC ?? null);
-        const btcPrice = parseNumberLike(data?.prices?.BTC_CLP ?? null);
+        const btcBal = parseNumberLike(data?.btcAvailable ?? null);
+        const btcPrice = parseNumberLike(data?.basePriceClp ?? null);
+
+        if (
+          process.env.NODE_ENV === "development" &&
+          (btcBal === null || btcPrice === null || btcPrice <= 0)
+        ) {
+          setBtcAvailable(FALLBACK_BTC_AVAILABLE);
+          setBasePriceClp(FALLBACK_BTC_PRICE_CLP);
+          setBtcPriceClp(FALLBACK_BTC_PRICE_CLP);
+          setBtcPriceInput(formatClpNumber(FALLBACK_BTC_PRICE_CLP));
+          setDataError("Usando valores de ejemplo (solo dev).");
+          return;
+        }
 
         if (btcBal !== null) setBtcAvailable(btcBal);
         if (btcPrice !== null && btcPrice > 0) {
@@ -73,9 +92,14 @@ export default function CreditoPage() {
           setBtcPriceClp(btcPrice);
           setBtcPriceInput(formatClpNumber(btcPrice));
         }
+
+        if (btcBal === null || btcPrice === null) {
+          setDataError("Datos incompletos para simular. Reintenta.");
+        }
       } catch {
-        // fallback
+        setDataError("No pudimos cargar datos del simulador.");
       }
+      setLoadingData(false);
     };
 
     void loadSummary();
@@ -88,30 +112,36 @@ export default function CreditoPage() {
   const maxLtvPct = isSubscriber ? 60 : 50;
   const ltv = ltvPct / 100;
 
-  const minPrice = useMemo(() => basePriceClp * 0.6, [basePriceClp]);
-  const maxPrice = useMemo(() => basePriceClp * 1.4, [basePriceClp]);
+  const hasData = btcAvailable !== null && basePriceClp !== null && basePriceClp > 0;
+  const btcAvailableSafe = btcAvailable ?? 0;
+  const basePriceSafe = basePriceClp ?? 0;
+  const btcScenarioPrice = btcPriceClp ?? basePriceSafe;
 
-  const maxLoanClp = btcAvailable * basePriceClp * (maxLtvPct / 100);
-  const collateralBtc = ltv > 0 && amountClp > 0 ? amountClp / (ltv * basePriceClp) : 0;
-  const btcRemaining = Math.max(btcAvailable - collateralBtc, 0);
+  const minPrice = useMemo(() => (basePriceClp ? basePriceClp * 0.6 : 0), [basePriceClp]);
+  const maxPrice = useMemo(() => (basePriceClp ? basePriceClp * 1.4 : 0), [basePriceClp]);
 
-  const ltvScenario =
-    collateralBtc > 0 && btcPriceClp > 0 && amountClp > 0
-      ? amountClp / (collateralBtc * btcPriceClp)
-      : 0;
-  const ltvScenarioPct = ltvScenario * 100;
-  const badge = ltvBadge(ltvScenarioPct);
+  const maxLoanClp = hasData ? btcAvailableSafe * basePriceSafe * (maxLtvPct / 100) : 0;
+  const collateralBtc =
+    hasData && ltv > 0 && amountClp > 0 ? amountClp / (ltv * basePriceSafe) : 0;
+  const btcRemaining = Math.max(btcAvailableSafe - collateralBtc, 0);
 
-  const exceedMax = amountClp > maxLoanClp || collateralBtc > btcAvailable + 1e-12;
-  const hasBtc = btcAvailable > 0;
+  const hasScenario = hasData && collateralBtc > 0 && btcScenarioPrice > 0 && amountClp > 0;
+  const ltvScenario = hasScenario ? amountClp / (collateralBtc * btcScenarioPrice) : 0;
+  const ltvScenarioPct = hasScenario ? ltvScenario * 100 : 0;
+  const badge = hasScenario
+    ? ltvBadge(ltvScenarioPct)
+    : { label: "—", cls: "border-white/10 bg-white/5 text-neutral-400" };
+
+  const exceedMax = hasData && (amountClp > maxLoanClp || collateralBtc > btcAvailableSafe + 1e-12);
+  const hasBtc = (btcAvailable ?? 0) > 0;
 
   const costClp = amountClp * MONTHLY_RATE * months;
   const totalClp = amountClp + costClp;
   const cuotaClp = months > 0 ? totalClp / months : 0;
 
-  const btcAvailableClp = btcAvailable * btcPriceClp;
-  const btcFrozenClp = collateralBtc * btcPriceClp;
-  const btcRemainingClp = btcRemaining * btcPriceClp;
+  const btcAvailableClp = btcAvailableSafe * btcScenarioPrice;
+  const btcFrozenClp = collateralBtc * btcScenarioPrice;
+  const btcRemainingClp = btcRemaining * btcScenarioPrice;
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100">
@@ -124,9 +154,14 @@ export default function CreditoPage() {
           </p>
         </div>
 
-        {!hasBtc && (
+        {!hasBtc && !loadingData && (
           <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
             No tienes BTC disponible para simular.
+          </div>
+        )}
+        {dataError && (
+          <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            {dataError}
           </div>
         )}
 
@@ -156,7 +191,7 @@ export default function CreditoPage() {
                   }}
                 />
                 <div className="mt-1 text-xs text-neutral-500">
-                  Máximo disponible: {formatClp(maxLoanClp)}
+                  Máximo disponible: {hasData ? formatClp(maxLoanClp) : "—"}
                 </div>
                 {exceedMax && amountClp > 0 && (
                   <div className="mt-2 text-xs text-red-300">Monto excede el máximo permitido.</div>
@@ -213,9 +248,10 @@ export default function CreditoPage() {
                   <span className={`rounded-full border px-2 py-0.5 text-xs ${badge.cls}`}>{badge.label}</span>
                 </div>
                 <div className="mt-2 text-xs text-neutral-400">
-                  LTV actual: {ltvScenarioPct.toFixed(2)}%
+                  LTV actual: {hasScenario ? `${ltvScenarioPct.toFixed(2)}%` : "—"}
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-neutral-500">
+                  <div>Retiro de garantía posible: &lt; 40%</div>
                   <div>Salud riesgosa: ≥ 65%</div>
                   <div>Margin call: ≥ 70% (72 horas para agregar respaldo o pagar parte)</div>
                   <div>Liquidación automática: ≥ 80%</div>
@@ -232,58 +268,58 @@ export default function CreditoPage() {
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-xs text-neutral-500">Monto máximo que puedes pedir</div>
                 <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {formatClp(maxLoanClp)}
+                  {hasData ? formatClp(maxLoanClp) : "—"}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-xs text-neutral-500">Garantía requerida</div>
                 <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {formatBtc(collateralBtc)}
+                  {hasData ? formatBtc(collateralBtc) : "—"}
                 </div>
                 <div className="mt-1 text-xs text-neutral-400">
-                  {formatClp(btcFrozenClp)}
+                  {hasData ? formatClp(btcFrozenClp) : "—"}
                 </div>
               </div>
 
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-xs text-neutral-500">Bitcoins disponibles actualmente</div>
                 <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {formatBtc(btcAvailable)}
+                  {hasData ? formatBtc(btcAvailableSafe) : "—"}
                 </div>
                 <div className="mt-1 text-xs text-neutral-400">
-                  {formatClp(btcAvailableClp)}
+                  {hasData ? formatClp(btcAvailableClp) : "—"}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-xs text-neutral-500">Bitcoins a congelar</div>
                 <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {formatBtc(collateralBtc)}
+                  {hasData ? formatBtc(collateralBtc) : "—"}
                 </div>
                 <div className="mt-1 text-xs text-neutral-400">
-                  {formatClp(btcFrozenClp)}
+                  {hasData ? formatClp(btcFrozenClp) : "—"}
                 </div>
               </div>
 
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-xs text-neutral-500">Bitcoins disponibles después</div>
                 <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {formatBtc(btcRemaining)}
+                  {hasData ? formatBtc(btcRemaining) : "—"}
                 </div>
                 <div className="mt-1 text-xs text-neutral-400">
-                  {formatClp(btcRemainingClp)}
+                  {hasData ? formatClp(btcRemainingClp) : "—"}
                 </div>
               </div>
 
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                 <div className="text-xs text-neutral-500">Total a pagar</div>
                 <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {formatClp(totalClp)}
+                  {hasData ? formatClp(totalClp) : "—"}
                 </div>
                 <div className="mt-1 text-xs text-neutral-400">
-                  Costo del crédito: {formatClp(costClp)}
+                  Costo del crédito: {hasData ? formatClp(costClp) : "—"}
                 </div>
                 <div className="mt-1 text-xs text-neutral-400">
-                  Cuota mensual aprox: {formatClp(cuotaClp)}
+                  Cuota mensual aprox: {hasData ? formatClp(cuotaClp) : "—"}
                 </div>
                 <div className="mt-2 text-xs text-neutral-500">
                   Tasa de interés mensual: {(MONTHLY_RATE * 100).toFixed(2)}% · CAE: —
@@ -306,11 +342,12 @@ export default function CreditoPage() {
                 className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none focus:border-neutral-700"
                 inputMode="numeric"
                 value={btcPriceInput}
+                disabled={!hasData}
                 onChange={(e) => {
                   const digits = e.target.value.replace(/[^\d]/g, "");
                   if (!digits) {
                     setBtcPriceInput("");
-                    setBtcPriceClp(0);
+                    setBtcPriceClp(null);
                     return;
                   }
                   const numeric = Number(digits);
@@ -320,21 +357,22 @@ export default function CreditoPage() {
                 }}
               />
               <div className="mt-1 text-xs text-neutral-500">
-                Precio base: {formatClp(basePriceClp)}
+                Precio base: {hasData ? formatClp(basePriceSafe) : "—"}
               </div>
             </div>
 
             <div className="lg:col-span-2">
               <div className="flex items-center justify-between text-xs text-neutral-400">
-                <span>{formatClp(minPrice)}</span>
-                <span>{formatClp(maxPrice)}</span>
+                <span>{hasData ? formatClp(minPrice) : "—"}</span>
+                <span>{hasData ? formatClp(maxPrice) : "—"}</span>
               </div>
               <input
                 type="range"
                 min={minPrice}
                 max={maxPrice}
                 step={1000}
-                value={clamp(btcPriceClp, minPrice, maxPrice)}
+                value={hasData ? clamp(btcScenarioPrice, minPrice, maxPrice) : 0}
+                disabled={!hasData}
                 onChange={(e) => {
                   const numeric = Number(e.target.value);
                   setBtcPriceClp(numeric);
@@ -342,8 +380,51 @@ export default function CreditoPage() {
                 }}
                 className="mt-2 w-full"
               />
+              <div className="mt-4">
+                <div className="relative h-3 overflow-hidden rounded-full border border-white/10 bg-white/5">
+                  <div className="absolute inset-y-0 left-0 w-[40%] bg-sky-500/20" />
+                  <div className="absolute inset-y-0 left-[40%] w-[25%] bg-emerald-500/20" />
+                  <div className="absolute inset-y-0 left-[65%] w-[5%] bg-orange-500/25" />
+                  <div className="absolute inset-y-0 left-[70%] w-[10%] bg-amber-500/25" />
+                  <div className="absolute inset-y-0 left-[80%] w-[20%] bg-red-500/25" />
+                  {hasScenario && (
+                    <div
+                      className="absolute top-0 h-3 w-0.5 bg-white"
+                      style={{ left: `${clamp(ltvScenarioPct, 0, 100)}%` }}
+                    />
+                  )}
+                </div>
+                <div className="relative mt-2 h-4 text-[10px] text-neutral-500">
+                  {[40, 65, 70, 80].map((p) => (
+                    <span
+                      key={p}
+                      className="absolute -translate-x-1/2"
+                      style={{ left: `${p}%` }}
+                    >
+                      {p}%
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-neutral-400">
+                  <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5">
+                    Retiro posible
+                  </span>
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5">
+                    Saludable
+                  </span>
+                  <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5">
+                    Riesgoso
+                  </span>
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5">
+                    Margin call
+                  </span>
+                  <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5">
+                    Liquidación
+                  </span>
+                </div>
+              </div>
               <div className="mt-3 text-xs text-neutral-400">
-                LTV escenario: {ltvScenarioPct.toFixed(2)}% · Estado: {badge.label}
+                LTV escenario: {hasScenario ? `${ltvScenarioPct.toFixed(2)}%` : "—"} · Estado: {badge.label}
               </div>
             </div>
           </div>
