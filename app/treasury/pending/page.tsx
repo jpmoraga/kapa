@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { displayAsset, formatUsdtClient } from "@/lib/formatUsdt";
 
 type AssetCode = "BTC" | "CLP" | "USD";
 type MovementType = "deposit" | "withdraw" | "adjust";
@@ -32,7 +33,7 @@ function fmtAmount(asset: AssetCode, amount: string) {
 
   if (asset === "BTC") return `${amount} BTC`;
   if (asset === "CLP") return `$${Math.round(n).toLocaleString("es-CL")} CLP`;
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+  return formatUsdtClient(amount);
 }
 
 export default function PendingClient() {
@@ -159,7 +160,7 @@ export default function PendingClient() {
                       </span>
                     </td>
 
-                    <td className="py-3">{m.assetCode}</td>
+                    <td className="py-3">{displayAsset(m.assetCode)}</td>
 
                     <td className="py-3 text-right font-medium">{fmtAmount(m.assetCode, m.amount)}</td>
 

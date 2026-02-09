@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { displayAsset, formatUsdtAdmin } from "@/lib/formatUsdt";
 
 export type MovementRow = {
   id: string;
@@ -76,11 +77,14 @@ type ReceiptData = {
 
 function formatAmount(amount: string, assetCode: string) {
   const numeric = Number(amount);
-  if (!Number.isFinite(numeric)) return `${amount} ${assetCode}`;
+  if (!Number.isFinite(numeric)) return `${amount} ${displayAsset(assetCode)}`;
   if (assetCode === "CLP") {
     return `$${Math.round(numeric).toLocaleString("es-CL")} CLP`;
   }
-  return `${numeric.toLocaleString("es-CL")} ${assetCode}`;
+  if (String(assetCode).toUpperCase() === "USD") {
+    return formatUsdtAdmin(amount);
+  }
+  return `${numeric.toLocaleString("es-CL")} ${displayAsset(assetCode)}`;
 }
 
 function formatDateTime(value?: string | null) {
@@ -88,11 +92,6 @@ function formatDateTime(value?: string | null) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleString("es-CL");
-}
-
-function displayAsset(code?: string | null) {
-  if (!code) return "—";
-  return code === "USD" ? "USDT" : code;
 }
 
 function formatClpValue(value?: string | null) {
@@ -104,6 +103,10 @@ function formatClpValue(value?: string | null) {
 
 function formatAssetValue(value: string | null | undefined, asset: string, decimals: number) {
   if (!value) return "—";
+  if (String(asset ?? "").toUpperCase() === "USD") {
+    const formatted = formatUsdtAdmin(value);
+    return formatted === "--" ? `${value} USDT` : formatted;
+  }
   const n = Number(value);
   if (!Number.isFinite(n)) return value;
   return `${n.toLocaleString("es-CL", {
@@ -144,8 +147,8 @@ function deriveOperationLabel(row: MovementRow) {
   if (asset === "USD" && (typeValue === "withdraw" || typeValue === "sell")) return "Venta USDT";
 
   const fallbackType = deriveType(row).label;
-  const displayAsset = asset === "USD" ? "USDT" : asset;
-  return `${fallbackType.toUpperCase()} ${displayAsset}`;
+  const assetLabel = displayAsset(asset);
+  return `${fallbackType.toUpperCase()} ${assetLabel}`;
 }
 
 function formatPrimaryAmount(row: MovementRow) {
@@ -153,7 +156,7 @@ function formatPrimaryAmount(row: MovementRow) {
   const raw = row.amount;
   const numeric = Number(raw);
   if (!Number.isFinite(numeric)) {
-    return { label: `${raw} ${asset === "USD" ? "USDT" : asset}`, tooltip: null };
+    return { label: `${raw} ${displayAsset(asset)}`, tooltip: null };
   }
 
   if (asset === "CLP") {
@@ -171,14 +174,8 @@ function formatPrimaryAmount(row: MovementRow) {
   }
 
   if (asset === "USD") {
-    const micro = Math.round(numeric * 1e6);
-    const tooltip = `${numeric.toLocaleString("es-CL", {
-      minimumFractionDigits: 6,
-      maximumFractionDigits: 6,
-    })} USDT`;
-    const label =
-      micro > 0 ? `${micro.toLocaleString("es-CL")} µUSDT` : numeric > 0 ? "<1 µUSDT" : "0 µUSDT";
-    return { label, tooltip };
+    const label = formatUsdtAdmin(raw);
+    return { label: label === "--" ? `${raw} USDT` : label, tooltip: null };
   }
 
   return { label: `${numeric.toLocaleString("es-CL")} ${asset}`, tooltip: null };
@@ -886,7 +883,11 @@ export default function AdminOpsClient({
                         <div>
                           <div className="text-xs text-neutral-500">Fee</div>
                           <div className="mt-1 font-medium">
-                            {feeCode ? `${feeAmount} ${feeCode}` : feeAmount}
+                            {feeCode
+                              ? String(feeCode).toUpperCase() === "USD"
+                                ? formatUsdtAdmin(feeAmount)
+                                : `${feeAmount} ${displayAsset(feeCode)}`
+                              : feeAmount}
                           </div>
                         </div>
                       ) : null}

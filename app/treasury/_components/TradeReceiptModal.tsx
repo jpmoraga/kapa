@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { displayAsset, formatUsdtClient } from "@/lib/formatUsdt";
 
 type Receipt = {
   movementId: string;
@@ -21,12 +22,9 @@ type Receipt = {
   externalOrderId?: string | null;
 };
 
-function displayAsset(code: "CLP" | "BTC" | "USD") {
-  return code === "USD" ? "USDT" : code;
-}
-
 function formatAmount(value: string | null, currency: "CLP" | "BTC" | "USD") {
   if (!value) return "—";
+  if (currency === "USD") return formatUsdtClient(value);
   const n = Number(value);
   if (!Number.isFinite(n)) return value;
   if (currency === "CLP") {
@@ -36,6 +34,7 @@ function formatAmount(value: string | null, currency: "CLP" | "BTC" | "USD") {
 }
 
 function formatQty(value: string, currency: "BTC" | "USD") {
+  if (currency === "USD") return formatUsdtClient(value);
   const n = Number(value);
   if (!Number.isFinite(n)) return value;
   return `${n.toLocaleString("es-CL", { maximumFractionDigits: 8 })} ${displayAsset(currency)}`;

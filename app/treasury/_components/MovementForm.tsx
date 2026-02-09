@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import TradeReceiptModal from "./TradeReceiptModal";
 import ConfirmTradeModal, { TradeEstimate } from "./ConfirmTradeModal";
+import { displayAsset, formatUsdtClient } from "@/lib/formatUsdt";
 
 type MovementType = "deposit" | "withdraw" | "adjust";
 type Mode = "buy" | "sell" | "adjust";
@@ -39,7 +40,7 @@ function modeLabels(mode: Mode, assetCode: AssetCode) {
 
   if (mode === "buy") {
     return {
-      title: isCLP ? "Depositar CLP" : `Comprar ${assetCode}`,
+      title: isCLP ? "Depositar CLP" : `Comprar ${displayAsset(assetCode)}`,
       subtitle: isCLP
       ? "Transfiere a la cuenta indicada y sube el comprobante."
       : "Indica el monto y continua.",
@@ -52,7 +53,7 @@ function modeLabels(mode: Mode, assetCode: AssetCode) {
 
   if (mode === "sell") {
     return {
-      title: isCLP ? "Retirar CLP" : `Vender ${assetCode}`,
+      title: isCLP ? "Retirar CLP" : `Vender ${displayAsset(assetCode)}`,
       subtitle: isCLP
         ? "Indica el monto. Enviaremos los fondos a tu cuenta bancaria registrada."
         : "Indica el monto y continua.",
@@ -64,7 +65,7 @@ function modeLabels(mode: Mode, assetCode: AssetCode) {
   }
 
   return {
-    title: `Ajuste de balance (${assetCode})`,
+    title: `Ajuste de balance (${displayAsset(assetCode)})`,
     subtitle: "Movimiento manual para corregir balance (admin).",
     button: "Guardar ajuste",
     notePlaceholder: "Ej: Ajuste por conciliación",
@@ -574,7 +575,7 @@ function onPickReceipt(file: File | null) {
 
             <div>
               <label className="text-xs text-neutral-400">
-                Monto ({isTradeClpInput ? "CLP" : assetCode})
+                Monto ({isTradeClpInput ? "CLP" : displayAsset(assetCode)})
               </label>
               <div className="relative mt-1">
                 <input
@@ -629,9 +630,8 @@ function onPickReceipt(file: File | null) {
                       return "—";
                     }
                     const qty = price > 0 ? (clp * (1 - feePct)) / price : 0;
-                    const decimals = assetCode === "BTC" ? 8 : 6;
-                    const label = assetCode === "USD" ? "USDT" : assetCode;
-                    return `${qty.toFixed(decimals)} ${label}`;
+                    if (assetCode === "BTC") return `${qty.toFixed(8)} BTC`;
+                    return formatUsdtClient(qty);
                   })()}
                 </div>
               ) : null}

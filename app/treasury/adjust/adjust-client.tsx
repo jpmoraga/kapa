@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { displayAsset, formatUsdtClient } from "@/lib/formatUsdt";
 
 type AssetCode = "BTC" | "CLP" | "USD";
 type Unit = "BTC" | "sats";
@@ -43,9 +44,9 @@ function satsToBtcStrSigned(satsStr: string) {
 
 function formatFiat(amountStr: string, code: "CLP" | "USD") {
   const n = parseNumberLike(amountStr);
-  if (!Number.isFinite(n)) return code === "CLP" ? "$0 CLP" : "$0.00 USD";
+  if (!Number.isFinite(n)) return code === "CLP" ? "$0 CLP" : formatUsdtClient(0);
   if (code === "CLP") return `$${Math.round(n).toLocaleString("es-CL")} CLP`;
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+  return formatUsdtClient(amountStr);
 }
 
 function formatBTC(balanceStr: string, unit: Unit) {
@@ -251,7 +252,7 @@ export default function AdjustClient({ initialAsset }: { initialAsset: AssetCode
                   active ? "border-neutral-600 bg-neutral-900" : "border-neutral-800 bg-neutral-950 hover:bg-neutral-900",
                 ].join(" ")}
               >
-                <div className="text-xs text-neutral-400">{a}</div>
+                <div className="text-xs text-neutral-400">{displayAsset(a)}</div>
                 <div className="text-sm font-medium text-neutral-100">
                   {a === "BTC" ? "Bitcoin" : a === "CLP" ? "Pesos" : "Dólares"}
                 </div>
@@ -279,7 +280,7 @@ export default function AdjustClient({ initialAsset }: { initialAsset: AssetCode
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="text-xs text-neutral-400">
-              Monto de ajuste {asset === "BTC" ? `(${unit})` : asset === "CLP" ? "(CLP)" : "(USD)"}
+              Monto de ajuste {asset === "BTC" ? `(${unit})` : asset === "CLP" ? "(CLP)" : `(${displayAsset(asset)})`}
             </label>
 
             <input

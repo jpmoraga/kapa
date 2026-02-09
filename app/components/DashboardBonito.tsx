@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import MovementForm from "@/app/treasury/_components/MovementForm";
 import BtcClpChart from "@/components/landing/BtcClpChart";
+import { displayAsset, formatUsdtClient } from "@/lib/formatUsdt";
 import type { TreasuryMovementStatus } from "@prisma/client";
 import {
   CreditCard,
@@ -126,10 +127,6 @@ export default function DashboardBonito({
   function formatCLP(v: number) {
     return `$${Math.round(v).toLocaleString("es-CL")} CLP`;
   }
-  function formatUSD(v: number) {
-    // En UI seguimos usando etiqueta USDT, pero el formato es USD
-    return `${v.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT`;
-  }
   function formatBTC(v: number) {
     return `${v.toLocaleString("en-US", { maximumFractionDigits: 8 })} BTC`;
   }
@@ -221,7 +218,7 @@ useEffect(() => {
     const totalBTC = btc + clp / btcClpSpot + (usd * usdtClpSpot) / btcClpSpot;
 
     if (quote === "CLP") return formatCLP(totalCLP);
-    if (quote === "USDT") return formatUSD(totalUSDT);
+    if (quote === "USDT") return formatUsdtClient(totalUSDT);
     return formatBTC(totalBTC);
   }, [clp, btc, usd, quote, btcClpSpot, usdtClpSpot]);
 
@@ -470,7 +467,7 @@ useEffect(() => {
               </div>
 
               <div className="mt-4 text-2xl font-semibold tracking-tight">
-                {formatUSD(usd)}
+                {formatUsdtClient(usd)}
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -584,7 +581,7 @@ useEffect(() => {
                         <td className="py-3">
                           <span className="k21-pill border-white/10 bg-white/5 text-neutral-200">
                             {m.type === "deposit" ? "Compra" : m.type === "withdraw" ? "Venta" : "Ajuste"}{" "}
-                            {m.assetCode === "USD" ? "USDT" : m.assetCode}
+                            {displayAsset(m.assetCode)}
                           </span>
                         </td>
                         <td className="py-3 text-right font-medium text-neutral-200">
@@ -597,7 +594,7 @@ useEffect(() => {
                             return m.assetCode === "CLP"
                               ? formatCLP(n(amt))
                               : m.assetCode === "USD"
-                              ? formatUSD(n(amt))
+                              ? formatUsdtClient(amt)
                               : formatBTC(n(amt));
                           })()}
                           {m.attachmentUrl ? (

@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import type { TreasuryMovementStatus } from "@prisma/client";
+import { formatUsdtClient } from "@/lib/formatUsdt";
 
 type Unit = "BTC" | "sats";
 type AssetCode = "BTC" | "CLP" | "USD";
@@ -87,15 +88,15 @@ function formatCLP(n: number) {
 }
 
 function formatUSD(n: number) {
-  if (!Number.isFinite(n)) return "$0.00 USD";
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`;
+  if (!Number.isFinite(n)) return formatUsdtClient(0);
+  return formatUsdtClient(n);
 }
 
 function formatFiat(amountStr: string, code: "CLP" | "USD") {
   const n = Number(String(amountStr).replace(",", "."));
-  if (!Number.isFinite(n)) return code === "CLP" ? "$0 CLP" : "$0.00 USD";
+  if (!Number.isFinite(n)) return code === "CLP" ? "$0 CLP" : formatUsdtClient(0);
   if (code === "CLP") return formatCLP(n);
-  return formatUSD(n);
+  return formatUsdtClient(amountStr);
 }
 
 type PriceInfo = {
