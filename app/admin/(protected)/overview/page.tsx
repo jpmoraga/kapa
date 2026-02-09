@@ -13,6 +13,15 @@ type OverviewResponse = {
     balances?: Record<string, string>;
     note?: string;
   };
+  snapshot?: {
+    at?: string;
+    systemCompanyId?: string | null;
+    buda?: { clp?: string; btc?: string; usd?: string };
+    clients?: { clp?: string; btc?: string; usd?: string };
+    system?: { clp?: string; btc?: string; usd?: string };
+  } | null;
+  lastSnapshotAt?: string | null;
+  lastSnapshotCreatedAt?: string | null;
   fees: {
     range: RangeKey;
     totalsByCurrency: Record<string, string>;
@@ -99,11 +108,17 @@ export default function AdminOverviewPage() {
     []
   );
 
-  function readResyncValue(section: "buda" | "clients" | "system", key: string) {
-    const raw = resync.payload?.result?.[section]?.[key];
+  function readSnapshotValue(section: "buda" | "clients" | "system", key: string) {
+    const snapshot = data?.snapshot as any;
+    const raw = snapshot?.[section]?.[key];
     if (raw === null || raw === undefined) return null;
     return String(raw);
   }
+
+  const lastSnapshotAt = data?.lastSnapshotAt ?? data?.snapshot?.at ?? null;
+  const lastSnapshotDate = lastSnapshotAt ? new Date(lastSnapshotAt) : null;
+  const snapshotStale =
+    lastSnapshotDate && Date.now() - lastSnapshotDate.getTime() > 10 * 60 * 1000;
 
   async function fetchOverview(selectedRange: RangeKey) {
     setLoading(true);
@@ -183,6 +198,11 @@ export default function AdminOverviewPage() {
             <div className="mt-4 text-sm text-neutral-500">Cargando...</div>
           ) : data?.systemWallet?.available ? (
             <div className="mt-4 overflow-x-auto">
+              <div className="mb-3 text-xs text-neutral-500">
+                Última sincronización:{" "}
+                {lastSnapshotDate ? lastSnapshotDate.toLocaleString("es-CL") : "—"}{" "}
+                {snapshotStale ? "(desactualizado)" : null}
+              </div>
               <table className="min-w-full text-left text-sm">
                 <thead className="text-xs uppercase text-neutral-500 border-b border-neutral-800">
                   <tr>
@@ -194,9 +214,9 @@ export default function AdminOverviewPage() {
                 </thead>
                 <tbody className="divide-y divide-neutral-800">
                   {systemRows.map((row) => {
-                    const buda = readResyncValue("buda", row.key);
-                    const clients = readResyncValue("clients", row.key);
-                    const system = readResyncValue("system", row.key);
+                    const buda = readSnapshotValue("buda", row.key);
+                    const clients = readSnapshotValue("clients", row.key);
+                    const system = readSnapshotValue("system", row.key);
                     return (
                       <tr key={row.label} className="text-neutral-200">
                         <td className="py-2 pr-4 text-neutral-400">{row.label}</td>
@@ -208,7 +228,7 @@ export default function AdminOverviewPage() {
                   })}
                 </tbody>
               </table>
-              {!resync.payload && (
+              {!data?.snapshot && (
                 <div className="mt-2 text-xs text-neutral-500">
                   Ejecuta el resync para cargar los valores de Buda, Clientes y System.
                 </div>

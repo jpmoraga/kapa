@@ -222,6 +222,15 @@ model CronRun {
   @@index([marketId, createdAt])
 }
 
+model SystemWalletSnapshot {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  at        DateTime
+  payload   Json
+
+  @@index([createdAt])
+}
+
 model DepositSlip {
   id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId            String   @map("user_id")

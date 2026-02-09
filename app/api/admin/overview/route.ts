@@ -109,8 +109,9 @@ export async function GET(req: Request) {
     ];
   }
 
-  const [systemWallet, feeRows, recentRows] = await Promise.all([
+  const [systemWallet, snapshot, feeRows, recentRows] = await Promise.all([
     loadSystemWallet(),
+    prisma.systemWalletSnapshot.findFirst({ orderBy: { createdAt: "desc" } }),
     prisma.treasuryMovement.findMany({
       where: feeWhere,
       orderBy: { createdAt: "desc" },
@@ -183,6 +184,9 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     systemWallet,
+    snapshot: snapshot?.payload ?? null,
+    lastSnapshotAt: snapshot?.at?.toISOString() ?? null,
+    lastSnapshotCreatedAt: snapshot?.createdAt?.toISOString() ?? null,
     fees: {
       range,
       totalsByCurrency: toStringMap(totalsByCurrency),
