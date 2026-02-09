@@ -290,7 +290,7 @@ useEffect(() => {
             {/* Center: nav */}
             <nav className="hidden md:flex flex-1 items-center justify-center gap-2">
               {[
-                { label: "Crédito", icon: CreditCard, href: "#" },
+                { label: "Crédito", icon: CreditCard, href: "/credito" },
                 { label: "Reportes", icon: BarChart3, href: "#" },
                 { label: "Transferencias", icon: ArrowLeftRight, href: "#" },
                 { label: "Actividad", icon: Activity, href: hrefs?.activity ?? "#" },
