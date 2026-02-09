@@ -1,0 +1,3 @@
+-- No-op migration.
+-- The current Prisma schema has no ExternalNonce model or external nonce field,
+-- so there are no schema changes to apply here.
