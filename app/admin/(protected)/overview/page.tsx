@@ -60,16 +60,6 @@ function formatBtc(value: string) {
   return `${n.toLocaleString("en-US", { minimumFractionDigits: 8, maximumFractionDigits: 8 })} BTC`;
 }
 
-function formatAssetAmount(asset: string | null | undefined, value: string | null | undefined) {
-  if (!value) return "—";
-  const code = String(asset ?? "").toUpperCase();
-  if (code === "USD") return formatUsdtAdmin(value);
-  if (code === "CLP") return formatClp(value);
-  if (code === "BTC") return formatBtc(value);
-  if (!code) return value;
-  return `${value} ${displayAsset(code)}`;
-}
-
 function formatFeeAmount(value: string | null | undefined, currency: string | null | undefined) {
   if (!value) return "—";
   const code = String(currency ?? "").toUpperCase();
@@ -78,6 +68,13 @@ function formatFeeAmount(value: string | null | undefined, currency: string | nu
   if (code === "BTC") return formatBtc(value);
   if (!code) return value;
   return `${value} ${displayAsset(code)}`;
+}
+
+function formatSystemValue(asset: "CLP" | "BTC" | "USD", value?: string | null) {
+  if (!value) return "—";
+  if (asset === "CLP") return formatClp(value);
+  if (asset === "BTC") return formatBtc(value);
+  return formatUsdtAdmin(value);
 }
 
 function renderTotalsLine(map: Record<string, string> | undefined) {
@@ -93,12 +90,20 @@ export default function AdminOverviewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resync, setResync] = useState<ResyncState>({ loading: false });
+  const systemRows = useMemo(
+    () => [
+      { label: "CLP", key: "clp", asset: "CLP" as const },
+      { label: "BTC", key: "btc", asset: "BTC" as const },
+      { label: "USDT", key: "usd", asset: "USD" as const },
+    ],
+    []
+  );
 
-  const systemBalances = useMemo(() => {
-    const entries = Object.entries(data?.systemWallet?.balances ?? {});
-    const order = { CLP: 0, BTC: 1, USD: 2 } as Record<string, number>;
-    return entries.sort(([a], [b]) => (order[a] ?? 99) - (order[b] ?? 99));
-  }, [data?.systemWallet?.balances]);
+  function readResyncValue(section: "buda" | "clients" | "system", key: string) {
+    const raw = resync.payload?.result?.[section]?.[key];
+    if (raw === null || raw === undefined) return null;
+    return String(raw);
+  }
 
   async function fetchOverview(selectedRange: RangeKey) {
     setLoading(true);
@@ -177,18 +182,36 @@ export default function AdminOverviewPage() {
           {loading && !data ? (
             <div className="mt-4 text-sm text-neutral-500">Cargando...</div>
           ) : data?.systemWallet?.available ? (
-            <div className="mt-4 grid gap-2">
-              {systemBalances.length ? (
-                systemBalances.map(([asset, amount]) => (
-                  <div key={asset} className="flex items-center justify-between text-sm">
-                    <span className="text-neutral-400">{displayAsset(asset)}</span>
-                    <span className="font-medium text-neutral-100">
-                      {formatAssetAmount(asset, amount)}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-neutral-500">Sin balances disponibles.</div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-xs uppercase text-neutral-500 border-b border-neutral-800">
+                  <tr>
+                    <th className="py-2 pr-4">Asset</th>
+                    <th className="py-2 pr-4">Buda</th>
+                    <th className="py-2 pr-4">Clientes</th>
+                    <th className="py-2">System</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-800">
+                  {systemRows.map((row) => {
+                    const buda = readResyncValue("buda", row.key);
+                    const clients = readResyncValue("clients", row.key);
+                    const system = readResyncValue("system", row.key);
+                    return (
+                      <tr key={row.label} className="text-neutral-200">
+                        <td className="py-2 pr-4 text-neutral-400">{row.label}</td>
+                        <td className="py-2 pr-4">{formatSystemValue(row.asset, buda)}</td>
+                        <td className="py-2 pr-4">{formatSystemValue(row.asset, clients)}</td>
+                        <td className="py-2">{formatSystemValue(row.asset, system)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {!resync.payload && (
+                <div className="mt-2 text-xs text-neutral-500">
+                  Ejecuta el resync para cargar los valores de Buda, Clientes y System.
+                </div>
               )}
             </div>
           ) : (
