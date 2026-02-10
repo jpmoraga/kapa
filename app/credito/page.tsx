@@ -64,7 +64,6 @@ export default function CreditoPage() {
   const [amountClp, setAmountClp] = useState<number>(0);
   const [amountInput, setAmountInput] = useState<string>("");
   const [months, setMonths] = useState<number>(3);
-  const [ltvPct, setLtvPct] = useState<number>(50);
   const [isSubscriber, setIsSubscriber] = useState<boolean>(false);
 
   useEffect(() => {
@@ -113,12 +112,9 @@ export default function CreditoPage() {
     void loadSummary();
   }, []);
 
-  useEffect(() => {
-    if (!isSubscriber && ltvPct > 50) setLtvPct(50);
-  }, [isSubscriber, ltvPct]);
-
   const maxLtvPct = isSubscriber ? 60 : 50;
-  const ltv = ltvPct / 100;
+  const ltvPct = maxLtvPct;
+  const ltv = maxLtvPct / 100;
 
   const hasData = btcAvailable !== null && basePriceClp !== null && basePriceClp > 0;
   const btcAvailableSafe = btcAvailable ?? 0;
@@ -278,25 +274,12 @@ export default function CreditoPage() {
               <div className="flex items-center justify-between">
                 <label className="text-xs text-neutral-400">
                   LTV inicial
-                  <span
-                    className="ml-2 text-neutral-500"
-                    title="Relación entre crédito y garantía. Menor LTV = mayor respaldo."
-                  >
+                  <span className="ml-2 text-neutral-500" title="50% estándar / 60% con suscripción.">
                     ⓘ
                   </span>
                 </label>
                 <span className="text-xs text-neutral-300">{ltvPct.toFixed(0)}%</span>
               </div>
-              <input
-                type="range"
-                min={30}
-                max={maxLtvPct}
-                step={1}
-                value={ltvPct}
-                onChange={(e) => setLtvPct(Number(e.target.value))}
-                className="mt-2 w-full"
-                disabled={!hasData}
-              />
               <label className="mt-3 flex items-center gap-2 text-xs text-neutral-400">
                 <input
                   type="checkbox"
