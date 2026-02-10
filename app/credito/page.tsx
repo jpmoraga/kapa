@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 const FALLBACK_BTC_AVAILABLE = 0.02594742;
 const FALLBACK_BTC_PRICE_CLP = 60867616;
-const MONTHLY_RATE = 0.013; // 1.30%
+
+const MONTHLY_RATE = 0.14 / 12; // 14% anual / 12
 
 function parseNumberLike(input: string | number | null | undefined) {
   const v = typeof input === "number" ? input : Number(String(input ?? "").replace(/,/g, "."));
@@ -12,16 +13,17 @@ function parseNumberLike(input: string | number | null | undefined) {
 }
 
 function formatClpNumber(n: number) {
-  if (!Number.isFinite(n)) return "0";
+  if (!Number.isFinite(n)) return "—";
   return Math.round(n).toLocaleString("es-CL");
 }
 
-function formatClp(n: number) {
+function formatClp(n: number | null) {
+  if (n === null || !Number.isFinite(n)) return "—";
   return `$${formatClpNumber(n)} CLP`;
 }
 
-function formatBtc(n: number) {
-  if (!Number.isFinite(n)) return "0.00000000 BTC";
+function formatBtc(n: number | null) {
+  if (n === null || !Number.isFinite(n)) return "—";
   return `${n.toLocaleString("en-US", {
     minimumFractionDigits: 8,
     maximumFractionDigits: 8,
@@ -32,17 +34,23 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function ltvBadge(ltvPct: number) {
-  if (ltvPct >= 80) {
+function ltvBadge(ltvPct: number | null) {
+  if (ltvPct === null || !Number.isFinite(ltvPct)) {
+    return { label: "—", cls: "border-white/10 bg-white/5 text-neutral-400" };
+  }
+  if (ltvPct > 80) {
     return { label: "Liquidación", cls: "border-red-500/30 bg-red-500/10 text-red-300" };
   }
   if (ltvPct >= 70) {
     return { label: "Margin call", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
   }
   if (ltvPct >= 65) {
-    return { label: "Riesgoso", cls: "border-orange-500/30 bg-orange-500/10 text-orange-300" };
+    return { label: "Riesgo", cls: "border-orange-500/30 bg-orange-500/10 text-orange-300" };
   }
-  return { label: "Saludable", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
+  if (ltvPct >= 40) {
+    return { label: "Saludable", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
+  }
+  return { label: "Retiro posible", cls: "border-sky-500/30 bg-sky-500/10 text-sky-300" };
 }
 
 export default function CreditoPage() {
@@ -117,318 +125,347 @@ export default function CreditoPage() {
   const basePriceSafe = basePriceClp ?? 0;
   const btcScenarioPrice = btcPriceClp ?? basePriceSafe;
 
-  const minPrice = useMemo(() => (basePriceClp ? basePriceClp * 0.6 : 0), [basePriceClp]);
-  const maxPrice = useMemo(() => (basePriceClp ? basePriceClp * 1.4 : 0), [basePriceClp]);
+  const minPrice = useMemo(() => (basePriceClp ? basePriceClp * 0.5 : 0), [basePriceClp]);
+  const maxPrice = useMemo(() => (basePriceClp ? basePriceClp * 1.5 : 0), [basePriceClp]);
 
-  const maxLoanClp = hasData ? btcAvailableSafe * basePriceSafe * (maxLtvPct / 100) : 0;
+  const maxLoanClp = hasData ? btcAvailableSafe * basePriceSafe * (maxLtvPct / 100) : null;
   const collateralBtc =
-    hasData && ltv > 0 && amountClp > 0 ? amountClp / (ltv * basePriceSafe) : 0;
-  const btcRemaining = Math.max(btcAvailableSafe - collateralBtc, 0);
+    hasData && ltv > 0 && amountClp > 0 ? amountClp / (ltv * basePriceSafe) : null;
+  const btcRemaining = collateralBtc !== null ? Math.max(btcAvailableSafe - collateralBtc, 0) : null;
 
-  const hasScenario = hasData && collateralBtc > 0 && btcScenarioPrice > 0 && amountClp > 0;
-  const ltvScenario = hasScenario ? amountClp / (collateralBtc * btcScenarioPrice) : 0;
-  const ltvScenarioPct = hasScenario ? ltvScenario * 100 : 0;
-  const badge = hasScenario
-    ? ltvBadge(ltvScenarioPct)
-    : { label: "—", cls: "border-white/10 bg-white/5 text-neutral-400" };
+  const ltvScenario =
+    collateralBtc && btcScenarioPrice > 0 && amountClp > 0
+      ? amountClp / (collateralBtc * btcScenarioPrice)
+      : null;
+  const ltvScenarioPct = ltvScenario !== null ? ltvScenario * 100 : null;
+  const badge = ltvBadge(ltvScenarioPct);
 
-  const exceedMax = hasData && (amountClp > maxLoanClp || collateralBtc > btcAvailableSafe + 1e-12);
+  const exceedMax =
+    maxLoanClp !== null &&
+    (amountClp > maxLoanClp || (collateralBtc !== null && collateralBtc > btcAvailableSafe + 1e-12));
   const hasBtc = (btcAvailable ?? 0) > 0;
 
-  const costClp = amountClp * MONTHLY_RATE * months;
-  const totalClp = amountClp + costClp;
-  const cuotaClp = months > 0 ? totalClp / months : 0;
+  const interestMonthly = amountClp > 0 ? amountClp * MONTHLY_RATE : null;
 
-  const btcAvailableClp = btcAvailableSafe * btcScenarioPrice;
-  const btcFrozenClp = collateralBtc * btcScenarioPrice;
-  const btcRemainingClp = btcRemaining * btcScenarioPrice;
+  const btcAvailableClp = hasData ? btcAvailableSafe * btcScenarioPrice : null;
+  const btcFrozenClp = collateralBtc !== null ? collateralBtc * btcScenarioPrice : null;
+  const btcRemainingClp = btcRemaining !== null ? btcRemaining * btcScenarioPrice : null;
+
+  const targetSafe = 0.65;
+  const targetWithdraw = 0.4;
+
+  const requiredCollateralSafe =
+    hasData && amountClp > 0 ? amountClp / (targetSafe * btcScenarioPrice) : null;
+  const requiredCollateralWithdraw =
+    hasData && amountClp > 0 ? amountClp / (targetWithdraw * btcScenarioPrice) : null;
+
+  const addBtcNeeded =
+    collateralBtc !== null && requiredCollateralSafe !== null
+      ? Math.max(requiredCollateralSafe - collateralBtc, 0)
+      : null;
+  const amortizeNeeded =
+    collateralBtc !== null && requiredCollateralSafe !== null
+      ? Math.max(amountClp - collateralBtc * btcScenarioPrice * targetSafe, 0)
+      : null;
+  const withdrawableBtc =
+    collateralBtc !== null && requiredCollateralWithdraw !== null
+      ? Math.max(collateralBtc - requiredCollateralWithdraw, 0)
+      : null;
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100">
-      <div className="mx-auto w-full max-w-6xl px-6 py-8">
+      <div className="mx-auto w-full max-w-3xl px-6 py-8">
         <div className="k21-card p-6">
           <div className="text-sm text-white/60">Kapa21</div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Crédito</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Crédito con garantía BTC</h1>
           <p className="mt-2 text-sm text-white/60">
-            Simula un crédito en CLP respaldado con BTC. Esto es solo una simulación.
+            Simulador informativo. No hay aprobación ni flujo bancario real.
           </p>
         </div>
 
-        {!hasBtc && !loadingData && (
-          <div className="mt-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-            No tienes BTC disponible para simular.
-          </div>
-        )}
         {dataError && (
           <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
             {dataError}
           </div>
         )}
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <section className="k21-card p-6 lg:col-span-1">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Simula tu crédito</div>
-            <h2 className="mt-1 text-lg font-semibold">Parámetros</h2>
-
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="text-xs text-neutral-400">Monto a solicitar (CLP)</label>
-                <input
-                  className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none focus:border-neutral-700"
-                  inputMode="numeric"
-                  value={amountInput}
-                  placeholder="0"
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/[^\d]/g, "");
-                    if (!digits) {
-                      setAmountInput("");
-                      setAmountClp(0);
-                      return;
-                    }
-                    const numeric = Number(digits);
-                    setAmountClp(numeric);
-                    setAmountInput(formatClpNumber(numeric));
-                  }}
-                />
-                <div className="mt-1 text-xs text-neutral-500">
-                  Máximo disponible: {hasData ? formatClp(maxLoanClp) : "—"}
-                </div>
-                {exceedMax && amountClp > 0 && (
-                  <div className="mt-2 text-xs text-red-300">Monto excede el máximo permitido.</div>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs text-neutral-400">Plazo</label>
-                <div className="mt-2 flex gap-2">
-                  {[1, 2, 3].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setMonths(m)}
-                      className={
-                        m === months
-                          ? "k21-btn-primary px-3 py-1.5 text-xs"
-                          : "k21-btn-secondary px-3 py-1.5 text-xs"
-                      }
-                    >
-                      {m} mes{m > 1 ? "es" : ""}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs text-neutral-400">LTV inicial</label>
-                  <span className="text-xs text-neutral-300">{ltvPct.toFixed(0)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={10}
-                  max={maxLtvPct}
-                  step={1}
-                  value={ltvPct}
-                  onChange={(e) => setLtvPct(Number(e.target.value))}
-                  className="mt-2 w-full"
-                />
-                <label className="mt-3 flex items-center gap-2 text-xs text-neutral-400">
-                  <input
-                    type="checkbox"
-                    checked={isSubscriber}
-                    onChange={(e) => setIsSubscriber(e.target.checked)}
-                  />
-                  Soy suscriptor (USD 50/mes) — LTV máx 60%
-                </label>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs uppercase tracking-wide text-neutral-500">Salud del crédito</div>
-                  <span className={`rounded-full border px-2 py-0.5 text-xs ${badge.cls}`}>{badge.label}</span>
-                </div>
-                <div className="mt-2 text-xs text-neutral-400">
-                  LTV actual: {hasScenario ? `${ltvScenarioPct.toFixed(2)}%` : "—"}
-                </div>
-                <div className="mt-3 space-y-1 text-xs text-neutral-500">
-                  <div>Retiro de garantía posible: &lt; 40%</div>
-                  <div>Salud riesgosa: ≥ 65%</div>
-                  <div>Margin call: ≥ 70% (72 horas para agregar respaldo o pagar parte)</div>
-                  <div>Liquidación automática: ≥ 80%</div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="k21-card p-6 lg:col-span-2">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Resultado</div>
-            <h2 className="mt-1 text-lg font-semibold">Simulación</h2>
-
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-neutral-500">Monto máximo que puedes pedir</div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {hasData ? formatClp(maxLoanClp) : "—"}
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-neutral-500">Garantía requerida</div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {hasData ? formatBtc(collateralBtc) : "—"}
-                </div>
-                <div className="mt-1 text-xs text-neutral-400">
-                  {hasData ? formatClp(btcFrozenClp) : "—"}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-neutral-500">Bitcoins disponibles actualmente</div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {hasData ? formatBtc(btcAvailableSafe) : "—"}
-                </div>
-                <div className="mt-1 text-xs text-neutral-400">
-                  {hasData ? formatClp(btcAvailableClp) : "—"}
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-neutral-500">Bitcoins a congelar</div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {hasData ? formatBtc(collateralBtc) : "—"}
-                </div>
-                <div className="mt-1 text-xs text-neutral-400">
-                  {hasData ? formatClp(btcFrozenClp) : "—"}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-neutral-500">Bitcoins disponibles después</div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {hasData ? formatBtc(btcRemaining) : "—"}
-                </div>
-                <div className="mt-1 text-xs text-neutral-400">
-                  {hasData ? formatClp(btcRemainingClp) : "—"}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-neutral-500">Total a pagar</div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {hasData ? formatClp(totalClp) : "—"}
-                </div>
-                <div className="mt-1 text-xs text-neutral-400">
-                  Costo del crédito: {hasData ? formatClp(costClp) : "—"}
-                </div>
-                <div className="mt-1 text-xs text-neutral-400">
-                  Cuota mensual aprox: {hasData ? formatClp(cuotaClp) : "—"}
-                </div>
-                <div className="mt-2 text-xs text-neutral-500">
-                  Tasa de interés mensual: {(MONTHLY_RATE * 100).toFixed(2)}% · CAE: —
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+        {!loadingData && !hasBtc && (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
+            No tienes BTC disponible para simular.
+          </div>
+        )}
 
         <section className="k21-card mt-6 p-6">
-          <div className="text-xs uppercase tracking-wide text-neutral-500">
-            Simulador LTV con precio BTC
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Tu capacidad de crédito</div>
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">BTC disponible</span>
+              <span className="font-medium">{formatBtc(btcAvailable)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Valor equivalente en CLP</span>
+              <span className="font-medium">{formatClp(btcAvailableClp)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Monto máximo de crédito</span>
+              <span className="font-medium">{formatClp(maxLoanClp)}</span>
+            </div>
           </div>
-          <h2 className="mt-1 text-lg font-semibold">Escenario de precio BTC/CLP</h2>
+        </section>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-1">
-              <label className="text-xs text-neutral-400">Precio BTC/CLP (escenario)</label>
+        <section className="k21-card mt-6 p-6">
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Configura tu crédito</div>
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="text-xs text-neutral-400">
+                Monto de crédito (CLP)
+                <span className="ml-2 text-neutral-500" title="El monto está limitado por tu BTC disponible y el LTV inicial.">
+                  ⓘ
+                </span>
+              </label>
               <input
                 className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-100 outline-none focus:border-neutral-700"
                 inputMode="numeric"
-                value={btcPriceInput}
+                value={amountInput}
                 disabled={!hasData}
+                placeholder={hasData ? "0" : "—"}
                 onChange={(e) => {
                   const digits = e.target.value.replace(/[^\d]/g, "");
                   if (!digits) {
-                    setBtcPriceInput("");
-                    setBtcPriceClp(null);
+                    setAmountInput("");
+                    setAmountClp(0);
                     return;
                   }
                   const numeric = Number(digits);
-                  const clamped = clamp(numeric, minPrice, maxPrice);
-                  setBtcPriceClp(clamped);
-                  setBtcPriceInput(formatClpNumber(clamped));
+                  setAmountClp(numeric);
+                  setAmountInput(formatClpNumber(numeric));
                 }}
               />
               <div className="mt-1 text-xs text-neutral-500">
-                Precio base: {hasData ? formatClp(basePriceSafe) : "—"}
+                Máximo disponible: {formatClp(maxLoanClp)}
+              </div>
+              {exceedMax && amountClp > 0 && (
+                <div className="mt-2 text-xs text-red-300">Monto excede el máximo permitido.</div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-400">
+                Plazo
+                <span className="ml-2 text-neutral-500" title="Plazo del crédito bullet: capital al vencimiento.">
+                  ⓘ
+                </span>
+              </label>
+              <div className="mt-2 flex gap-2">
+                {[1, 2, 3].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMonths(m)}
+                    className={
+                      m === months
+                        ? "k21-btn-primary px-3 py-1.5 text-xs"
+                        : "k21-btn-secondary px-3 py-1.5 text-xs"
+                    }
+                  >
+                    {m} mes{m > 1 ? "es" : ""}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="lg:col-span-2">
-              <div className="flex items-center justify-between text-xs text-neutral-400">
-                <span>{hasData ? formatClp(minPrice) : "—"}</span>
-                <span>{hasData ? formatClp(maxPrice) : "—"}</span>
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-neutral-400">
+                  LTV inicial
+                  <span
+                    className="ml-2 text-neutral-500"
+                    title="Relación entre crédito y garantía. Menor LTV = mayor respaldo."
+                  >
+                    ⓘ
+                  </span>
+                </label>
+                <span className="text-xs text-neutral-300">{ltvPct.toFixed(0)}%</span>
               </div>
               <input
                 type="range"
-                min={minPrice}
-                max={maxPrice}
-                step={1000}
-                value={hasData ? clamp(btcScenarioPrice, minPrice, maxPrice) : 0}
-                disabled={!hasData}
-                onChange={(e) => {
-                  const numeric = Number(e.target.value);
-                  setBtcPriceClp(numeric);
-                  setBtcPriceInput(formatClpNumber(numeric));
-                }}
+                min={30}
+                max={maxLtvPct}
+                step={1}
+                value={ltvPct}
+                onChange={(e) => setLtvPct(Number(e.target.value))}
                 className="mt-2 w-full"
+                disabled={!hasData}
               />
-              <div className="mt-4">
-                <div className="relative h-3 overflow-hidden rounded-full border border-white/10 bg-white/5">
-                  <div className="absolute inset-y-0 left-0 w-[40%] bg-sky-500/20" />
-                  <div className="absolute inset-y-0 left-[40%] w-[25%] bg-emerald-500/20" />
-                  <div className="absolute inset-y-0 left-[65%] w-[5%] bg-orange-500/25" />
-                  <div className="absolute inset-y-0 left-[70%] w-[10%] bg-amber-500/25" />
-                  <div className="absolute inset-y-0 left-[80%] w-[20%] bg-red-500/25" />
-                  {hasScenario && (
-                    <div
-                      className="absolute top-0 h-3 w-0.5 bg-white"
-                      style={{ left: `${clamp(ltvScenarioPct, 0, 100)}%` }}
-                    />
-                  )}
-                </div>
-                <div className="relative mt-2 h-4 text-[10px] text-neutral-500">
-                  {[40, 65, 70, 80].map((p) => (
-                    <span
-                      key={p}
-                      className="absolute -translate-x-1/2"
-                      style={{ left: `${p}%` }}
-                    >
-                      {p}%
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-neutral-400">
-                  <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5">
-                    Retiro posible
-                  </span>
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5">
-                    Saludable
-                  </span>
-                  <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5">
-                    Riesgoso
-                  </span>
-                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5">
-                    Margin call
-                  </span>
-                  <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5">
-                    Liquidación
-                  </span>
-                </div>
+              <label className="mt-3 flex items-center gap-2 text-xs text-neutral-400">
+                <input
+                  type="checkbox"
+                  checked={isSubscriber}
+                  onChange={(e) => setIsSubscriber(e.target.checked)}
+                />
+                Suscripción (LTV máx 60%)
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section className="k21-card mt-6 p-6">
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Pagos e intereses</div>
+          <div className="mt-3 space-y-2 text-sm text-neutral-300">
+            <div>Los intereses se pagan mensualmente.</div>
+            <div>El capital se paga o renueva al vencimiento (crédito bullet).</div>
+            <div>Se puede amortizar capital en cualquier momento.</div>
+          </div>
+          <div className="mt-4 text-sm text-neutral-400">
+            Tasa mensual equivalente: {(MONTHLY_RATE * 100).toFixed(2)}% (14% anual / 12)
+          </div>
+          <div className="mt-2 text-sm text-neutral-100">
+            Interés mensual estimado: {formatClp(interestMonthly)}
+          </div>
+        </section>
+
+        <section className="k21-card mt-6 p-6">
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Salud del crédito</div>
+          <div className="mt-3 space-y-2 text-sm text-neutral-300">
+            <div>&lt;40%: puedes retirar garantía.</div>
+            <div>40–65%: saludable.</div>
+            <div>65–70%: riesgo (aviso por email).</div>
+            <div>70–80%: margin call (72h).</div>
+            <div>&gt;80%: liquidación parcial de garantía.</div>
+          </div>
+        </section>
+
+        <section className="k21-card mt-6 p-6">
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Simulación de precio de Bitcoin</div>
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-xs text-neutral-400">
+              <span>{formatClp(minPrice)}</span>
+              <span>{formatClp(maxPrice)}</span>
+            </div>
+            <input
+              type="range"
+              min={minPrice}
+              max={maxPrice}
+              step={1000}
+              value={hasData ? clamp(btcScenarioPrice, minPrice, maxPrice) : 0}
+              disabled={!hasData}
+              onChange={(e) => {
+                const numeric = Number(e.target.value);
+                setBtcPriceClp(numeric);
+                setBtcPriceInput(formatClpNumber(numeric));
+              }}
+              className="mt-2 w-full"
+            />
+            <div className="mt-3 text-xs text-neutral-400">Precio escenario: {btcPriceInput || "—"}</div>
+
+            <div className="mt-4">
+              <div className="relative h-3 overflow-hidden rounded-full border border-white/10 bg-white/5">
+                <div className="absolute inset-y-0 left-0 w-[40%] bg-sky-500/20" />
+                <div className="absolute inset-y-0 left-[40%] w-[25%] bg-emerald-500/20" />
+                <div className="absolute inset-y-0 left-[65%] w-[5%] bg-orange-500/25" />
+                <div className="absolute inset-y-0 left-[70%] w-[10%] bg-amber-500/25" />
+                <div className="absolute inset-y-0 left-[80%] w-[20%] bg-red-500/25" />
+                {ltvScenarioPct !== null && (
+                  <div
+                    className="absolute top-0 h-3 w-0.5 bg-white"
+                    style={{ left: `${clamp(ltvScenarioPct, 0, 100)}%` }}
+                  />
+                )}
               </div>
-              <div className="mt-3 text-xs text-neutral-400">
-                LTV escenario: {hasScenario ? `${ltvScenarioPct.toFixed(2)}%` : "—"} · Estado: {badge.label}
+              <div className="relative mt-2 h-4 text-[10px] text-neutral-500">
+                {[40, 65, 70, 80].map((p) => (
+                  <span
+                    key={p}
+                    className="absolute -translate-x-1/2"
+                    style={{ left: `${p}%` }}
+                  >
+                    {p}%
+                  </span>
+                ))}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-neutral-400">
+                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5">
+                  Retiro posible
+                </span>
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5">
+                  Saludable
+                </span>
+                <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5">
+                  Riesgo
+                </span>
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5">
+                  Margin call
+                </span>
+                <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5">
+                  Liquidación parcial
+                </span>
+              </div>
+              <div className="mt-3 text-xs text-neutral-300">
+                LTV resultante: {ltvScenarioPct !== null ? `${ltvScenarioPct.toFixed(2)}%` : "—"} · Estado: {badge.label}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-neutral-300">
+              <div className="font-medium text-neutral-200">Acciones sugeridas</div>
+              <div className="mt-2 space-y-1">
+                {withdrawableBtc && withdrawableBtc > 0 ? (
+                  <div>• Puedes retirar {formatBtc(withdrawableBtc)}</div>
+                ) : null}
+                {addBtcNeeded && addBtcNeeded > 0 ? (
+                  <div>• Agregar {formatBtc(addBtcNeeded)}</div>
+                ) : null}
+                {amortizeNeeded && amortizeNeeded > 0 ? (
+                  <div>• Amortizar {formatClp(amortizeNeeded)}</div>
+                ) : null}
+                {!hasData && <div>• Esperando datos para sugerencias.</div>}
+              </div>
+              <div className="mt-2 text-xs text-neutral-500">
+                La liquidación, si ocurre, es parcial y no total.
               </div>
             </div>
           </div>
         </section>
+
+        <section className="k21-card mt-6 p-6">
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Resumen del crédito</div>
+          <div className="mt-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Monto solicitado</span>
+              <span className="font-medium">{formatClp(amountClp || null)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Garantía en BTC</span>
+              <span className="font-medium">{formatBtc(collateralBtc)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">LTV inicial</span>
+              <span className="font-medium">{ltvPct.toFixed(0)}%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Interés mensual estimado</span>
+              <span className="font-medium">{formatClp(interestMonthly)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">Plazo</span>
+              <span className="font-medium">{months} mes{months > 1 ? "es" : ""}</span>
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-neutral-500">
+            Este simulador es referencial. Condiciones finales sujetas a evaluación.
+          </div>
+        </section>
+
+        <div className="mt-6">
+          <button
+            type="button"
+            className="k21-btn-disabled w-full"
+            disabled
+            title="Disponible próximamente"
+          >
+            Solicitar crédito
+          </button>
+          <div className="mt-2 text-center text-xs text-neutral-500">Disponible próximamente</div>
+        </div>
       </div>
     </div>
   );
