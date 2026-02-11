@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
-import { TreasuryMovementStatus } from "@prisma/client";
 
 export const runtime = "nodejs";
 
@@ -19,26 +18,44 @@ export async function POST(
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: { id: true, companyUsers: { select: { role: true } } },
   });
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
 
-  const membership = await prisma.companyUser.findUnique({
-    where: { userId_companyId: { userId: user.id, companyId: activeCompanyId } },
-    select: { role: true },
+  const isAdmin = user.companyUsers?.some((cu) => {
+    const role = String(cu.role).toUpperCase();
+    return role === "ADMIN" || role === "OWNER";
   });
-
-  const role = String(membership?.role ?? "").toLowerCase();
-  const isAdmin = role === "admin" || role === "owner";
   if (!isAdmin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
   const { id } = await context.params;
 
   // Buscar por id directo en TreasuryMovement primero.
+  const treasurySelect = {
+    id: true,
+    type: true,
+    assetCode: true,
+    status: true,
+    paidOut: true,
+    paidOutAt: true,
+  } as const;
+
   let m = await prisma.treasuryMovement.findFirst({
     where: { id, companyId: activeCompanyId },
-    select: { id: true, type: true, assetCode: true, status: true, paidOut: true, paidOutAt: true },
+    select: treasurySelect,
   });
+
+  if (!m && isAdmin) {
+    console.info("TREASURY_MOVEMENT_PAID", {
+      mode: "admin_id_fallback",
+      movementId: id,
+      activeCompanyId,
+    });
+    m = await prisma.treasuryMovement.findFirst({
+      where: { id },
+      select: treasurySelect,
+    });
+  }
 
   if (m) {
     if (m.type !== "withdraw" || m.assetCode !== "CLP") {
@@ -57,7 +74,6 @@ export async function POST(
       data: {
         paidOut: true,
         paidOutAt: new Date(),
-        status: TreasuryMovementStatus.APPROVED,
       },
       select: { id: true, paidOut: true, paidOutAt: true, status: true },
     });
@@ -66,25 +82,55 @@ export async function POST(
   }
 
   // Fallback: buscar en tabla Movement (legacy) si existe en el Prisma Client.
-  const movementClient = (prisma as any).movement as
-    | {
-        findFirst: (args: any) => Promise<any>;
-        update: (args: any) => Promise<any>;
-      }
-    | undefined;
+  const legacySelect = {
+    id: true,
+    type: true,
+    assetCode: true,
+    status: true,
+    paidOut: true,
+    paidOutAt: true,
+  } as const;
+
+  type LegacyMovement = {
+    id: string;
+    type: string;
+    assetCode: string;
+    status?: string | null;
+    paidOut?: boolean | null;
+    paidOutAt?: Date | null;
+  };
+
+  type LegacyMovementClient = {
+    findFirst: (args: {
+      where: { id: string; companyId?: string };
+      select: typeof legacySelect;
+    }) => Promise<LegacyMovement | null>;
+    update: (args: {
+      where: { id: string };
+      data: { paidOut: boolean; paidOutAt: Date };
+      select: { id: true; paidOut: true; paidOutAt: true; status: true };
+    }) => Promise<LegacyMovement>;
+  };
+
+  const movementClient = (prisma as unknown as { movement?: LegacyMovementClient }).movement;
 
   if (movementClient?.findFirst) {
-    const legacy = await movementClient.findFirst({
+    let legacy = await movementClient.findFirst({
       where: { id, companyId: activeCompanyId },
-      select: {
-        id: true,
-        type: true,
-        assetCode: true,
-        status: true,
-        paidOut: true,
-        paidOutAt: true,
-      },
+      select: legacySelect,
     });
+
+    if (!legacy && isAdmin) {
+      console.info("TREASURY_MOVEMENT_PAID", {
+        mode: "admin_id_fallback",
+        movementId: id,
+        activeCompanyId,
+      });
+      legacy = await movementClient.findFirst({
+        where: { id },
+        select: legacySelect,
+      });
+    }
 
     if (legacy) {
       if (legacy.type !== "withdraw" || legacy.assetCode !== "CLP") {
