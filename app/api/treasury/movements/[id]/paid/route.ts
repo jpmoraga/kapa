@@ -58,7 +58,15 @@ export async function POST(
         LIMIT 1
       `;
       if (fallback?.length) {
-        m = fallback[0];
+        const row = fallback[0];
+        m = {
+          id: row.id,
+          type: row.type as any,
+          assetCode: row.assetCode as any,
+          status: row.status as any,
+          paidOut: Boolean(row.paidOut),
+          paidOutAt: row.paidOutAt ?? null,
+        };
       }
     } catch {
       // Si la columna movementId no existe, ignoramos y seguimos con 404.
