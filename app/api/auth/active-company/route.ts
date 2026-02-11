@@ -18,21 +18,27 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: { id: true, companyUsers: { select: { role: true } } },
   });
 
   if (!user) {
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
   }
 
-  // validar que el usuario pertenezca a la empresa
-  const membership = await prisma.companyUser.findUnique({
-    where: { userId_companyId: { userId: user.id, companyId } },
-    select: { userId: true },
-  });
+  const hasAdminRole = user.companyUsers?.some((cu) => String(cu.role).toUpperCase() === "ADMIN");
+  if (hasAdminRole) {
+    console.info("ACTIVE_COMPANY", { mode: "admin_override", userId: user.id, companyId });
+  } else {
+    console.info("ACTIVE_COMPANY", { mode: "member_check", userId: user.id, companyId });
+    // validar que el usuario pertenezca a la empresa
+    const membership = await prisma.companyUser.findUnique({
+      where: { userId_companyId: { userId: user.id, companyId } },
+      select: { userId: true },
+    });
 
-  if (!membership) {
-    return NextResponse.json({ error: "No autorizado para esa empresa" }, { status: 403 });
+    if (!membership) {
+      return NextResponse.json({ error: "No autorizado para esa empresa" }, { status: 403 });
+    }
   }
 
   await prisma.user.update({
