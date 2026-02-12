@@ -62,19 +62,6 @@ export async function POST(
         throw err;
       }
 
-      if (loan.status === LoanStatus.DISBURSED) {
-        const err: any = new Error("ALREADY_DISBURSED");
-        err.code = "ALREADY_DISBURSED";
-        throw err;
-      }
-
-      if (loan.status !== LoanStatus.APPROVED) {
-        const err: any = new Error("INVALID_STATUS");
-        err.code = "INVALID_STATUS";
-        err.status = loan.status;
-        throw err;
-      }
-
       if (loan.currency !== LoanCurrency.CLP) {
         const err: any = new Error("INVALID_CURRENCY");
         err.code = "INVALID_CURRENCY";
@@ -83,20 +70,72 @@ export async function POST(
 
       const now = new Date();
       const prevStatus = loan.status;
-      const nextStatus = LoanStatus.DISBURSED;
 
-      const account = await tx.treasuryAccount.upsert({
+      const updateResult = await tx.loan.updateMany({
+        where: {
+          id: loanId,
+          companyId: activeCompanyId,
+          status: LoanStatus.APPROVED,
+          disbursementMovementId: null,
+        },
+        data: { status: LoanStatus.DISBURSED, disbursedAt: now },
+      });
+
+      if (updateResult.count === 0) {
+        const current = await tx.loan.findFirst({
+          where: { id: loanId, companyId: activeCompanyId },
+          select: { id: true, status: true, disbursementMovementId: true, disbursedAt: true },
+        });
+
+        if (!current) {
+          const err: any = new Error("NOT_FOUND");
+          err.code = "NOT_FOUND";
+          throw err;
+        }
+
+        if (current.status === LoanStatus.DISBURSED) {
+          let movement: {
+            id: string;
+            type: string;
+            assetCode: AssetCode;
+            amount: Prisma.Decimal;
+            status: TreasuryMovementStatus;
+          } | null = null;
+
+          if (current.disbursementMovementId) {
+            movement = await tx.treasuryMovement.findUnique({
+              where: { id: current.disbursementMovementId },
+              select: { id: true, type: true, assetCode: true, amount: true, status: true },
+            });
+          }
+
+          return {
+            kind: "idempotent" as const,
+            loan: current,
+            movement,
+            event: null,
+            prevStatus: current.status,
+            nextStatus: current.status,
+            principalClp: loan.principalClp,
+          };
+        }
+
+        const err: any = new Error("INVALID_STATUS");
+        err.code = "INVALID_STATUS";
+        err.status = current.status;
+        throw err;
+      }
+
+      await tx.treasuryAccount.upsert({
         where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
         update: {},
         create: { companyId: activeCompanyId, assetCode: AssetCode.CLP, balance: new Prisma.Decimal(0) },
-        select: { balance: true },
+        select: { id: true },
       });
-
-      const nextBalance = new Prisma.Decimal(account.balance).plus(loan.principalClp);
 
       await tx.treasuryAccount.update({
         where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-        data: { balance: nextBalance },
+        data: { balance: { increment: loan.principalClp } },
         select: { id: true },
       });
 
@@ -117,13 +156,9 @@ export async function POST(
         select: { id: true, type: true, assetCode: true, amount: true, status: true },
       });
 
-      const disbursedAt = loan.disbursedAt ?? now;
-
       const updated = await tx.loan.update({
         where: { id: loan.id },
         data: {
-          status: nextStatus,
-          disbursedAt: loan.disbursedAt ? loan.disbursedAt : disbursedAt,
           disbursementMovementId: movement.id,
         },
         select: { id: true, status: true, disbursedAt: true, disbursementMovementId: true },
@@ -136,16 +171,24 @@ export async function POST(
           createdByUserId: user.id,
           payload: {
             prevStatus,
-            nextStatus,
+            nextStatus: LoanStatus.DISBURSED,
             principalClp: loan.principalClp.toString(),
             movementId: movement.id,
-            disbursedAt: disbursedAt.toISOString(),
+            disbursedAt: updated.disbursedAt?.toISOString() ?? now.toISOString(),
           },
         },
         select: { id: true, type: true, createdAt: true },
       });
 
-      return { loan: updated, movement, event, prevStatus, nextStatus, principalClp: loan.principalClp };
+      return {
+        kind: "created" as const,
+        loan: updated,
+        movement,
+        event,
+        prevStatus,
+        nextStatus: LoanStatus.DISBURSED,
+        principalClp: loan.principalClp,
+      };
     });
 
     console.info("LOAN_DISBURSE", {
@@ -155,7 +198,7 @@ export async function POST(
       prevStatus: result.prevStatus,
       nextStatus: result.nextStatus,
       principalClp: result.principalClp.toString(),
-      movementId: result.movement.id,
+      movementId: result.movement?.id ?? null,
     });
 
     return NextResponse.json({
@@ -166,26 +209,26 @@ export async function POST(
         disbursedAt: result.loan.disbursedAt?.toISOString() ?? null,
         disbursementMovementId: result.loan.disbursementMovementId ?? null,
       },
-      movement: {
-        id: result.movement.id,
-        type: result.movement.type,
-        assetCode: result.movement.assetCode,
-        amount: result.movement.amount.toString(),
-        status: result.movement.status,
-      },
-      event: {
-        id: result.event.id,
-        type: result.event.type,
-        createdAt: result.event.createdAt.toISOString(),
-      },
+      movement: result.movement
+        ? {
+            id: result.movement.id,
+            type: result.movement.type,
+            assetCode: result.movement.assetCode,
+            amount: result.movement.amount.toString(),
+            status: result.movement.status,
+          }
+        : null,
+      event: result.event
+        ? {
+            id: result.event.id,
+            type: result.event.type,
+            createdAt: result.event.createdAt.toISOString(),
+          }
+        : null,
     });
   } catch (e: any) {
     if (e?.code === "NOT_FOUND") {
       return NextResponse.json({ ok: false, error: "Loan no existe" }, { status: 404 });
-    }
-
-    if (e?.code === "ALREADY_DISBURSED") {
-      return NextResponse.json({ ok: false, error: "Loan ya desembolsado" }, { status: 400 });
     }
 
     if (e?.code === "INVALID_STATUS") {
