@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const FALLBACK_BTC_AVAILABLE = 0.02594742;
 const FALLBACK_BTC_PRICE_CLP = 60867616;
@@ -54,63 +55,112 @@ function ltvBadge(ltvPct: number | null) {
 }
 
 export default function CreditoPage() {
+  const router = useRouter();
   const [btcAvailable, setBtcAvailable] = useState<number | null>(null);
   const [basePriceClp, setBasePriceClp] = useState<number | null>(null);
   const [btcPriceClp, setBtcPriceClp] = useState<number | null>(null);
   const [btcPriceInput, setBtcPriceInput] = useState<string>("");
   const [loadingData, setLoadingData] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(
+    null
+  );
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loans, setLoans] = useState<any[]>([]);
+  const [loansLoading, setLoansLoading] = useState(true);
+  const [loansError, setLoansError] = useState<string | null>(null);
+  const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
 
   const [amountClp, setAmountClp] = useState<number>(0);
   const [amountInput, setAmountInput] = useState<string>("");
   const [months, setMonths] = useState<number>(3);
   const [isSubscriber, setIsSubscriber] = useState<boolean>(false);
 
-  useEffect(() => {
-    const loadSummary = async () => {
-      setLoadingData(true);
-      setDataError(null);
-      try {
-        const res = await fetch("/api/credito/sim-data", { cache: "no-store" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.ok) {
-          setDataError(data?.error ?? "No pudimos cargar datos del simulador.");
-          return;
-        }
-
-        const btcBal = parseNumberLike(data?.btcAvailable ?? null);
-        const btcPrice = parseNumberLike(data?.basePriceClp ?? null);
-
-        if (
-          process.env.NODE_ENV === "development" &&
-          (btcBal === null || btcPrice === null || btcPrice <= 0)
-        ) {
-          setBtcAvailable(FALLBACK_BTC_AVAILABLE);
-          setBasePriceClp(FALLBACK_BTC_PRICE_CLP);
-          setBtcPriceClp(FALLBACK_BTC_PRICE_CLP);
-          setBtcPriceInput(formatClpNumber(FALLBACK_BTC_PRICE_CLP));
-          setDataError("Usando valores de ejemplo (solo dev).");
-          return;
-        }
-
-        if (btcBal !== null) setBtcAvailable(btcBal);
-        if (btcPrice !== null && btcPrice > 0) {
-          setBasePriceClp(btcPrice);
-          setBtcPriceClp(btcPrice);
-          setBtcPriceInput(formatClpNumber(btcPrice));
-        }
-
-        if (btcBal === null || btcPrice === null) {
-          setDataError("Datos incompletos para simular. Reintenta.");
-        }
-      } catch {
-        setDataError("No pudimos cargar datos del simulador.");
+  const loadSimData = useCallback(async () => {
+    setLoadingData(true);
+    setDataError(null);
+    try {
+      const res = await fetch("/api/credito/sim-data", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setDataError(data?.error ?? "No pudimos cargar datos del simulador.");
+        return;
       }
-      setLoadingData(false);
-    };
 
-    void loadSummary();
+      setIsSubscriber(Boolean(data?.isSubscriber));
+
+      const btcBal = parseNumberLike(data?.btcAvailable ?? null);
+      const btcPrice = parseNumberLike(data?.basePriceClp ?? null);
+
+      if (
+        process.env.NODE_ENV === "development" &&
+        (btcBal === null || btcPrice === null || btcPrice <= 0)
+      ) {
+        setBtcAvailable(FALLBACK_BTC_AVAILABLE);
+        setBasePriceClp(FALLBACK_BTC_PRICE_CLP);
+        setBtcPriceClp(FALLBACK_BTC_PRICE_CLP);
+        setBtcPriceInput(formatClpNumber(FALLBACK_BTC_PRICE_CLP));
+        setDataError("Usando valores de ejemplo (solo dev).");
+        return;
+      }
+
+      if (btcBal !== null) setBtcAvailable(btcBal);
+      if (btcPrice !== null && btcPrice > 0) {
+        setBasePriceClp(btcPrice);
+        setBtcPriceClp(btcPrice);
+        setBtcPriceInput(formatClpNumber(btcPrice));
+      }
+
+      if (btcBal === null || btcPrice === null) {
+        setDataError("Datos incompletos para simular. Reintenta.");
+      }
+    } catch {
+      setDataError("No pudimos cargar datos del simulador.");
+    }
+    setLoadingData(false);
   }, []);
+
+  const loadSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/session", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      const activeCompanyId = data?.activeCompanyId ?? null;
+      if (!activeCompanyId) {
+        setIsAdmin(false);
+        return;
+      }
+      const companies = Array.isArray(data?.companies) ? data.companies : [];
+      const membership = companies.find((c: any) => c.companyId === activeCompanyId);
+      const role = String(membership?.role ?? "").toLowerCase();
+      setIsAdmin(role === "admin" || role === "owner");
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
+
+  const loadLoans = useCallback(async () => {
+    setLoansLoading(true);
+    setLoansError(null);
+    try {
+      const res = await fetch("/api/credito/loans", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setLoansError(data?.error ?? "No pudimos cargar créditos.");
+        return;
+      }
+      setLoans(Array.isArray(data?.loans) ? data.loans : []);
+    } catch {
+      setLoansError("No pudimos cargar créditos.");
+    } finally {
+      setLoansLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSimData();
+    void loadSession();
+    void loadLoans();
+  }, [loadLoans, loadSession, loadSimData]);
 
   const maxLtvPct = isSubscriber ? 60 : 50;
   const ltvPct = maxLtvPct;
@@ -168,6 +218,42 @@ export default function CreditoPage() {
       ? Math.max(collateralBtc - requiredCollateralWithdraw, 0)
       : null;
 
+  const handleDisburse = useCallback(
+    async (loan: any) => {
+      if (!loan?.id) return;
+      if (disbursing[loan.id]) return;
+      const principal = parseNumberLike(loan.principalClp);
+      const clpLabel = principal !== null ? `$${formatClpNumber(principal)} CLP` : "este monto";
+      const confirmed = window.confirm(
+        `Otorgar crédito por ${clpLabel}? Esto sumará CLP al saldo interno del cliente`
+      );
+      if (!confirmed) return;
+
+      setDisbursing((prev) => ({ ...prev, [loan.id]: true }));
+      setNotice(null);
+      try {
+        const res = await fetch(`/api/credito/loans/${loan.id}/disburse`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          setNotice({ type: "error", message: data?.error ?? "No se pudo otorgar el crédito." });
+          return;
+        }
+        if (data?.kind === "idempotent") {
+          setNotice({ type: "success", message: "Ya estaba otorgado (idempotente)." });
+        } else {
+          setNotice({ type: "success", message: "Crédito otorgado." });
+        }
+        await loadLoans();
+        router.refresh();
+      } catch {
+        setNotice({ type: "error", message: "No se pudo otorgar el crédito." });
+      } finally {
+        setDisbursing((prev) => ({ ...prev, [loan.id]: false }));
+      }
+    },
+    [disbursing, loadLoans, router]
+  );
+
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100">
       <div className="mx-auto w-full max-w-3xl px-6 py-8">
@@ -182,6 +268,18 @@ export default function CreditoPage() {
         {dataError && (
           <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
             {dataError}
+          </div>
+        )}
+
+        {notice && (
+          <div
+            className={`mt-4 rounded-xl border p-3 text-sm ${
+              notice.type === "success"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                : "border-red-500/30 bg-red-500/10 text-red-200"
+            }`}
+          >
+            {notice.message}
           </div>
         )}
 
@@ -289,6 +387,84 @@ export default function CreditoPage() {
                 Suscripción (LTV máx 60%)
               </label>
             </div>
+          </div>
+        </section>
+
+        <section className="k21-card mt-6 p-6">
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Créditos</div>
+          {loansError && (
+            <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+              {loansError}
+            </div>
+          )}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="py-2 pr-3">ID</th>
+                  <th className="py-2 pr-3">Estado</th>
+                  <th className="py-2 pr-3">Principal</th>
+                  <th className="py-2 pr-3">Plazo</th>
+                  <th className="py-2 pr-3">LTV</th>
+                  <th className="py-2 pr-3">Creado</th>
+                  <th className="py-2 pr-3">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="text-neutral-200">
+                {loansLoading ? (
+                  <tr>
+                    <td className="py-3 text-neutral-400" colSpan={7}>
+                      Cargando créditos...
+                    </td>
+                  </tr>
+                ) : loans.length === 0 ? (
+                  <tr>
+                    <td className="py-3 text-neutral-400" colSpan={7}>
+                      Sin créditos todavía.
+                    </td>
+                  </tr>
+                ) : (
+                  loans.map((loan) => {
+                    const principal = parseNumberLike(loan.principalClp);
+                    const status = String(loan.status ?? "");
+                    const showDisburse =
+                      isAdmin && status !== "DISBURSED" && (status === "CREATED" || status === "APPROVED");
+                    const isLoading = Boolean(disbursing[loan.id]);
+                    return (
+                      <tr key={loan.id} className="border-t border-white/5">
+                        <td className="py-3 pr-3 text-xs text-neutral-400">{loan.id}</td>
+                        <td className="py-3 pr-3">{status}</td>
+                        <td className="py-3 pr-3">
+                          {principal !== null ? `$${formatClpNumber(principal)} CLP` : "—"}
+                        </td>
+                        <td className="py-3 pr-3">{loan.termMonths ?? "—"} meses</td>
+                        <td className="py-3 pr-3">
+                          {parseNumberLike(loan.ltvTarget) !== null
+                            ? `${Math.round(parseNumberLike(loan.ltvTarget)! * 100)}%`
+                            : "—"}
+                        </td>
+                        <td className="py-3 pr-3 text-xs text-neutral-400">
+                          {loan.createdAt ? new Date(loan.createdAt).toLocaleString() : "—"}
+                        </td>
+                        <td className="py-3 pr-3">
+                          {showDisburse ? (
+                            <button
+                              className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                              disabled={isLoading}
+                              onClick={() => handleDisburse(loan)}
+                            >
+                              {isLoading ? "Otorgando..." : "Otorgar crédito"}
+                            </button>
+                          ) : (
+                            <span className="text-xs text-neutral-500">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
