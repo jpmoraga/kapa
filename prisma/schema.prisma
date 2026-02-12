@@ -14,6 +14,8 @@ model User {
   email                     String                  @unique
   passwordHash              String
   createdAt                 DateTime                @default(now())
+  isSubscriber              Boolean                 @default(false)
+  subscriberSince           DateTime?
   activeCompanyId           String?
   emailVerifiedAt           DateTime?               @db.Timestamp(6)
   emailVerificationToken    EmailVerificationToken?
@@ -24,6 +26,8 @@ model User {
   sessions                  Session[]
   approvedTreasuryMovements TreasuryMovement[]      @relation("TreasuryMovementApprovedBy")
   createdTreasuryMovements  TreasuryMovement[]      @relation("TreasuryMovementCreatedBy")
+  loans                     Loan[]
+  createdLoanEvents         LoanEvent[]             @relation("LoanEventCreatedBy")
   activeCompany             Company?                @relation("ActiveCompany", fields: [activeCompanyId], references: [id])
   depositSlips              DepositSlip[]
   onboarding                UserOnboarding?
@@ -102,6 +106,7 @@ model Company {
   members             CompanyUser[]
   treasury            TreasuryAccount[]
   movements           TreasuryMovement[]
+  loans               Loan[]
   activeUsers         User[]             @relation("ActiveCompany")
 }
 
@@ -169,6 +174,61 @@ model TreasuryMovement {
   @@index([companyId, createdAt])
   @@index([companyId, assetCode, createdAt])
   @@index([companyId, status, createdAt])
+}
+
+model Loan {
+  id             String     @id @default(cuid())
+  companyId      String
+  userId         String
+  currency       LoanCurrency @default(CLP)
+  principalClp   Decimal
+  interestApr    Decimal
+  termMonths     Int        @default(3)
+  repaymentType  LoanRepaymentType @default(BULLET)
+  ltvTarget      Decimal
+  ltvMax         Decimal
+  liquidationLtv Decimal
+  status         LoanStatus @default(CREATED)
+  createdAt      DateTime   @default(now())
+  approvedAt     DateTime?
+  disbursedAt    DateTime?
+  disbursementMovementId String?
+  closedAt       DateTime?
+  borrower       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company        Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  collateral     LoanCollateral[]
+  events         LoanEvent[]
+
+  @@index([companyId, createdAt])
+  @@index([companyId, status, createdAt])
+  @@index([companyId, disbursementMovementId])
+  @@index([companyId, userId, status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model LoanCollateral {
+  id        String    @id @default(cuid())
+  loanId    String
+  assetCode AssetCode @default(BTC)
+  amountSats BigInt
+  createdAt DateTime  @default(now())
+  loan      Loan      @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId, createdAt])
+}
+
+model LoanEvent {
+  id              String        @id @default(cuid())
+  loanId          String
+  type            LoanEventType
+  payload         Json?
+  createdAt       DateTime      @default(now())
+  createdByUserId String?
+  loan            Loan          @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  createdBy       User?         @relation("LoanEventCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([loanId, createdAt])
+  @@index([loanId, type, createdAt])
 }
 
 model PriceSnapshot {
@@ -296,6 +356,35 @@ enum TreasuryMovementStatus {
   APPROVED
   REJECTED
   PROCESSING
+}
+
+enum LoanStatus {
+  CREATED
+  APPROVED
+  DISBURSED
+  CLOSED
+  LIQUIDATED
+  CANCELLED
+}
+
+enum LoanCurrency {
+  CLP
+}
+
+enum LoanRepaymentType {
+  BULLET
+}
+
+enum LoanEventType {
+  CREATED
+  APPROVED
+  DISBURSED
+  INTEREST_PAID
+  PRINCIPAL_PAID
+  MARGIN_CALL
+  LIQUIDATION
+  COLLATERAL_ADDED
+  COLLATERAL_RELEASED
 }
 
 enum AdminRole {
