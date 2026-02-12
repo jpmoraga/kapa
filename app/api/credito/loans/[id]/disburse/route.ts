@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// NOTE: /api/credito/loans/[id]/approve está deprecated en v1; usar /disburse.
 
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
@@ -52,6 +53,7 @@ export async function POST(
           currency: true,
           disbursementMovementId: true,
           disbursedAt: true,
+          approvedAt: true,
           userId: true,
         },
       });
@@ -71,17 +73,20 @@ export async function POST(
       const now = new Date();
       const prevStatus = loan.status;
 
-      const updateResult = await tx.loan.updateMany({
-        where: {
-          id: loanId,
-          companyId: activeCompanyId,
-          status: LoanStatus.APPROVED,
-          disbursementMovementId: null,
-        },
-        data: { status: LoanStatus.DISBURSED, disbursedAt: now },
-      });
+      const updatedCount = await tx.$executeRaw`
+        UPDATE "Loan"
+        SET
+          "status" = ${LoanStatus.DISBURSED},
+          "disbursedAt" = ${now},
+          "approvedAt" = COALESCE("approvedAt", ${now})
+        WHERE
+          "id" = ${loanId}
+          AND "companyId" = ${activeCompanyId}
+          AND "status" IN (${LoanStatus.CREATED}, ${LoanStatus.APPROVED})
+          AND "disbursementMovementId" IS NULL
+      `;
 
-      if (updateResult.count === 0) {
+      if (updatedCount === 0) {
         const current = await tx.loan.findFirst({
           where: { id: loanId, companyId: activeCompanyId },
           select: {
@@ -90,6 +95,7 @@ export async function POST(
             disbursementMovementId: true,
             disbursedAt: true,
             principalClp: true,
+            approvedAt: true,
           },
         });
 
@@ -178,7 +184,7 @@ export async function POST(
         data: {
           disbursementMovementId: movement.id,
         },
-        select: { id: true, status: true, disbursedAt: true, disbursementMovementId: true },
+        select: { id: true, status: true, disbursedAt: true, disbursementMovementId: true, approvedAt: true },
       });
 
       const event = await tx.loanEvent.create({
@@ -192,6 +198,7 @@ export async function POST(
             principalClp: loan.principalClp.toString(),
             movementId: movement.id,
             disbursedAt: updated.disbursedAt?.toISOString() ?? now.toISOString(),
+            approvedAt: updated.approvedAt?.toISOString() ?? now.toISOString(),
           },
         },
         select: { id: true, type: true, createdAt: true },
@@ -227,6 +234,7 @@ export async function POST(
         status: result.loan.status,
         disbursedAt: result.loan.disbursedAt?.toISOString() ?? null,
         disbursementMovementId: result.loan.disbursementMovementId ?? null,
+        approvedAt: result.loan.approvedAt?.toISOString() ?? null,
       },
       movement: result.movement
         ? {
