@@ -84,7 +84,13 @@ export async function POST(
       if (updateResult.count === 0) {
         const current = await tx.loan.findFirst({
           where: { id: loanId, companyId: activeCompanyId },
-          select: { id: true, status: true, disbursementMovementId: true, disbursedAt: true },
+          select: {
+            id: true,
+            status: true,
+            disbursementMovementId: true,
+            disbursedAt: true,
+            principalClp: true,
+          },
         });
 
         if (!current) {
@@ -94,6 +100,7 @@ export async function POST(
         }
 
         if (current.status === LoanStatus.DISBURSED) {
+          let warning: string | null = null;
           let movement: {
             id: string;
             type: string;
@@ -107,6 +114,15 @@ export async function POST(
               where: { id: current.disbursementMovementId },
               select: { id: true, type: true, assetCode: true, amount: true, status: true },
             });
+          } else {
+            warning =
+              "Loan está DISBURSED pero sin disbursementMovementId; requiere reparación admin";
+            console.error("LOAN_DISBURSE_INCONSISTENT_STATE", {
+              loanId: current.id,
+              companyId: activeCompanyId,
+              status: current.status,
+              disbursementMovementId: null,
+            });
           }
 
           return {
@@ -114,9 +130,10 @@ export async function POST(
             loan: current,
             movement,
             event: null,
-            prevStatus: current.status,
-            nextStatus: current.status,
-            principalClp: loan.principalClp,
+            prevStatus: LoanStatus.DISBURSED,
+            nextStatus: LoanStatus.DISBURSED,
+            principalClp: current.principalClp,
+            warning,
           };
         }
 
@@ -188,6 +205,7 @@ export async function POST(
         prevStatus,
         nextStatus: LoanStatus.DISBURSED,
         principalClp: loan.principalClp,
+        warning: null,
       };
     });
 
@@ -203,6 +221,7 @@ export async function POST(
 
     return NextResponse.json({
       ok: true,
+      kind: result.kind,
       loan: {
         id: result.loan.id,
         status: result.loan.status,
@@ -225,6 +244,7 @@ export async function POST(
             createdAt: result.event.createdAt.toISOString(),
           }
         : null,
+      ...(result.warning ? { warning: result.warning } : {}),
     });
   } catch (e: any) {
     if (e?.code === "NOT_FOUND") {
