@@ -116,6 +116,7 @@ export default function MisCreditosPage() {
         setLoansError(data?.error ?? "No pudimos cargar créditos.");
         return;
       }
+      setLoansError(null);
       setLoans(Array.isArray(data?.loans) ? data.loans : []);
     } catch {
       setLoansError("No pudimos cargar créditos.");
@@ -276,38 +277,39 @@ export default function MisCreditosPage() {
 
         <section className="k21-card mt-6 p-6">
           <div className="text-xs uppercase tracking-wide text-neutral-500">Tabla de créditos</div>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="py-2 pr-3">ID</th>
-                  <th className="py-2 pr-3">Estado</th>
-                  <th className="py-2 pr-3">Principal</th>
-                  <th className="py-2 pr-3">Plazo</th>
-                  <th className="py-2 pr-3">LTV</th>
-                  <th className="py-2 pr-3">Creado</th>
-                  <th className="py-2 pr-3">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="text-neutral-200">
-                {loansLoading ? (
+          {loansLoading ? (
+            <div className="mt-4 rounded-xl border border-white/5 bg-white/5 p-4 text-sm text-neutral-400">
+              Cargando créditos...
+            </div>
+          ) : loansError ? null : sortedLoans.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-white/5 bg-white/5 p-6">
+              <div className="text-sm font-semibold text-white">Aún no tienes créditos</div>
+              <div className="mt-1 text-sm text-neutral-400">
+                Cuando solicites y se otorgue un crédito, aparecerá aquí.
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-neutral-500">
                   <tr>
-                    <td className="py-3 text-neutral-400" colSpan={7}>
-                      Cargando créditos...
-                    </td>
+                    <th className="py-2 pr-3">ID</th>
+                    <th className="py-2 pr-3">Estado</th>
+                    <th className="py-2 pr-3">Principal</th>
+                    <th className="py-2 pr-3">Plazo</th>
+                    <th className="py-2 pr-3">LTV</th>
+                    <th className="py-2 pr-3">Creado</th>
+                    <th className="py-2 pr-3">Acción</th>
                   </tr>
-                ) : sortedLoans.length === 0 ? (
-                  <tr>
-                    <td className="py-3 text-neutral-400" colSpan={7}>
-                      Sin créditos todavía
-                    </td>
-                  </tr>
-                ) : (
-                  sortedLoans.map((loan) => {
+                </thead>
+                <tbody className="text-neutral-200">
+                  {sortedLoans.map((loan) => {
                     const principal = parseNumberLike(loan.principalClp);
                     const status = String(loan.status ?? "");
                     const showDisburse =
-                      isAdmin && status !== "DISBURSED" && (status === "CREATED" || status === "APPROVED");
+                      isAdmin &&
+                      status !== "DISBURSED" &&
+                      (status === "CREATED" || status === "APPROVED");
                     const isLoading = Boolean(disbursing[loan.id]);
                     return (
                       <tr key={loan.id} className="border-t border-white/5">
@@ -340,11 +342,11 @@ export default function MisCreditosPage() {
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
     </div>
