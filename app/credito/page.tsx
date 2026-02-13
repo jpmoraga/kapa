@@ -76,11 +76,15 @@ export default function CreditoPage() {
       if (!res.ok || !data?.ok) {
         const status = res.status;
         const rawError = typeof data?.error === "string" ? data.error : "";
+        const code = typeof data?.code === "string" ? data.code : "";
         let message = rawError;
         if (status === 401) {
           message = "Debes iniciar sesión para ver tu capacidad de crédito.";
         } else if (status === 400 && rawError.toLowerCase().includes("empresa activa")) {
           message = "Selecciona una empresa activa para ver el simulador.";
+        } else if (status >= 500) {
+          message = "Error interno del simulador. Intenta de nuevo o avísanos.";
+          if (code) message += ` (code=${code})`;
         } else if (!message) {
           message = `Error cargando simulador (status=${status || "unknown"})`;
         }

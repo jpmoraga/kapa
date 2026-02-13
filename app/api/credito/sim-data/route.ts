@@ -38,10 +38,25 @@ export async function GET(req: Request) {
     }
 
     const email = session.user.email.toLowerCase().trim();
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, isSubscriber: true },
-    });
+    let user: { id: string; isSubscriber: boolean } | null = null;
+    try {
+      user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, isSubscriber: true },
+      });
+    } catch (error: any) {
+      console.error("SIM_DATA_ERROR", {
+        activeCompanyId,
+        status: 500,
+        code: "DB_USER_LOOKUP_FAILED",
+        path,
+        message: error?.message ?? String(error),
+      });
+      return NextResponse.json(
+        { ok: false, error: "Error interno", code: "DB_USER_LOOKUP_FAILED" },
+        { status: 500 }
+      );
+    }
     if (!user) {
       console.error("SIM_DATA_ERROR", {
         activeCompanyId,
@@ -52,15 +67,57 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 401 });
     }
 
-    const account = await prisma.treasuryAccount.findUnique({
-      where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.BTC } },
-      select: { balance: true },
-    });
+    let account: { balance: unknown } | null = null;
+    try {
+      account = await prisma.treasuryAccount.findUnique({
+        where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.BTC } },
+        select: { balance: true },
+      });
+    } catch (error: any) {
+      console.error("SIM_DATA_ERROR", {
+        activeCompanyId,
+        status: 500,
+        code: "DB_TREASURY_ACCOUNT_FAILED",
+        path,
+        message: error?.message ?? String(error),
+      });
+      return NextResponse.json(
+        { ok: false, error: "Error interno", code: "DB_TREASURY_ACCOUNT_FAILED" },
+        { status: 500 }
+      );
+    }
 
     const btcAvailable = account?.balance?.toString?.() ?? null;
 
     const url = new URL(req.url);
-    const price = await fetchBtcClpPrice(url.origin);
+    let price: { ok: boolean; price: string | null; error: string | null };
+    try {
+      price = await fetchBtcClpPrice(url.origin);
+    } catch (error: any) {
+      console.error("SIM_DATA_ERROR", {
+        activeCompanyId,
+        status: 502,
+        code: "PRICING_FETCH_FAILED",
+        path,
+        message: error?.message ?? String(error),
+      });
+      const isSubscriber = Boolean(user.isSubscriber);
+      const apr = getLoanApr(isSubscriber);
+      const monthlyRatePct = aprToMonthlyPct(apr);
+      const maxLtvPct = isSubscriber ? 60 : 50;
+      const liquidationBands = { withdraw: 40, risk: 65, marginCall: 70, liquidation: 80 };
+      return NextResponse.json({
+        ok: true,
+        isSubscriber,
+        apr,
+        monthlyRatePct,
+        maxLtvPct,
+        liquidationBands,
+        btcAvailable,
+        basePriceClp: null,
+        priceError: "PRICING_FETCH_FAILED",
+      });
+    }
     const isSubscriber = Boolean(user.isSubscriber);
     const apr = getLoanApr(isSubscriber);
     const monthlyRatePct = aprToMonthlyPct(apr);
@@ -110,6 +167,9 @@ export async function GET(req: Request) {
       code: "UNHANDLED",
       message: error?.message ?? String(error),
     });
-    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Error interno", code: "UNHANDLED" },
+      { status: 500 }
+    );
   }
 }
