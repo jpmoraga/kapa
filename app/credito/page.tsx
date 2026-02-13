@@ -74,7 +74,17 @@ export default function CreditoPage() {
       const res = await fetch("/api/credito/sim-data", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
-        setDataError(data?.error ?? "No pudimos cargar datos del simulador.");
+        const status = res.status;
+        const rawError = typeof data?.error === "string" ? data.error : "";
+        let message = rawError;
+        if (status === 401) {
+          message = "Debes iniciar sesión para ver tu capacidad de crédito.";
+        } else if (status === 400 && rawError.toLowerCase().includes("empresa activa")) {
+          message = "Selecciona una empresa activa para ver el simulador.";
+        } else if (!message) {
+          message = `Error cargando simulador (status=${status || "unknown"})`;
+        }
+        setDataError(message);
         return;
       }
 
