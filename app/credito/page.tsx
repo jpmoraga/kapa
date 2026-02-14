@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const FALLBACK_BTC_AVAILABLE = 0.02594742;
 const FALLBACK_BTC_PRICE_CLP = 60867616;
@@ -55,12 +56,23 @@ function ltvBadge(ltvPct: number | null) {
 }
 
 export default function CreditoPage() {
+  const router = useRouter();
   const [btcAvailable, setBtcAvailable] = useState<number | null>(null);
   const [basePriceClp, setBasePriceClp] = useState<number | null>(null);
   const [btcPriceClp, setBtcPriceClp] = useState<number | null>(null);
   const [btcPriceInput, setBtcPriceInput] = useState<string>("");
   const [loadingData, setLoadingData] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [liquidationBands, setLiquidationBands] = useState<{
+    withdraw: number;
+    risk: number;
+    marginCall: number;
+    liquidation: number;
+  } | null>(null);
+  const [maxLtvPct, setMaxLtvPct] = useState<number>(50);
 
   const [amountClp, setAmountClp] = useState<number>(0);
   const [amountInput, setAmountInput] = useState<string>("");
@@ -92,7 +104,29 @@ export default function CreditoPage() {
         return;
       }
 
-      setIsSubscriber(Boolean(data?.isSubscriber));
+      const subscriber = Boolean(data?.isSubscriber);
+      setIsSubscriber(subscriber);
+      const maxLtvFromApi = parseNumberLike(data?.maxLtvPct ?? null);
+      setMaxLtvPct(maxLtvFromApi !== null && maxLtvFromApi > 0 ? maxLtvFromApi : subscriber ? 60 : 50);
+      const rawBands = data?.liquidationBands;
+      if (rawBands && typeof rawBands === "object") {
+        const withdraw = parseNumberLike((rawBands as any)?.withdraw);
+        const risk = parseNumberLike((rawBands as any)?.risk);
+        const marginCall = parseNumberLike((rawBands as any)?.marginCall);
+        const liquidation = parseNumberLike((rawBands as any)?.liquidation);
+        if (withdraw !== null || risk !== null || marginCall !== null || liquidation !== null) {
+          setLiquidationBands({
+            withdraw: withdraw ?? 40,
+            risk: risk ?? 65,
+            marginCall: marginCall ?? 70,
+            liquidation: liquidation ?? 80,
+          });
+        } else {
+          setLiquidationBands(null);
+        }
+      } else {
+        setLiquidationBands(null);
+      }
 
       const btcBal = parseNumberLike(data?.btcAvailable ?? null);
       const btcPrice = parseNumberLike(data?.basePriceClp ?? null);
@@ -129,7 +163,6 @@ export default function CreditoPage() {
     void loadSimData();
   }, [loadSimData]);
 
-  const maxLtvPct = isSubscriber ? 60 : 50;
   const ltvPct = maxLtvPct;
   const ltv = maxLtvPct / 100;
 
@@ -164,6 +197,8 @@ export default function CreditoPage() {
   const btcFrozenClp = collateralBtc !== null ? collateralBtc * btcScenarioPrice : null;
   const btcRemainingClp = btcRemaining !== null ? btcRemaining * btcScenarioPrice : null;
 
+  const ltvMax = (liquidationBands?.marginCall ?? 70) / 100;
+  const liquidationLtv = (liquidationBands?.liquidation ?? 80) / 100;
   const targetSafe = 0.65;
   const targetWithdraw = 0.4;
 
@@ -184,6 +219,44 @@ export default function CreditoPage() {
     collateralBtc !== null && requiredCollateralWithdraw !== null
       ? Math.max(collateralBtc - requiredCollateralWithdraw, 0)
       : null;
+  const canRequest =
+    hasData &&
+    basePriceClp !== null &&
+    hasBtc &&
+    amountClp > 0 &&
+    maxLoanClp !== null &&
+    amountClp <= maxLoanClp &&
+    !isSubmitting;
+
+  const handleCreateLoan = useCallback(async () => {
+    if (!canRequest) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/credito/loans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          principalClp: String(amountClp),
+          termMonths: months,
+          repaymentType: "BULLET",
+          ltvTarget: maxLtvPct / 100,
+          ltvMax,
+          liquidationLtv,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setSubmitError(data?.error ?? "No se pudo solicitar el crédito.");
+        return;
+      }
+      router.push("/credito/mis-creditos");
+    } catch {
+      setSubmitError("No se pudo solicitar el crédito.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [amountClp, canRequest, liquidationLtv, ltvMax, maxLtvPct, months, router]);
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100">
@@ -227,6 +300,25 @@ export default function CreditoPage() {
             <div className="flex items-center justify-between">
               <span className="text-neutral-400">Monto máximo de crédito</span>
               <span className="font-medium">{formatClp(maxLoanClp)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-400">LTV máx</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-neutral-200">{maxLtvPct.toFixed(0)}%</span>
+                {isSubscriber ? (
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                    Suscripción activa
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="k21-btn-secondary px-2 py-1 text-[11px]"
+                    onClick={() => setShowSubscriptionModal(true)}
+                  >
+                    Sube a 60% con Suscripción
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -302,14 +394,6 @@ export default function CreditoPage() {
                 </label>
                 <span className="text-xs text-neutral-300">{ltvPct.toFixed(0)}%</span>
               </div>
-              <label className="mt-3 flex items-center gap-2 text-xs text-neutral-400">
-                <input
-                  type="checkbox"
-                  checked={isSubscriber}
-                  onChange={(e) => setIsSubscriber(e.target.checked)}
-                />
-                Suscripción (LTV máx 60%)
-              </label>
             </div>
           </div>
         </section>
@@ -463,15 +547,43 @@ export default function CreditoPage() {
         <div className="mt-6">
           <button
             type="button"
-            className="k21-btn-disabled w-full"
-            disabled
-            title="Disponible próximamente"
+            className={`w-full ${canRequest ? "k21-btn-primary" : "k21-btn-disabled"}`}
+            disabled={!canRequest}
+            onClick={handleCreateLoan}
           >
-            Solicitar crédito
+            {isSubmitting ? "Solicitando..." : "Solicitar crédito"}
           </button>
-          <div className="mt-2 text-center text-xs text-neutral-500">Disponible próximamente</div>
+          {submitError && (
+            <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+              {submitError}
+            </div>
+          )}
         </div>
       </div>
+
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="k21-card w-full max-w-md p-6">
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Suscripción Kapa21</div>
+            <h2 className="mt-2 text-lg font-semibold text-white">Suscripción Kapa21</h2>
+            <div className="mt-4 space-y-2 text-sm text-neutral-300">
+              <div>• Mayor LTV (hasta 60%)</div>
+              <div>• Mejor tasa en créditos</div>
+              <div>• Mejores comisiones en compras</div>
+              <div>• Más herramientas para gestión</div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                className="k21-btn-secondary px-3 py-1.5 text-xs"
+                onClick={() => setShowSubscriptionModal(false)}
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
