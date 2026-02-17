@@ -77,6 +77,35 @@ function riskBadge(avgLtvPct: number | null) {
   return { label: "Alto", cls: "border-red-500/30 bg-red-500/10 text-red-300" };
 }
 
+function truncateId(id: string, head = 4, tail = 3) {
+  if (!id) return "";
+  if (id.length <= head + tail + 3) return id;
+  return `${id.slice(0, head)}...${id.slice(-tail)}`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+}
+
+function statusBadge(status: string) {
+  const normalized = String(status ?? "").toUpperCase();
+  if (normalized === "CREATED") {
+    return { label: "Creado", cls: "border-sky-500/30 bg-sky-500/10 text-sky-300" };
+  }
+  if (normalized === "APPROVED") {
+    return { label: "Aprobado", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
+  }
+  if (normalized === "DISBURSED") {
+    return { label: "Desembolsado", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
+  }
+  if (normalized === "CLOSED") {
+    return { label: "Pagado", cls: "border-white/10 bg-white/5 text-neutral-200" };
+  }
+  return { label: normalized || "—", cls: "border-white/10 bg-white/5 text-neutral-400" };
+}
+
 export default function MisCreditosPage() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -328,7 +357,7 @@ export default function MisCreditosPage() {
         </section>
 
         <section className="k21-card mt-6 p-6">
-          <div className="text-xs uppercase tracking-wide text-neutral-500">Tabla de créditos</div>
+          <div className="text-xs uppercase tracking-wide text-neutral-500">Créditos</div>
           {loansLoading ? (
             <div className="mt-4 rounded-xl border border-white/5 bg-white/5 p-4 text-sm text-neutral-400">
               Cargando créditos...
@@ -341,88 +370,135 @@ export default function MisCreditosPage() {
               </div>
             </div>
           ) : (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-neutral-500">
-                  <tr>
-                    <th className="py-2 pr-3">ID</th>
-                    <th className="py-2 pr-3">Estado</th>
-                    <th className="py-2 pr-3">Principal</th>
-                    <th className="py-2 pr-3">Plazo</th>
-                    <th className="py-2 pr-3">LTV</th>
-                    <th className="py-2 pr-3">Creado</th>
-                    <th className="py-2 pr-3">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="text-neutral-200">
-                  {sortedLoans.map((loan) => {
-                    const principal = parseNumberLike(loan.principalClp);
-                    const status = String(loan.status ?? "");
-                    const isDisbursed = status === "DISBURSED";
-                    const isDisbursing = Boolean(disbursing[loan.id]);
-                    const isPaying = Boolean(paying[loan.id]);
-                    const canGrant =
-                      isAdmin && (status === "CREATED" || status === "APPROVED");
-                    const showDisbursed = isAdmin && isDisbursed;
-                    const isBorrower =
-                      typeof currentUserId === "string" && loan?.userId === currentUserId;
-                    const canPay = isDisbursed && (isBorrower || isAdmin);
-                    const hasActions = canGrant || showDisbursed || canPay;
-                    return (
-                      <tr key={loan.id} className="border-t border-white/5">
-                        <td className="py-3 pr-3 text-xs text-neutral-400">{loan.id}</td>
-                        <td className="py-3 pr-3">{status || "—"}</td>
-                        <td className="py-3 pr-3">
+            <div className="mt-4 space-y-3">
+              {sortedLoans.map((loan) => {
+                const principal = parseNumberLike(loan.principalClp);
+                const status = String(loan.status ?? "");
+                const badge = statusBadge(status);
+                const isDisbursed = status === "DISBURSED";
+                const isClosed = status === "CLOSED";
+                const isDisbursing = Boolean(disbursing[loan.id]);
+                const isPaying = Boolean(paying[loan.id]);
+                const canGrant = isAdmin && (status === "CREATED" || status === "APPROVED");
+                const isBorrower =
+                  typeof currentUserId === "string" && loan?.userId === currentUserId;
+                const canPay = isDisbursed && (isBorrower || isAdmin);
+                const showDisbursed = isAdmin && isDisbursed;
+                const hasActions = canGrant || canPay || showDisbursed;
+                const truncatedId = loan.id ? truncateId(loan.id) : "";
+                return (
+                  <div
+                    key={loan.id}
+                    className="rounded-xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm font-semibold text-white">Crédito</div>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${badge.cls}`}
+                        >
+                          {badge.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-neutral-400">
+                        {truncatedId ? (
+                          <>
+                            <span title={loan.id}>{truncatedId}</span>
+                            <button
+                              type="button"
+                              className="text-[11px] text-neutral-300 underline hover:text-white"
+                              title={`Copiar ${loan.id}`}
+                              onClick={() => {
+                                if (!loan.id) return;
+                                if (!navigator?.clipboard) return;
+                                void navigator.clipboard.writeText(loan.id);
+                              }}
+                            >
+                              Copiar
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-neutral-500">
+                          Principal
+                        </div>
+                        <div className="mt-2 text-lg font-semibold text-white">
                           {principal !== null ? `$${formatClpNumber(principal)} CLP` : "—"}
-                        </td>
-                        <td className="py-3 pr-3">{loan.termMonths ?? "—"} meses</td>
-                        <td className="py-3 pr-3">
+                        </div>
+                        <div className="mt-2 text-xs text-neutral-500">
+                          Plazo: {loan.termMonths ?? "—"} meses
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-neutral-500">
+                          Condiciones
+                        </div>
+                        <div className="mt-2 text-sm text-neutral-200">
+                          APR:{" "}
+                          {parseNumberLike(loan.interestApr) !== null
+                            ? `${(parseNumberLike(loan.interestApr)! * 100).toFixed(2)}%`
+                            : "—"}
+                        </div>
+                        <div className="mt-2 text-sm text-neutral-200">
+                          LTV:{" "}
                           {parseNumberLike(loan.ltvTarget) !== null
                             ? `${Math.round(parseNumberLike(loan.ltvTarget)! * 100)}%`
                             : "—"}
-                        </td>
-                        <td className="py-3 pr-3 text-xs text-neutral-400">
-                          {loan.createdAt ? new Date(loan.createdAt).toLocaleString() : "—"}
-                        </td>
-                        <td className="py-3 pr-3">
-                          {hasActions ? (
-                            <div className="flex flex-wrap gap-2">
-                              {canGrant ? (
-                                <button
-                                  className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-                                  disabled={isDisbursing || isPaying}
-                                  onClick={() => handleGrantCredit(loan)}
-                                >
-                                  {isDisbursing ? "Otorgando..." : "Otorgar crédito"}
-                                </button>
-                              ) : null}
-                              {showDisbursed ? (
-                                <button
-                                  className="k21-btn-secondary px-3 py-1.5 text-xs opacity-60"
-                                  disabled
-                                >
-                                  Desembolsado
-                                </button>
-                              ) : null}
-                              {canPay ? (
-                                <button
-                                  className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-                                  disabled={isPaying || isDisbursing}
-                                  onClick={() => handlePay(loan)}
-                                >
-                                  {isPaying ? "Pagando..." : "Pagar"}
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-neutral-500">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-wide text-neutral-500">Fechas</div>
+                        <div className="mt-2 text-sm text-neutral-200">
+                          Creado: {formatDateTime(loan.createdAt)}
+                        </div>
+                        {loan.disbursedAt ? (
+                          <div className="mt-1 text-sm text-neutral-200">
+                            Desembolsado: {formatDateTime(loan.disbursedAt)}
+                          </div>
+                        ) : null}
+                        {loan.paidAt || loan.closedAt ? (
+                          <div className="mt-1 text-sm text-neutral-200">
+                            Pagado: {formatDateTime(loan.paidAt ?? loan.closedAt)}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                      {showDisbursed ? (
+                        <span className="k21-pill border-white/10 bg-white/5 text-neutral-200">
+                          Desembolsado
+                        </span>
+                      ) : null}
+                      {canGrant ? (
+                        <button
+                          className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                          disabled={isDisbursing || isPaying}
+                          onClick={() => handleGrantCredit(loan)}
+                        >
+                          {isDisbursing ? "Otorgando..." : "Otorgar crédito"}
+                        </button>
+                      ) : null}
+                      {canPay ? (
+                        <button
+                          className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                          disabled={isPaying || isDisbursing}
+                          onClick={() => handlePay(loan)}
+                        >
+                          {isPaying ? "Pagando..." : "Pagar"}
+                        </button>
+                      ) : null}
+                      {!hasActions && !isClosed ? (
+                        <span className="text-xs text-neutral-500">—</span>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
