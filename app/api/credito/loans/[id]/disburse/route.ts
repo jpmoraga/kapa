@@ -23,13 +23,26 @@ export async function POST(
   const email = session?.user?.email?.toLowerCase().trim();
   const activeCompanyId = (session as any)?.activeCompanyId as string | undefined;
 
-  if (!email) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+  if (!email) {
+    return NextResponse.json(
+      { ok: false, error: "No autenticado", code: "UNAUTHENTICATED" },
+      { status: 401 }
+    );
+  }
   if (!activeCompanyId) {
-    return NextResponse.json({ ok: false, error: "Sin empresa activa" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Sin empresa activa", code: "NO_ACTIVE_COMPANY" },
+      { status: 400 }
+    );
   }
 
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (!user) return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 401 });
+  if (!user) {
+    return NextResponse.json(
+      { ok: false, error: "Usuario no encontrado", code: "USER_NOT_FOUND" },
+      { status: 401 }
+    );
+  }
 
   const membership = await prisma.companyUser.findUnique({
     where: { userId_companyId: { userId: user.id, companyId: activeCompanyId } },
@@ -38,27 +51,32 @@ export async function POST(
 
   const role = String(membership?.role ?? "").toLowerCase();
   const isAdminOrOwner = role === "admin" || role === "owner";
-  if (!isAdminOrOwner) return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+  if (!isAdminOrOwner) {
+    return NextResponse.json(
+      { ok: false, error: "No autorizado", code: "FORBIDDEN" },
+      { status: 403 }
+    );
+  }
 
   const { id: loanId } = await context.params;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const loan = await tx.loan.findFirst({
-        where: { id: loanId, companyId: activeCompanyId },
+      const loan = await tx.loan.findUnique({
+        where: { id: loanId },
         select: {
           id: true,
+          companyId: true,
           status: true,
           principalClp: true,
           currency: true,
           disbursementMovementId: true,
           disbursedAt: true,
           approvedAt: true,
-          userId: true,
         },
       });
 
-      if (!loan) {
+      if (!loan || loan.companyId !== activeCompanyId) {
         const err: any = new Error("NOT_FOUND");
         err.code = "NOT_FOUND";
         throw err;
@@ -70,84 +88,31 @@ export async function POST(
         throw err;
       }
 
+      if (loan.status !== LoanStatus.APPROVED) {
+        const err: any = new Error("LOAN_NOT_APPROVED");
+        err.code = "LOAN_NOT_APPROVED";
+        err.status = loan.status;
+        throw err;
+      }
+
+      if (loan.disbursementMovementId) {
+        const err: any = new Error("DISBURSEMENT_EXISTS");
+        err.code = "DISBURSEMENT_EXISTS";
+        throw err;
+      }
+
       const now = new Date();
       const prevStatus = loan.status;
 
-      const updatedCount = await tx.$executeRaw`
-        UPDATE "Loan"
-        SET
-          "status" = ${LoanStatus.DISBURSED},
-          "disbursedAt" = ${now},
-          "approvedAt" = COALESCE("approvedAt", ${now})
-        WHERE
-          "id" = ${loanId}
-          AND "companyId" = ${activeCompanyId}
-          AND "status" IN (${LoanStatus.CREATED}, ${LoanStatus.APPROVED})
-          AND "disbursementMovementId" IS NULL
-      `;
-
-      if (updatedCount === 0) {
-        const current = await tx.loan.findFirst({
-          where: { id: loanId, companyId: activeCompanyId },
-          select: {
-            id: true,
-            status: true,
-            disbursementMovementId: true,
-            disbursedAt: true,
-            principalClp: true,
-            approvedAt: true,
-          },
-        });
-
-        if (!current) {
-          const err: any = new Error("NOT_FOUND");
-          err.code = "NOT_FOUND";
-          throw err;
-        }
-
-        if (current.status === LoanStatus.DISBURSED) {
-          let warning: string | null = null;
-          let movement: {
-            id: string;
-            type: string;
-            assetCode: AssetCode;
-            amount: Prisma.Decimal;
-            status: TreasuryMovementStatus;
-          } | null = null;
-
-          if (current.disbursementMovementId) {
-            movement = await tx.treasuryMovement.findUnique({
-              where: { id: current.disbursementMovementId },
-              select: { id: true, type: true, assetCode: true, amount: true, status: true },
-            });
-          } else {
-            warning =
-              "Loan está DISBURSED pero sin disbursementMovementId; requiere reparación admin";
-            console.error("LOAN_DISBURSE_INCONSISTENT_STATE", {
-              loanId: current.id,
-              companyId: activeCompanyId,
-              status: current.status,
-              disbursementMovementId: null,
-            });
-          }
-
-          return {
-            kind: "idempotent" as const,
-            loan: current,
-            movement,
-            event: null,
-            prevStatus: LoanStatus.DISBURSED,
-            nextStatus: LoanStatus.DISBURSED,
-            principalClp: current.principalClp,
-            warning,
-          };
-        }
-
-        const err: any = new Error("INVALID_STATUS");
-        err.code = "INVALID_STATUS";
-        err.status = current.status;
-        throw err;
-      }
+      await tx.loan.update({
+        where: { id: loan.id },
+        data: {
+          status: LoanStatus.DISBURSED,
+          disbursedAt: now,
+          approvedAt: loan.approvedAt ?? now,
+        },
+        select: { id: true },
+      });
 
       await tx.treasuryAccount.upsert({
         where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
@@ -256,22 +221,44 @@ export async function POST(
     });
   } catch (e: any) {
     if (e?.code === "NOT_FOUND") {
-      return NextResponse.json({ ok: false, error: "Loan no existe" }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: "Loan no existe", code: "LOAN_NOT_FOUND" },
+        { status: 404 }
+      );
     }
 
-    if (e?.code === "INVALID_STATUS") {
+    if (e?.code === "LOAN_NOT_APPROVED") {
       const status = String(e?.status ?? "").toUpperCase();
       return NextResponse.json(
-        { ok: false, error: `Loan no es desembolsable (status=${status || "UNKNOWN"})` },
-        { status: 400 }
+        {
+          ok: false,
+          error: status
+            ? `Loan no es desembolsable (status=${status})`
+            : "Loan no es desembolsable",
+          code: "LOAN_NOT_APPROVED",
+        },
+        { status: 409 }
+      );
+    }
+
+    if (e?.code === "DISBURSEMENT_EXISTS") {
+      return NextResponse.json(
+        { ok: false, error: "Loan ya tiene movimiento de desembolso", code: "DISBURSEMENT_EXISTS" },
+        { status: 409 }
       );
     }
 
     if (e?.code === "INVALID_CURRENCY") {
-      return NextResponse.json({ ok: false, error: "Moneda inválida" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "Moneda inválida", code: "INVALID_CURRENCY" },
+        { status: 400 }
+      );
     }
 
     console.error("LOAN_DISBURSE_ERROR", e);
-    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Error interno", code: "DISBURSE_ERROR" },
+      { status: 500 }
+    );
   }
 }
