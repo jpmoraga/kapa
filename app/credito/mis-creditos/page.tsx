@@ -167,7 +167,7 @@ export default function MisCreditosPage() {
       setDisbursing((prev) => ({ ...prev, [loan.id]: true }));
       setNotice(null);
       try {
-        const status = String(loan.status ?? "");
+        let status = String(loan.status ?? "");
         if (status === "CREATED") {
           const approveRes = await fetch(`/api/credito/loans/${loan.id}/approve`, {
             method: "POST",
@@ -182,9 +182,10 @@ export default function MisCreditosPage() {
             setNotice({ type: "error", message: `${baseMessage}${code}` });
             return;
           }
+          status = "APPROVED";
         }
 
-        if (status === "CREATED" || status === "APPROVED") {
+        if (status === "APPROVED") {
           const res = await fetch(`/api/credito/loans/${loan.id}/disburse`, { method: "POST" });
           const data = await res.json().catch(() => ({}));
           if (!res.ok || !data?.ok) {
