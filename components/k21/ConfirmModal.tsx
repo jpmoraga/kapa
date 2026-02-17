@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 type ConfirmModalProps = {
   open: boolean;
@@ -26,13 +26,23 @@ export function ConfirmModal({
   onClose,
 }: ConfirmModalProps) {
   const confirmRef = useRef<HTMLButtonElement | null>(null);
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const titleId = useMemo(() => `k21-confirm-title-${Math.random().toString(36).slice(2)}`, []);
+  const descId = useMemo(() => `k21-confirm-desc-${Math.random().toString(36).slice(2)}`, []);
 
   useEffect(() => {
     if (open) {
+      openerRef.current = document.activeElement as HTMLElement | null;
       const id = window.setTimeout(() => {
         confirmRef.current?.focus();
       }, 0);
       return () => window.clearTimeout(id);
+    }
+    if (!open && openerRef.current) {
+      const el = openerRef.current;
+      openerRef.current = null;
+      window.setTimeout(() => el.focus(), 0);
     }
     return;
   }, [open]);
@@ -48,6 +58,15 @@ export function ConfirmModal({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, loading, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -68,30 +87,46 @@ export function ConfirmModal({
       }}
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby={titleId}
+      {...(description ? { "aria-describedby": descId } : {})}
     >
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900/95 p-6 shadow-xl backdrop-blur">
-        <div className="text-lg font-semibold text-white">{title}</div>
+        <div id={titleId} className="text-lg font-semibold text-white">
+          {title}
+        </div>
         {description ? (
-          <div className="mt-2 text-sm text-neutral-300">{description}</div>
+          <div id={descId} className="mt-2 text-sm text-neutral-300">
+            {description}
+          </div>
         ) : null}
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <button
             type="button"
+            ref={cancelRef}
             className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
             onClick={onClose}
             disabled={loading}
+            onKeyDown={(event) => {
+              if (event.key !== "Tab" || !event.shiftKey) return;
+              event.preventDefault();
+              confirmRef.current?.focus();
+            }}
           >
             {cancelText}
           </button>
           <button
             type="button"
             ref={confirmRef}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${confirmTone} ${
+            className={`min-w-[120px] rounded-full border px-3 py-1.5 text-xs font-semibold transition ${confirmTone} ${
               loading ? "opacity-60" : ""
             }`}
             onClick={onConfirm}
             disabled={loading}
+            onKeyDown={(event) => {
+              if (event.key !== "Tab" || event.shiftKey) return;
+              event.preventDefault();
+              cancelRef.current?.focus();
+            }}
           >
             {loading ? "Procesando..." : confirmText}
           </button>

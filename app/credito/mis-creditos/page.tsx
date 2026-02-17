@@ -299,11 +299,11 @@ export default function MisCreditosPage() {
       if (!action.loanId) return;
       if (action.type === "GRANT") {
         setConfirmTitle("Otorgar crédito");
-        setConfirmDesc("Esto sumará CLP al saldo interno del cliente.");
+        setConfirmDesc("Esto suma CLP al saldo interno del cliente.");
         setConfirmTone("neutral");
       } else {
         setConfirmTitle("Registrar pago");
-        setConfirmDesc("Se cerrará el crédito y se registrará el interés.");
+        setConfirmDesc("Se cerrará el crédito y se registrará interés.");
         setConfirmTone("neutral");
       }
       setPendingAction(action);
