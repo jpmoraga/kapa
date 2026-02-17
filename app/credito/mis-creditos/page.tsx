@@ -174,17 +174,19 @@ export default function MisCreditosPage() {
     void loadLoans();
   }, [loadLoans, loadSession]);
 
+  const activeStatuses = useMemo(() => new Set(["CREATED", "DISBURSED"]), []);
+
   const principalTotal = useMemo(() => {
     return loans.reduce((acc, loan) => {
+      if (!activeStatuses.has(String(loan?.status ?? ""))) return acc;
       const principal = parseNumberLike(loan?.principalClp);
       return principal !== null ? acc + principal : acc;
     }, 0);
-  }, [loans]);
+  }, [loans, activeStatuses]);
 
   const activeCount = useMemo(() => {
-    const active = new Set(["CREATED", "APPROVED", "DISBURSED"]);
-    return loans.filter((loan) => active.has(String(loan?.status ?? ""))).length;
-  }, [loans]);
+    return loans.filter((loan) => activeStatuses.has(String(loan?.status ?? ""))).length;
+  }, [loans, activeStatuses]);
 
   const avgLtv = useMemo(() => {
     const weighted = loans.reduce(
