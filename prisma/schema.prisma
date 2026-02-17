@@ -139,6 +139,7 @@ model TreasuryAccount {
 model TreasuryMovement {
   id                  String                 @id @default(cuid())
   companyId           String
+  loanId              String?
   amount              Decimal
   type                String
   note                String?
@@ -170,10 +171,12 @@ model TreasuryMovement {
   approvedBy          User?                  @relation("TreasuryMovementApprovedBy", fields: [approvedByUserId], references: [id])
   company             Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy           User?                  @relation("TreasuryMovementCreatedBy", fields: [createdByUserId], references: [id])
+  loan                Loan?                  @relation(fields: [loanId], references: [id], onDelete: SetNull)
 
   @@index([companyId, createdAt])
   @@index([companyId, assetCode, createdAt])
   @@index([companyId, status, createdAt])
+  @@index([loanId])
 }
 
 model Loan {
@@ -194,10 +197,14 @@ model Loan {
   disbursedAt    DateTime?
   disbursementMovementId String?
   closedAt       DateTime?
+  paidAt         DateTime?
+  interestChargedClp Decimal?
+  chargedDays    Int?
   borrower       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   company        Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   collateral     LoanCollateral[]
   events         LoanEvent[]
+  treasuryMovements TreasuryMovement[]
 
   @@index([companyId, createdAt])
   @@index([companyId, status, createdAt])
