@@ -86,6 +86,7 @@ export default function MisCreditosPage() {
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
+  const [approving, setApproving] = useState<Record<string, boolean>>({});
   const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
 
   const loadSession = useCallback(async () => {
@@ -177,7 +178,10 @@ export default function MisCreditosPage() {
         const res = await fetch(`/api/credito/loans/${loan.id}/disburse`, { method: "POST" });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data?.ok) {
-          setNotice({ type: "error", message: data?.error ?? "No se pudo otorgar el crédito." });
+          const baseMessage = data?.error ?? "No se pudo otorgar el crédito.";
+          const code =
+            typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
+          setNotice({ type: "error", message: `${baseMessage}${code}` });
           return;
         }
         const baseMessage =
@@ -190,12 +194,41 @@ export default function MisCreditosPage() {
         await loadLoans();
         router.refresh();
       } catch {
-        setNotice({ type: "error", message: "No se pudo otorgar el crédito." });
+        setNotice({ type: "error", message: "No se pudo otorgar el crédito. (DISBURSE_ERROR)" });
       } finally {
         setDisbursing((prev) => ({ ...prev, [loan.id]: false }));
       }
     },
     [disbursing, loadLoans, router]
+  );
+
+  const handleApprove = useCallback(
+    async (loan: any) => {
+      if (!loan?.id) return;
+      if (approving[loan.id]) return;
+
+      setApproving((prev) => ({ ...prev, [loan.id]: true }));
+      setNotice(null);
+      try {
+        const res = await fetch(`/api/credito/loans/${loan.id}/approve`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          const baseMessage = data?.error ?? "No se pudo aprobar el crédito.";
+          const code =
+            typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
+          setNotice({ type: "error", message: `${baseMessage}${code}` });
+          return;
+        }
+        setNotice({ type: "success", message: "Crédito aprobado." });
+        await loadLoans();
+        router.refresh();
+      } catch {
+        setNotice({ type: "error", message: "No se pudo aprobar el crédito. (APPROVE_ERROR)" });
+      } finally {
+        setApproving((prev) => ({ ...prev, [loan.id]: false }));
+      }
+    },
+    [approving, loadLoans, router]
   );
 
   const sortedLoans = useMemo(() => {
@@ -306,11 +339,11 @@ export default function MisCreditosPage() {
                   {sortedLoans.map((loan) => {
                     const principal = parseNumberLike(loan.principalClp);
                     const status = String(loan.status ?? "");
-                    const showDisburse =
-                      isAdmin &&
-                      status !== "DISBURSED" &&
-                      (status === "CREATED" || status === "APPROVED");
-                    const isLoading = Boolean(disbursing[loan.id]);
+                    const canApprove = isAdmin && status === "CREATED";
+                    const canDisburse = isAdmin && status === "APPROVED";
+                    const isDisbursed = status === "DISBURSED";
+                    const isApproving = Boolean(approving[loan.id]);
+                    const isDisbursing = Boolean(disbursing[loan.id]);
                     return (
                       <tr key={loan.id} className="border-t border-white/5">
                         <td className="py-3 pr-3 text-xs text-neutral-400">{loan.id}</td>
@@ -328,13 +361,28 @@ export default function MisCreditosPage() {
                           {loan.createdAt ? new Date(loan.createdAt).toLocaleString() : "—"}
                         </td>
                         <td className="py-3 pr-3">
-                          {showDisburse ? (
+                          {canApprove ? (
                             <button
                               className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-                              disabled={isLoading}
+                              disabled={isApproving}
+                              onClick={() => handleApprove(loan)}
+                            >
+                              {isApproving ? "Aprobando..." : "Aprobar"}
+                            </button>
+                          ) : canDisburse ? (
+                            <button
+                              className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                              disabled={isDisbursing}
                               onClick={() => handleDisburse(loan)}
                             >
-                              {isLoading ? "Otorgando..." : "Otorgar crédito"}
+                              {isDisbursing ? "Otorgando..." : "Otorgar crédito"}
+                            </button>
+                          ) : isDisbursed ? (
+                            <button
+                              className="k21-btn-secondary px-3 py-1.5 text-xs opacity-60"
+                              disabled
+                            >
+                              Desembolsado
                             </button>
                           ) : (
                             <span className="text-xs text-neutral-500">—</span>
