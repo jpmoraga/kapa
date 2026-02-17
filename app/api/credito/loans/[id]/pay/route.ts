@@ -168,7 +168,7 @@ export async function POST(
       });
       const interest = computed.interest;
       const total = loan.principalClp.plus(interest);
-      const netBalance = interest.minus(loan.principalClp);
+      const totalPaid = total;
 
       await tx.treasuryAccount.upsert({
         where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
@@ -179,7 +179,7 @@ export async function POST(
 
       await tx.treasuryAccount.update({
         where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-        data: { balance: { increment: netBalance } },
+        data: { balance: { increment: totalPaid } },
         select: { id: true },
       });
 
@@ -189,7 +189,7 @@ export async function POST(
           loanId: loan.id,
           assetCode: AssetCode.CLP,
           type: "adjust",
-          amount: loan.principalClp.mul(-1),
+          amount: loan.principalClp,
           note: `Loan principal payment ${loan.id}`,
           createdByUserId: user.id,
           status: TreasuryMovementStatus.APPROVED,
