@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ConfirmModal } from "@/components/k21/ConfirmModal";
 
 function parseNumberLike(input: string | number | null | undefined) {
   if (typeof input === "number") return Number.isFinite(input) ? input : null;
@@ -118,6 +119,15 @@ export default function MisCreditosPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
   const [paying, setPaying] = useState<Record<string, boolean>>({});
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
+  const [confirmDesc, setConfirmDesc] = useState<string | undefined>(undefined);
+  const [confirmTone, setConfirmTone] = useState<"neutral" | "danger" | "success">("neutral");
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<null | {
+    type: "GRANT" | "PAY";
+    loanId: string;
+  }>(null);
 
   const loadSession = useCallback(async () => {
     try {
@@ -214,7 +224,7 @@ export default function MisCreditosPage() {
                 ? ` (${approveData.code.trim()})`
                 : "";
             setNotice({ type: "error", message: `${baseMessage}${code}` });
-            return;
+            return false;
           }
           status = "APPROVED";
         }
@@ -227,7 +237,7 @@ export default function MisCreditosPage() {
             const code =
               typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
             setNotice({ type: "error", message: `${baseMessage}${code}` });
-            return;
+            return false;
           }
           const baseMessage =
             data?.kind === "idempotent"
@@ -240,13 +250,15 @@ export default function MisCreditosPage() {
           setNotice({ type: "success", message: `${baseMessage}${warning}` });
           await loadLoans();
           router.refresh();
-          return;
+          return true;
         }
       } catch {
         setNotice({ type: "error", message: "No se pudo otorgar el crédito. (DISBURSE_ERROR)" });
+        return false;
       } finally {
         setDisbursing((prev) => ({ ...prev, [loan.id]: false }));
       }
+      return false;
     },
     [disbursing, loadLoans, router]
   );
@@ -265,19 +277,58 @@ export default function MisCreditosPage() {
           const code =
             typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
           setNotice({ type: "error", message: `${baseMessage}${code}` });
-          return;
+          return false;
         }
         setNotice({ type: "success", message: "Pago registrado." });
         await loadLoans();
         router.refresh();
+        return true;
       } catch {
         setNotice({ type: "error", message: "No se pudo registrar el pago. (PAY_ERROR)" });
+        return false;
       } finally {
         setPaying((prev) => ({ ...prev, [loan.id]: false }));
       }
+      return false;
     },
     [loadLoans, paying, router]
   );
+
+  const openConfirm = useCallback(
+    (action: { type: "GRANT" | "PAY"; loanId: string }) => {
+      if (!action.loanId) return;
+      if (action.type === "GRANT") {
+        setConfirmTitle("Otorgar crédito");
+        setConfirmDesc("Esto sumará CLP al saldo interno del cliente.");
+        setConfirmTone("neutral");
+      } else {
+        setConfirmTitle("Registrar pago");
+        setConfirmDesc("Se cerrará el crédito y se registrará el interés.");
+        setConfirmTone("neutral");
+      }
+      setPendingAction(action);
+      setConfirmOpen(true);
+    },
+    []
+  );
+
+  const handleConfirm = useCallback(async () => {
+    if (!pendingAction) return;
+    const loan = loans.find((item) => item?.id === pendingAction.loanId);
+    if (!loan) {
+      setConfirmOpen(false);
+      setPendingAction(null);
+      return;
+    }
+    setConfirmLoading(true);
+    const ok =
+      pendingAction.type === "GRANT" ? await handleGrantCredit(loan) : await handlePay(loan);
+    setConfirmLoading(false);
+    if (ok) {
+      setConfirmOpen(false);
+      setPendingAction(null);
+    }
+  }, [handleGrantCredit, handlePay, loans, pendingAction]);
 
   const sortedLoans = useMemo(() => {
     return [...loans].sort((a, b) => {
@@ -478,7 +529,7 @@ export default function MisCreditosPage() {
                         <button
                           className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                           disabled={isDisbursing || isPaying}
-                          onClick={() => handleGrantCredit(loan)}
+                          onClick={() => openConfirm({ type: "GRANT", loanId: loan.id })}
                         >
                           {isDisbursing ? "Otorgando..." : "Otorgar crédito"}
                         </button>
@@ -487,7 +538,7 @@ export default function MisCreditosPage() {
                         <button
                           className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                           disabled={isPaying || isDisbursing}
-                          onClick={() => handlePay(loan)}
+                          onClick={() => openConfirm({ type: "PAY", loanId: loan.id })}
                         >
                           {isPaying ? "Pagando..." : "Pagar"}
                         </button>
@@ -503,6 +554,21 @@ export default function MisCreditosPage() {
           )}
         </section>
       </div>
+      <ConfirmModal
+        open={confirmOpen}
+        title={confirmTitle}
+        description={confirmDesc}
+        tone={confirmTone}
+        loading={confirmLoading}
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+        onConfirm={handleConfirm}
+        onClose={() => {
+          if (confirmLoading) return;
+          setConfirmOpen(false);
+          setPendingAction(null);
+        }}
+      />
     </div>
   );
 }
