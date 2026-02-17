@@ -86,12 +86,16 @@ export default function MisCreditosPage() {
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
+  const [paying, setPaying] = useState<Record<string, boolean>>({});
 
   const loadSession = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/session", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
+      const userId = typeof data?.user?.id === "string" ? data.user.id : null;
+      setCurrentUserId(userId);
       const activeCompanyId = data?.activeCompanyId ?? null;
       if (!activeCompanyId) {
         setIsAdmin(false);
@@ -103,6 +107,7 @@ export default function MisCreditosPage() {
       setIsAdmin(role === "admin" || role === "owner");
     } catch {
       setIsAdmin(false);
+      setCurrentUserId(null);
     }
   }, []);
 
@@ -217,6 +222,34 @@ export default function MisCreditosPage() {
     [disbursing, loadLoans, router]
   );
 
+  const handlePay = useCallback(
+    async (loan: any) => {
+      if (!loan?.id) return;
+      if (paying[loan.id]) return;
+      setPaying((prev) => ({ ...prev, [loan.id]: true }));
+      setNotice(null);
+      try {
+        const res = await fetch(`/api/credito/loans/${loan.id}/pay`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.ok) {
+          const baseMessage = data?.error ?? "No se pudo registrar el pago.";
+          const code =
+            typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
+          setNotice({ type: "error", message: `${baseMessage}${code}` });
+          return;
+        }
+        setNotice({ type: "success", message: "Pago registrado." });
+        await loadLoans();
+        router.refresh();
+      } catch {
+        setNotice({ type: "error", message: "No se pudo registrar el pago. (PAY_ERROR)" });
+      } finally {
+        setPaying((prev) => ({ ...prev, [loan.id]: false }));
+      }
+    },
+    [loadLoans, paying, router]
+  );
+
   const sortedLoans = useMemo(() => {
     return [...loans].sort((a, b) => {
       const aRaw = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -327,9 +360,14 @@ export default function MisCreditosPage() {
                     const status = String(loan.status ?? "");
                     const isDisbursed = status === "DISBURSED";
                     const isDisbursing = Boolean(disbursing[loan.id]);
+                    const isPaying = Boolean(paying[loan.id]);
                     const canGrant =
                       isAdmin && (status === "CREATED" || status === "APPROVED");
                     const showDisbursed = isAdmin && isDisbursed;
+                    const isBorrower =
+                      typeof currentUserId === "string" && loan?.userId === currentUserId;
+                    const canPay = isDisbursed && (isBorrower || isAdmin);
+                    const hasActions = canGrant || showDisbursed || canPay;
                     return (
                       <tr key={loan.id} className="border-t border-white/5">
                         <td className="py-3 pr-3 text-xs text-neutral-400">{loan.id}</td>
@@ -347,21 +385,35 @@ export default function MisCreditosPage() {
                           {loan.createdAt ? new Date(loan.createdAt).toLocaleString() : "—"}
                         </td>
                         <td className="py-3 pr-3">
-                          {canGrant ? (
-                            <button
-                              className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-                              disabled={isDisbursing}
-                              onClick={() => handleGrantCredit(loan)}
-                            >
-                              {isDisbursing ? "Otorgando..." : "Otorgar crédito"}
-                            </button>
-                          ) : showDisbursed ? (
-                            <button
-                              className="k21-btn-secondary px-3 py-1.5 text-xs opacity-60"
-                              disabled
-                            >
-                              Desembolsado
-                            </button>
+                          {hasActions ? (
+                            <div className="flex flex-wrap gap-2">
+                              {canGrant ? (
+                                <button
+                                  className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                                  disabled={isDisbursing || isPaying}
+                                  onClick={() => handleGrantCredit(loan)}
+                                >
+                                  {isDisbursing ? "Otorgando..." : "Otorgar crédito"}
+                                </button>
+                              ) : null}
+                              {showDisbursed ? (
+                                <button
+                                  className="k21-btn-secondary px-3 py-1.5 text-xs opacity-60"
+                                  disabled
+                                >
+                                  Desembolsado
+                                </button>
+                              ) : null}
+                              {canPay ? (
+                                <button
+                                  className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                                  disabled={isPaying || isDisbursing}
+                                  onClick={() => handlePay(loan)}
+                                >
+                                  {isPaying ? "Pagando..." : "Pagar"}
+                                </button>
+                              ) : null}
+                            </div>
                           ) : (
                             <span className="text-xs text-neutral-500">—</span>
                           )}

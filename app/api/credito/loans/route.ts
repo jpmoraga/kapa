@@ -230,6 +230,7 @@ export async function GET(req: Request) {
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
+      userId: true,
       status: true,
       currency: true,
       principalClp: true,
@@ -272,6 +273,7 @@ export async function GET(req: Request) {
 
     return {
       id: loan.id,
+      userId: loan.userId,
       status: loan.status,
       currency: loan.currency,
       principalClp: loan.principalClp.toString(),
