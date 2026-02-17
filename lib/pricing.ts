@@ -25,6 +25,22 @@ export type PricingContext = {
   source: "user" | "company" | "default" | "none";
 };
 
+function isMissingSchemaError(error: unknown) {
+  const err = error as any;
+  const code = String(err?.code ?? "");
+  const metaCause = String(err?.meta?.cause ?? "");
+  const message = String(err?.message ?? "");
+  const combined = `${message} ${metaCause}`.toLowerCase();
+  return (
+    code === "P2021" ||
+    code === "P2022" ||
+    combined.includes("relation") && combined.includes("does not exist") ||
+    combined.includes("column") && combined.includes("does not exist") ||
+    combined.includes("42p01") ||
+    combined.includes("42703")
+  );
+}
+
 function normalizeRules(rules: PricingRuleValue[]) {
   return rules.reduce<Record<string, PricingRuleValue>>((acc, rule) => {
     acc[rule.key] = rule;
@@ -39,109 +55,122 @@ export async function getPricingContext(params: {
 }): Promise<PricingContext> {
   const client = params.tx ?? prisma;
 
-  if (params.userId) {
-    const userPricing = await client.userPricing.findUnique({
-      where: { userId: params.userId },
-      include: {
-        plan: {
-          select: {
-            id: true,
-            name: true,
-            isDefault: true,
-            rules: {
-              select: {
-                key: true,
-                valueDecimal: true,
-                valueInt: true,
-                valueJson: true,
-                currency: true,
-                assetCode: true,
+  try {
+    if (params.userId) {
+      const userPricing = await client.userPricing.findUnique({
+        where: { userId: params.userId },
+        include: {
+          plan: {
+            select: {
+              id: true,
+              name: true,
+              isDefault: true,
+              rules: {
+                select: {
+                  key: true,
+                  valueDecimal: true,
+                  valueInt: true,
+                  valueJson: true,
+                  currency: true,
+                  assetCode: true,
+                },
               },
             },
+          },
+        },
+      });
+
+      if (userPricing?.plan) {
+        return {
+          plan: {
+            id: userPricing.plan.id,
+            name: userPricing.plan.name,
+            isDefault: userPricing.plan.isDefault,
+          },
+          rules: normalizeRules(userPricing.plan.rules as PricingRuleValue[]),
+          source: "user",
+        };
+      }
+    }
+
+    if (params.companyId) {
+      const companyPricing = await client.companyPricing.findUnique({
+        where: { companyId: params.companyId },
+        include: {
+          plan: {
+            select: {
+              id: true,
+              name: true,
+              isDefault: true,
+              rules: {
+                select: {
+                  key: true,
+                  valueDecimal: true,
+                  valueInt: true,
+                  valueJson: true,
+                  currency: true,
+                  assetCode: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (companyPricing?.plan) {
+        return {
+          plan: {
+            id: companyPricing.plan.id,
+            name: companyPricing.plan.name,
+            isDefault: companyPricing.plan.isDefault,
+          },
+          rules: normalizeRules(companyPricing.plan.rules as PricingRuleValue[]),
+          source: "company",
+        };
+      }
+    }
+
+    const defaultPlan = await client.pricingPlan.findFirst({
+      where: { isDefault: true },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        isDefault: true,
+        rules: {
+          select: {
+            key: true,
+            valueDecimal: true,
+            valueInt: true,
+            valueJson: true,
+            currency: true,
+            assetCode: true,
           },
         },
       },
     });
 
-    if (userPricing?.plan) {
+    if (defaultPlan) {
       return {
-        plan: {
-          id: userPricing.plan.id,
-          name: userPricing.plan.name,
-          isDefault: userPricing.plan.isDefault,
-        },
-        rules: normalizeRules(userPricing.plan.rules as PricingRuleValue[]),
-        source: "user",
+        plan: { id: defaultPlan.id, name: defaultPlan.name, isDefault: defaultPlan.isDefault },
+        rules: normalizeRules(defaultPlan.rules as PricingRuleValue[]),
+        source: "default",
       };
     }
-  }
 
-  if (params.companyId) {
-    const companyPricing = await client.companyPricing.findUnique({
-      where: { companyId: params.companyId },
-      include: {
-        plan: {
-          select: {
-            id: true,
-            name: true,
-            isDefault: true,
-            rules: {
-              select: {
-                key: true,
-                valueDecimal: true,
-                valueInt: true,
-                valueJson: true,
-                currency: true,
-                assetCode: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (companyPricing?.plan) {
-      return {
-        plan: {
-          id: companyPricing.plan.id,
-          name: companyPricing.plan.name,
-          isDefault: companyPricing.plan.isDefault,
-        },
-        rules: normalizeRules(companyPricing.plan.rules as PricingRuleValue[]),
-        source: "company",
-      };
+    return { plan: null, rules: {}, source: "none" };
+  } catch (error) {
+    if (isMissingSchemaError(error)) {
+      const err = error as any;
+      console.warn("PRICING_FALLBACK", {
+        companyId: params.companyId ?? null,
+        userId: params.userId ?? null,
+        errCode: err?.code ?? err?.meta?.cause ?? "UNKNOWN",
+      });
+      return { plan: null, rules: {}, source: "none" };
     }
+    throw error;
   }
-
-  const defaultPlan = await client.pricingPlan.findFirst({
-    where: { isDefault: true },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      isDefault: true,
-      rules: {
-        select: {
-          key: true,
-          valueDecimal: true,
-          valueInt: true,
-          valueJson: true,
-          currency: true,
-          assetCode: true,
-        },
-      },
-    },
-  });
-
-  if (defaultPlan) {
-    return {
-      plan: { id: defaultPlan.id, name: defaultPlan.name, isDefault: defaultPlan.isDefault },
-      rules: normalizeRules(defaultPlan.rules as PricingRuleValue[]),
-      source: "default",
-    };
-  }
-
-  return { plan: null, rules: {}, source: "none" };
 }
 
 export function getRuleDecimal(

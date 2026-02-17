@@ -173,11 +173,16 @@ export async function GET(req: Request) {
     console.error("SIM_DATA_ERROR", {
       activeCompanyId,
       status: 500,
-      code: "UNHANDLED",
+      code: "SIM_DATA_ERROR",
       message: error?.message ?? String(error),
     });
     return NextResponse.json(
-      { ok: false, error: "Error interno", code: "UNHANDLED" },
+      {
+        ok: false,
+        error: "Error interno del simulador",
+        code: "SIM_DATA_ERROR",
+        detail: error?.message ?? null,
+      },
       { status: 500 }
     );
   }

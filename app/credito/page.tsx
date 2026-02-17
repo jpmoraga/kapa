@@ -95,11 +95,11 @@ export default function CreditoPage() {
         } else if (status === 400 && rawError.toLowerCase().includes("empresa activa")) {
           message = "Selecciona una empresa activa para ver el simulador.";
         } else if (status >= 500) {
-          message = "Error interno del simulador. Intenta de nuevo o avísanos.";
-          if (code) message += ` (code=${code})`;
+          message = "Error interno del simulador. Reintenta en unos minutos.";
         } else if (!message) {
-          message = `Error cargando simulador (status=${status || "unknown"})`;
+          message = `Error cargando simulador (status=${status || "unknown"}). Reintenta.`;
         }
+        if (code) message += ` (code=${code})`;
         setDataError(message);
         return;
       }

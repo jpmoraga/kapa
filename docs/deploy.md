@@ -32,6 +32,7 @@
 ```
 npx prisma migrate deploy
 ```
+If your host does not run `vercel-build`, run the command above manually against production env vars (e.g. `pnpm prisma migrate deploy`) before enabling the release.
 
 ## 3) Preflight (before/after deploy)
 ```
@@ -52,4 +53,3 @@ Note: allowlisted numbers must be included in `WHATSAPP_ADMIN_ALLOWLIST`.
    - Header: `X-ADMIN-SECRET: <ADMIN_SECRET>`
    - Balance increases once.
 3) **Buy BTC with insufficient system wallet** → remains `PENDING` with `INSUFFICIENT_LIQUIDITY`.
-
