@@ -86,7 +86,6 @@ export default function MisCreditosPage() {
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
-  const [approving, setApproving] = useState<Record<string, boolean>>({});
   const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
 
   const loadSession = useCallback(async () => {
@@ -161,38 +160,53 @@ export default function MisCreditosPage() {
   const badge = riskBadge(avgLtvPct);
   const summaryReady = !loansLoading && !loansError;
 
-  const handleDisburse = useCallback(
+  const handleGrantCredit = useCallback(
     async (loan: any) => {
       if (!loan?.id) return;
       if (disbursing[loan.id]) return;
-      const principal = parseNumberLike(loan.principalClp);
-      const clpLabel = principal !== null ? `$${formatClpNumber(principal)} CLP` : "este monto";
-      const confirmed = window.confirm(
-        `Otorgar crédito por ${clpLabel}? Esto sumará CLP al saldo interno del cliente`
-      );
-      if (!confirmed) return;
-
       setDisbursing((prev) => ({ ...prev, [loan.id]: true }));
       setNotice(null);
       try {
-        const res = await fetch(`/api/credito/loans/${loan.id}/disburse`, { method: "POST" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.ok) {
-          const baseMessage = data?.error ?? "No se pudo otorgar el crédito.";
-          const code =
-            typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
-          setNotice({ type: "error", message: `${baseMessage}${code}` });
+        const status = String(loan.status ?? "");
+        if (status === "CREATED") {
+          const approveRes = await fetch(`/api/credito/loans/${loan.id}/approve`, {
+            method: "POST",
+          });
+          const approveData = await approveRes.json().catch(() => ({}));
+          if (!approveRes.ok || !approveData?.ok) {
+            const baseMessage = approveData?.error ?? "No se pudo aprobar el crédito.";
+            const code =
+              typeof approveData?.code === "string" && approveData.code.trim()
+                ? ` (${approveData.code.trim()})`
+                : "";
+            setNotice({ type: "error", message: `${baseMessage}${code}` });
+            return;
+          }
+        }
+
+        if (status === "CREATED" || status === "APPROVED") {
+          const res = await fetch(`/api/credito/loans/${loan.id}/disburse`, { method: "POST" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !data?.ok) {
+            const baseMessage = data?.error ?? "No se pudo otorgar el crédito.";
+            const code =
+              typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
+            setNotice({ type: "error", message: `${baseMessage}${code}` });
+            return;
+          }
+          const baseMessage =
+            data?.kind === "idempotent"
+              ? "Ya estaba otorgado (idempotente)."
+              : "Crédito otorgado.";
+          const warning =
+            typeof data?.warning === "string" && data.warning.trim()
+              ? `\n${data.warning.trim()}`
+              : "";
+          setNotice({ type: "success", message: `${baseMessage}${warning}` });
+          await loadLoans();
+          router.refresh();
           return;
         }
-        const baseMessage =
-          data?.kind === "idempotent" ? "Ya estaba otorgado (idempotente)." : "Crédito otorgado.";
-        const warning =
-          typeof data?.warning === "string" && data.warning.trim()
-            ? `\n${data.warning.trim()}`
-            : "";
-        setNotice({ type: "success", message: `${baseMessage}${warning}` });
-        await loadLoans();
-        router.refresh();
       } catch {
         setNotice({ type: "error", message: "No se pudo otorgar el crédito. (DISBURSE_ERROR)" });
       } finally {
@@ -200,35 +214,6 @@ export default function MisCreditosPage() {
       }
     },
     [disbursing, loadLoans, router]
-  );
-
-  const handleApprove = useCallback(
-    async (loan: any) => {
-      if (!loan?.id) return;
-      if (approving[loan.id]) return;
-
-      setApproving((prev) => ({ ...prev, [loan.id]: true }));
-      setNotice(null);
-      try {
-        const res = await fetch(`/api/credito/loans/${loan.id}/approve`, { method: "POST" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.ok) {
-          const baseMessage = data?.error ?? "No se pudo aprobar el crédito.";
-          const code =
-            typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
-          setNotice({ type: "error", message: `${baseMessage}${code}` });
-          return;
-        }
-        setNotice({ type: "success", message: "Crédito aprobado." });
-        await loadLoans();
-        router.refresh();
-      } catch {
-        setNotice({ type: "error", message: "No se pudo aprobar el crédito. (APPROVE_ERROR)" });
-      } finally {
-        setApproving((prev) => ({ ...prev, [loan.id]: false }));
-      }
-    },
-    [approving, loadLoans, router]
   );
 
   const sortedLoans = useMemo(() => {
@@ -339,11 +324,11 @@ export default function MisCreditosPage() {
                   {sortedLoans.map((loan) => {
                     const principal = parseNumberLike(loan.principalClp);
                     const status = String(loan.status ?? "");
-                    const canApprove = isAdmin && status === "CREATED";
-                    const canDisburse = isAdmin && status === "APPROVED";
                     const isDisbursed = status === "DISBURSED";
-                    const isApproving = Boolean(approving[loan.id]);
                     const isDisbursing = Boolean(disbursing[loan.id]);
+                    const canGrant =
+                      isAdmin && (status === "CREATED" || status === "APPROVED");
+                    const showDisbursed = isAdmin && isDisbursed;
                     return (
                       <tr key={loan.id} className="border-t border-white/5">
                         <td className="py-3 pr-3 text-xs text-neutral-400">{loan.id}</td>
@@ -361,23 +346,15 @@ export default function MisCreditosPage() {
                           {loan.createdAt ? new Date(loan.createdAt).toLocaleString() : "—"}
                         </td>
                         <td className="py-3 pr-3">
-                          {canApprove ? (
-                            <button
-                              className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-                              disabled={isApproving}
-                              onClick={() => handleApprove(loan)}
-                            >
-                              {isApproving ? "Aprobando..." : "Aprobar"}
-                            </button>
-                          ) : canDisburse ? (
+                          {canGrant ? (
                             <button
                               className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                               disabled={isDisbursing}
-                              onClick={() => handleDisburse(loan)}
+                              onClick={() => handleGrantCredit(loan)}
                             >
                               {isDisbursing ? "Otorgando..." : "Otorgar crédito"}
                             </button>
-                          ) : isDisbursed ? (
+                          ) : showDisbursed ? (
                             <button
                               className="k21-btn-secondary px-3 py-1.5 text-xs opacity-60"
                               disabled
