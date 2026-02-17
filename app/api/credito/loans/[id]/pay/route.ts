@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { PRICING_KEYS, getPricingContext, getRuleInt } from "@/lib/pricing";
 import {
   AssetCode,
   LoanCurrency,
@@ -114,7 +115,17 @@ export async function POST(
         select: { isSubscriber: true },
       });
       const isSubscriber = Boolean(borrower?.isSubscriber);
-      const minDays = isSubscriber ? 1 : 7;
+      const pricing = await getPricingContext({
+        companyId: activeCompanyId,
+        userId: loan.userId,
+        tx,
+      });
+      const minDaysKey = isSubscriber
+        ? PRICING_KEYS.LOAN_MIN_DAYS_SUBSCRIBER
+        : PRICING_KEYS.LOAN_MIN_DAYS_STANDARD;
+      const minDaysRule = getRuleInt(pricing.rules, minDaysKey);
+      const fallbackMinDays = isSubscriber ? 1 : 7;
+      const minDays = minDaysRule && minDaysRule > 0 ? minDaysRule : fallbackMinDays;
 
       if (loan.status === LoanStatus.CLOSED) {
         const startAt = loan.disbursedAt ?? loan.createdAt;

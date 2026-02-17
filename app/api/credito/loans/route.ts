@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { getLoanApr } from "@/lib/loans/rates";
 import { fetchBtcClpPrice, safeDecimal } from "@/lib/loans/pricing";
+import { PRICING_KEYS, getPricingContext, getRuleDecimal } from "@/lib/pricing";
 import {
   AssetCode,
   LoanCurrency,
@@ -117,8 +118,14 @@ export async function POST(req: Request) {
   }
 
   const isSubscriber = Boolean(user.isSubscriber);
-  const apr = getLoanApr(isSubscriber);
-  const aprDec = safeDecimal(apr);
+  const pricing = await getPricingContext({ companyId: activeCompanyId, userId: user.id });
+  const aprRuleKey = isSubscriber
+    ? PRICING_KEYS.LOAN_APR_SUBSCRIBER
+    : PRICING_KEYS.LOAN_APR_STANDARD;
+  const aprFromRule = getRuleDecimal(pricing.rules, aprRuleKey);
+  const aprDec = aprFromRule ?? safeDecimal(getLoanApr(isSubscriber));
+  const aprNumber = Number(aprDec.toString());
+  const apr = Number.isFinite(aprNumber) ? aprNumber : getLoanApr(isSubscriber);
 
   console.info("CREDITO_CREATE_LOAN", {
     userId: user.id,

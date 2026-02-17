@@ -31,6 +31,7 @@ model User {
   activeCompany             Company?                @relation("ActiveCompany", fields: [activeCompanyId], references: [id])
   depositSlips              DepositSlip[]
   onboarding                UserOnboarding?
+  pricingPlan               UserPricing?
 }
 
 model PersonProfile {
@@ -108,6 +109,7 @@ model Company {
   movements           TreasuryMovement[]
   loans               Loan[]
   activeUsers         User[]             @relation("ActiveCompany")
+  pricingPlan         CompanyPricing?
 }
 
 model CompanyUser {
@@ -118,6 +120,53 @@ model CompanyUser {
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, companyId])
+}
+
+model PricingPlan {
+  id        String           @id @default(cuid())
+  name      String
+  isDefault Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  rules     PricingPlanRule[]
+  companies CompanyPricing[]
+  users     UserPricing[]
+
+  @@index([isDefault])
+}
+
+model PricingPlanRule {
+  id           String       @id @default(cuid())
+  planId       String
+  key          String
+  valueDecimal Decimal?
+  valueInt     Int?
+  valueJson    Json?
+  currency     LoanCurrency?
+  assetCode    AssetCode?
+  updatedAt    DateTime     @updatedAt
+  plan         PricingPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId, key])
+}
+
+model CompanyPricing {
+  companyId String   @id
+  planId    String
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  plan      PricingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+}
+
+model UserPricing {
+  userId    String   @id
+  planId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      PricingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
 }
 
 /// *

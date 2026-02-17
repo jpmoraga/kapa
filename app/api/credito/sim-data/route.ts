@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import { getLoanApr, aprToMonthlyPct } from "@/lib/loans/rates";
 import { fetchBtcClpPrice, safeDecimal } from "@/lib/loans/pricing";
+import { PRICING_KEYS, getPricingContext, getRuleDecimal, getRuleInt } from "@/lib/pricing";
 import { AssetCode } from "@prisma/client";
 
 export async function GET(req: Request) {
@@ -67,6 +68,22 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 401 });
     }
 
+    const isSubscriber = Boolean(user.isSubscriber);
+    const pricing = await getPricingContext({ companyId: activeCompanyId, userId: user.id });
+    const aprRuleKey = isSubscriber
+      ? PRICING_KEYS.LOAN_APR_SUBSCRIBER
+      : PRICING_KEYS.LOAN_APR_STANDARD;
+    const aprFromRule = getRuleDecimal(pricing.rules, aprRuleKey);
+    const aprDec = aprFromRule ?? safeDecimal(getLoanApr(isSubscriber));
+    const aprNumber = Number(aprDec.toString());
+    const apr = Number.isFinite(aprNumber) ? aprNumber : getLoanApr(isSubscriber);
+    const monthlyRatePct = aprToMonthlyPct(apr);
+    const maxLtvRuleKey = isSubscriber
+      ? PRICING_KEYS.LOAN_MAX_LTV_PCT_SUBSCRIBER
+      : PRICING_KEYS.LOAN_MAX_LTV_PCT_STANDARD;
+    const maxLtvRule = getRuleInt(pricing.rules, maxLtvRuleKey);
+    const maxLtvPct = maxLtvRule !== null ? maxLtvRule : isSubscriber ? 60 : 50;
+
     let account: { balance: unknown } | null = null;
     try {
       account = await prisma.treasuryAccount.findUnique({
@@ -101,10 +118,6 @@ export async function GET(req: Request) {
         path,
         message: error?.message ?? String(error),
       });
-      const isSubscriber = Boolean(user.isSubscriber);
-      const apr = getLoanApr(isSubscriber);
-      const monthlyRatePct = aprToMonthlyPct(apr);
-      const maxLtvPct = isSubscriber ? 60 : 50;
       const liquidationBands = { withdraw: 40, risk: 65, marginCall: 70, liquidation: 80 };
       return NextResponse.json({
         ok: true,
@@ -118,10 +131,6 @@ export async function GET(req: Request) {
         priceError: "PRICING_FETCH_FAILED",
       });
     }
-    const isSubscriber = Boolean(user.isSubscriber);
-    const apr = getLoanApr(isSubscriber);
-    const monthlyRatePct = aprToMonthlyPct(apr);
-    const maxLtvPct = isSubscriber ? 60 : 50;
     const liquidationBands = { withdraw: 40, risk: 65, marginCall: 70, liquidation: 80 };
     const hasPrice = price.ok;
     const hasBtc = btcAvailable !== null && Number(btcAvailable) > 0;
