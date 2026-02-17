@@ -179,20 +179,6 @@ export async function POST(
       });
       const interest = computed.interest;
       const total = loan.principalClp.plus(interest);
-      const totalPaid = total;
-
-      await tx.treasuryAccount.upsert({
-        where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-        update: {},
-        create: { companyId: activeCompanyId, assetCode: AssetCode.CLP, balance: new Prisma.Decimal(0) },
-        select: { id: true },
-      });
-
-      await tx.treasuryAccount.update({
-        where: { companyId_assetCode: { companyId: activeCompanyId, assetCode: AssetCode.CLP } },
-        data: { balance: { increment: totalPaid } },
-        select: { id: true },
-      });
 
       const principalMovement = await tx.treasuryMovement.create({
         data: {
