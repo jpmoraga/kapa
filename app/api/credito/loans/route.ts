@@ -149,6 +149,7 @@ export async function POST(req: Request) {
           ltvTarget: new Prisma.Decimal(String(ltvTarget)),
           ltvMax: new Prisma.Decimal(String(ltvMax)),
           liquidationLtv: new Prisma.Decimal(String(liquidationLtv)),
+          collateralSatsTotal: collateralSats,
           status: LoanStatus.CREATED,
         },
         select: {

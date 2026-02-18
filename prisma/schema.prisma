@@ -240,6 +240,7 @@ model Loan {
   ltvTarget      Decimal
   ltvMax         Decimal
   liquidationLtv Decimal
+  collateralSatsTotal BigInt @default(0)
   status         LoanStatus @default(CREATED)
   createdAt      DateTime   @default(now())
   approvedAt     DateTime?
