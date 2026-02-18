@@ -82,6 +82,15 @@ function formatDateTime(value?: string | null) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
+function parseDateLike(value?: string | number | Date | null) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function statusBadge(status: string) {
   const normalized = String(status ?? "").toUpperCase();
   if (normalized === "CREATED") {
@@ -91,7 +100,7 @@ function statusBadge(status: string) {
     return { label: "Aprobado", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
   }
   if (normalized === "DISBURSED") {
-    return { label: "Desembolsado", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
+    return { label: "Vigente", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
   }
   if (normalized === "CLOSED") {
     return { label: "Pagado", cls: "border-white/10 bg-white/5 text-neutral-200" };
@@ -666,9 +675,25 @@ export default function MisCreditosPage() {
                 const isBorrower =
                   typeof currentUserId === "string" && loan?.userId === currentUserId;
                 const canPay = isDisbursed && (isBorrower || isAdmin);
-                const showDisbursed = isAdmin && isDisbursed;
                 const canCollateral = true;
-                const hasActions = canGrant || canPay || showDisbursed || canCollateral;
+                const dueDate = parseDateLike(
+                  loan?.dueAt ??
+                    loan?.maturesAt ??
+                    loan?.endsAt ??
+                    loan?.maturityAt ??
+                    loan?.maturityDate ??
+                    loan?.expiresAt ??
+                    loan?.dueDate
+                );
+                const daysToDue = dueDate
+                  ? Math.ceil((dueDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+                  : null;
+                const canRenew =
+                  isDisbursed && daysToDue !== null && Number.isFinite(daysToDue) && daysToDue <= 7;
+                const renewHint = dueDate
+                  ? "Disponible 7 días antes del vencimiento"
+                  : "Disponible cerca del vencimiento";
+                const hasActions = canGrant || canPay || canCollateral || canRenew;
                 const truncatedId = loan.id ? truncateId(loan.id) : "";
                 return (
                   <div
@@ -755,11 +780,6 @@ export default function MisCreditosPage() {
                     </div>
 
                     <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-                      {showDisbursed ? (
-                        <span className="k21-pill border-white/10 bg-white/5 text-neutral-200">
-                          Desembolsado
-                        </span>
-                      ) : null}
                       {canCollateral ? (
                         <button
                           className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
@@ -778,6 +798,18 @@ export default function MisCreditosPage() {
                           Retirar garantía
                         </button>
                       ) : null}
+                      <div className="flex flex-col items-end">
+                        <button
+                          className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                          disabled={!canRenew}
+                          type="button"
+                        >
+                          Renovar crédito
+                        </button>
+                        {!canRenew ? (
+                          <span className="mt-1 text-[11px] text-neutral-500">{renewHint}</span>
+                        ) : null}
+                      </div>
                       {canGrant ? (
                         <button
                           className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
