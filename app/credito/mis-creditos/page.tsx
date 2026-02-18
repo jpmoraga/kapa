@@ -119,6 +119,7 @@ export default function MisCreditosPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
   const [paying, setPaying] = useState<Record<string, boolean>>({});
+  const [spotBtcClp, setSpotBtcClp] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmDesc, setConfirmDesc] = useState<string | undefined>(undefined);
@@ -169,27 +170,46 @@ export default function MisCreditosPage() {
     }
   }, []);
 
+  const loadSpot = useCallback(async () => {
+    try {
+      const res = await fetch("/api/prices/spot?pair=BTC_CLP", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        setSpotBtcClp(null);
+        return;
+      }
+      const parsed = parseNumberLike(data?.price);
+      setSpotBtcClp(parsed !== null && parsed > 0 ? parsed : null);
+    } catch {
+      setSpotBtcClp(null);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSession();
     void loadLoans();
-  }, [loadLoans, loadSession]);
+    void loadSpot();
+  }, [loadLoans, loadSession, loadSpot]);
 
-  const activeStatuses = useMemo(() => new Set(["CREATED", "DISBURSED"]), []);
+  const activeStatuses = useMemo(() => new Set(["CREATED", "APPROVED", "DISBURSED"]), []);
+  const visibleLoans = useMemo(
+    () => loans.filter((loan) => activeStatuses.has(String(loan?.status ?? ""))),
+    [loans, activeStatuses]
+  );
 
   const principalTotal = useMemo(() => {
-    return loans.reduce((acc, loan) => {
-      if (!activeStatuses.has(String(loan?.status ?? ""))) return acc;
+    return visibleLoans.reduce((acc, loan) => {
       const principal = parseNumberLike(loan?.principalClp);
       return principal !== null ? acc + principal : acc;
     }, 0);
-  }, [loans, activeStatuses]);
+  }, [visibleLoans]);
 
   const activeCount = useMemo(() => {
-    return loans.filter((loan) => activeStatuses.has(String(loan?.status ?? ""))).length;
-  }, [loans, activeStatuses]);
+    return visibleLoans.length;
+  }, [visibleLoans]);
 
   const avgLtv = useMemo(() => {
-    const weighted = loans.reduce(
+    const weighted = visibleLoans.reduce(
       (acc, loan) => {
         const principal = parseNumberLike(loan?.principalClp);
         const ltv = parseNumberLike(loan?.ltvTarget);
@@ -200,11 +220,57 @@ export default function MisCreditosPage() {
     );
     if (weighted.sum <= 0) return null;
     return weighted.weighted / weighted.sum;
-  }, [loans]);
+  }, [visibleLoans]);
 
-  const avgLtvPct = avgLtv !== null ? avgLtv * 100 : null;
+  const ltvMetrics = useMemo(() => {
+    const map = new Map<string, { ltv: number | null }>();
+    if (!spotBtcClp) {
+      return { map, weightedLtv: null as number | null, ticks: [] as number[] };
+    }
+
+    let principalSum = 0;
+    let collateralSum = 0;
+    const ticks: number[] = [];
+
+    visibleLoans.forEach((loan) => {
+      const principal = parseNumberLike(loan?.principalClp);
+      const collateralSats = parseNumberLike(loan?.collateralSatsTotal);
+      if (principal === null || collateralSats === null || collateralSats <= 0) {
+        map.set(loan.id, { ltv: null });
+        return;
+      }
+      const collateralBtc = collateralSats / 1e8;
+      const collateralValueClp = collateralBtc * spotBtcClp;
+      if (!Number.isFinite(collateralValueClp) || collateralValueClp <= 0) {
+        map.set(loan.id, { ltv: null });
+        return;
+      }
+      const ltv = principal / collateralValueClp;
+      if (Number.isFinite(ltv)) {
+        ticks.push(ltv);
+        principalSum += principal;
+        collateralSum += collateralValueClp;
+        map.set(loan.id, { ltv });
+      } else {
+        map.set(loan.id, { ltv: null });
+      }
+    });
+
+    const weightedLtv = collateralSum > 0 ? principalSum / collateralSum : null;
+    return { map, weightedLtv, ticks };
+  }, [spotBtcClp, visibleLoans]);
+
+  const avgLtvPct =
+    ltvMetrics.weightedLtv !== null
+      ? ltvMetrics.weightedLtv * 100
+      : avgLtv !== null
+        ? avgLtv * 100
+        : null;
   const badge = riskBadge(avgLtvPct);
   const summaryReady = !loansLoading && !loansError;
+  const weightedLtvPct = ltvMetrics.weightedLtv !== null ? ltvMetrics.weightedLtv * 100 : null;
+  const weightedLtvClamped =
+    weightedLtvPct !== null ? Math.min(Math.max(weightedLtvPct, 0), 100) : null;
 
   const handleGrantCredit = useCallback(
     async (loan: any) => {
@@ -333,14 +399,14 @@ export default function MisCreditosPage() {
   }, [handleGrantCredit, handlePay, loans, pendingAction]);
 
   const sortedLoans = useMemo(() => {
-    return [...loans].sort((a, b) => {
+    return [...visibleLoans].sort((a, b) => {
       const aRaw = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
       const bRaw = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
       const aTime = Number.isFinite(aRaw) ? aRaw : 0;
       const bTime = Number.isFinite(bRaw) ? bRaw : 0;
       return bTime - aTime;
     });
-  }, [loans]);
+  }, [visibleLoans]);
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100">
@@ -396,7 +462,11 @@ export default function MisCreditosPage() {
               <div className="mt-2 text-lg font-semibold text-white">
                 {summaryReady && avgLtvPct !== null ? `${avgLtvPct.toFixed(1)}%` : "—"}
               </div>
-              <div className="mt-1 text-xs text-neutral-500">Ponderado por principal</div>
+              <div className="mt-1 text-xs text-neutral-500">
+                {ltvMetrics.weightedLtv !== null
+                  ? "Ponderado por colateral"
+                  : "Ponderado por principal (legacy)"}
+              </div>
             </div>
             <div className="rounded-xl border border-white/5 bg-white/5 p-4">
               <div className="text-xs uppercase tracking-wide text-neutral-500">Riesgo</div>
@@ -409,6 +479,50 @@ export default function MisCreditosPage() {
           </div>
         </section>
 
+        <section className="k21-card mt-4 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Riesgo agregado</div>
+            <div className="text-xs text-neutral-500">
+              Spot BTC/CLP: {spotBtcClp !== null ? formatClpNumber(spotBtcClp) : "—"}
+            </div>
+          </div>
+          {spotBtcClp === null ? (
+            <div className="mt-3 text-sm text-neutral-400">Riesgo: — (sin precio spot)</div>
+          ) : ltvMetrics.ticks.length === 0 || weightedLtvPct === null ? (
+            <div className="mt-3 text-sm text-neutral-400">Riesgo: — (sin colateral)</div>
+          ) : (
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-sm text-neutral-200">
+                <span>LTV ponderado</span>
+                <span className="font-semibold text-white">{weightedLtvPct.toFixed(1)}%</span>
+              </div>
+              <div className="relative mt-3 h-2 rounded-full bg-white/10">
+                <div
+                  className="absolute left-0 top-0 h-2 rounded-full bg-emerald-500/30"
+                  style={{ width: `${weightedLtvClamped ?? 0}%` }}
+                />
+                <div
+                  className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-neutral-900"
+                  style={{ left: `${weightedLtvClamped ?? 0}%` }}
+                />
+                {ltvMetrics.ticks.map((tick, idx) => {
+                  const left = Math.min(Math.max(tick * 100, 0), 100);
+                  return (
+                    <span
+                      key={`${tick}-${idx}`}
+                      className="absolute top-0 h-2 w-px bg-white/50"
+                      style={{ left: `${left}%` }}
+                    />
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-xs text-neutral-500">
+                Basado en colateral y spot actual.
+              </div>
+            </div>
+          )}
+        </section>
+
         <section className="k21-card mt-6 p-6">
           <div className="text-xs uppercase tracking-wide text-neutral-500">Créditos</div>
           {loansLoading ? (
@@ -417,15 +531,17 @@ export default function MisCreditosPage() {
             </div>
           ) : loansError ? null : sortedLoans.length === 0 ? (
             <div className="mt-4 rounded-xl border border-white/5 bg-white/5 p-6">
-              <div className="text-sm font-semibold text-white">Aún no tienes créditos</div>
+              <div className="text-sm font-semibold text-white">No tienes créditos vigentes</div>
               <div className="mt-1 text-sm text-neutral-400">
-                Cuando solicites y se otorgue un crédito, aparecerá aquí.
+                Cuando tengas créditos creados o desembolsados, aparecerán aquí.
               </div>
             </div>
           ) : (
             <div className="mt-4 space-y-3">
               {sortedLoans.map((loan) => {
                 const principal = parseNumberLike(loan.principalClp);
+                const ltvTarget = parseNumberLike(loan.ltvTarget);
+                const ltvDyn = ltvMetrics.map.get(loan.id)?.ltv ?? null;
                 const status = String(loan.status ?? "");
                 const badge = statusBadge(status);
                 const isDisbursed = status === "DISBURSED";
@@ -498,9 +614,11 @@ export default function MisCreditosPage() {
                         </div>
                         <div className="mt-2 text-sm text-neutral-200">
                           LTV:{" "}
-                          {parseNumberLike(loan.ltvTarget) !== null
-                            ? `${Math.round(parseNumberLike(loan.ltvTarget)! * 100)}%`
-                            : "—"}
+                          {ltvDyn !== null && Number.isFinite(ltvDyn)
+                            ? `${(ltvDyn * 100).toFixed(1)}%`
+                            : ltvTarget !== null
+                              ? `${Math.round(ltvTarget * 100)}% (legacy)`
+                              : "—"}
                         </div>
                       </div>
                       <div>
