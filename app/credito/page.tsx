@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ltvBadge } from "@/lib/credito/ltv";
 
 const FALLBACK_BTC_AVAILABLE = 0.02594742;
 const FALLBACK_BTC_PRICE_CLP = 60867616;
@@ -34,25 +35,6 @@ function formatBtc(n: number | null) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
-}
-
-function ltvBadge(ltvPct: number | null) {
-  if (ltvPct === null || !Number.isFinite(ltvPct)) {
-    return { label: "—", cls: "border-white/10 bg-white/5 text-neutral-400" };
-  }
-  if (ltvPct > 80) {
-    return { label: "Liquidación", cls: "border-red-500/30 bg-red-500/10 text-red-300" };
-  }
-  if (ltvPct >= 70) {
-    return { label: "Margin call", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
-  }
-  if (ltvPct >= 65) {
-    return { label: "Riesgo", cls: "border-orange-500/30 bg-orange-500/10 text-orange-300" };
-  }
-  if (ltvPct >= 40) {
-    return { label: "Saludable", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
-  }
-  return { label: "Retiro posible", cls: "border-sky-500/30 bg-sky-500/10 text-sky-300" };
 }
 
 export default function CreditoPage() {

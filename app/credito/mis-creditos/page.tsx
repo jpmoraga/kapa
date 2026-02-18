@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/k21/ConfirmModal";
+import { LTV_MARKERS, LTV_SEGMENTS, ltvBadge, ltvTone } from "@/lib/credito/ltv";
 
 function parseNumberLike(input: string | number | null | undefined) {
   if (typeof input === "number") return Number.isFinite(input) ? input : null;
@@ -65,17 +66,8 @@ function formatClp(n: number | null) {
   return `$${formatClpNumber(n)} CLP`;
 }
 
-function riskBadge(avgLtvPct: number | null) {
-  if (avgLtvPct === null || !Number.isFinite(avgLtvPct)) {
-    return { label: "Sin datos", cls: "border-white/10 bg-white/5 text-neutral-400" };
-  }
-  if (avgLtvPct < 50) {
-    return { label: "Bajo", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" };
-  }
-  if (avgLtvPct <= 65) {
-    return { label: "Medio", cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
-  }
-  return { label: "Alto", cls: "border-red-500/30 bg-red-500/10 text-red-300" };
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function truncateId(id: string, head = 4, tail = 3) {
@@ -119,6 +111,11 @@ export default function MisCreditosPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
   const [paying, setPaying] = useState<Record<string, boolean>>({});
+  const [collateralLoading, setCollateralLoading] = useState<Record<string, boolean>>({});
+  const [collateralModalOpen, setCollateralModalOpen] = useState(false);
+  const [collateralAction, setCollateralAction] = useState<"ADD" | "WITHDRAW" | null>(null);
+  const [collateralLoanId, setCollateralLoanId] = useState<string | null>(null);
+  const [collateralSats, setCollateralSats] = useState("");
   const [spotBtcClp, setSpotBtcClp] = useState<number | null>(null);
   const spotLogRef = useRef(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -272,11 +269,102 @@ export default function MisCreditosPage() {
       : avgLtv !== null
         ? avgLtv * 100
         : null;
-  const badge = riskBadge(avgLtvPct);
+  const badge = ltvBadge(avgLtvPct);
   const summaryReady = !loansLoading && !loansError;
   const weightedLtvPct = ltvMetrics.weightedLtv !== null ? ltvMetrics.weightedLtv * 100 : null;
   const weightedLtvClamped =
     weightedLtvPct !== null ? Math.min(Math.max(weightedLtvPct, 0), 100) : null;
+  const riskTone = ltvTone(weightedLtvPct);
+  const riskTitle = visibleLoans.length === 1 ? "Riesgo de este crédito" : "Riesgo agregado";
+  const showRiskTicks = visibleLoans.length > 1;
+  const collateralSatsValue = useMemo(() => {
+    const parsed = parseNumberLike(collateralSats);
+    if (parsed === null || !Number.isFinite(parsed)) return null;
+    if (!Number.isInteger(parsed) || parsed <= 0) return null;
+    return parsed;
+  }, [collateralSats]);
+  const collateralClpValue = useMemo(() => {
+    if (collateralSatsValue === null || spotBtcClp === null) return null;
+    return (collateralSatsValue / 1e8) * spotBtcClp;
+  }, [collateralSatsValue, spotBtcClp]);
+  const collateralSubmitting = collateralLoanId
+    ? Boolean(collateralLoading[collateralLoanId])
+    : false;
+
+  const openCollateralModal = useCallback((action: "ADD" | "WITHDRAW", loanId: string) => {
+    setCollateralAction(action);
+    setCollateralLoanId(loanId);
+    setCollateralSats("");
+    setCollateralModalOpen(true);
+  }, []);
+
+  const closeCollateralModal = useCallback(() => {
+    if (collateralSubmitting) return;
+    setCollateralModalOpen(false);
+    setCollateralAction(null);
+    setCollateralLoanId(null);
+    setCollateralSats("");
+  }, [collateralSubmitting]);
+
+  const handleCollateralSubmit = useCallback(async () => {
+    if (!collateralAction || !collateralLoanId) return;
+    if (collateralLoading[collateralLoanId]) return;
+    const sats = collateralSatsValue;
+    if (sats === null) {
+      setNotice({ type: "error", message: "Sats inválidos. Debe ser un entero mayor a 0." });
+      return;
+    }
+
+    setCollateralLoading((prev) => ({ ...prev, [collateralLoanId]: true }));
+    setNotice(null);
+    try {
+      const actionPath = collateralAction === "ADD" ? "add" : "withdraw";
+      const res = await fetch(
+        `/api/credito/loans/${collateralLoanId}/collateral/${actionPath}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sats }),
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.ok) {
+        const baseMessage =
+          data?.error ??
+          (collateralAction === "ADD"
+            ? "No se pudo agregar garantía."
+            : "No se pudo retirar garantía.");
+        const code =
+          typeof data?.code === "string" && data.code.trim() ? ` (${data.code.trim()})` : "";
+        setNotice({ type: "error", message: `${baseMessage}${code}` });
+        return;
+      }
+      setNotice({
+        type: "success",
+        message:
+          collateralAction === "ADD"
+            ? "Garantía agregada (stub)."
+            : "Garantía retirada (stub).",
+      });
+      closeCollateralModal();
+    } catch {
+      setNotice({
+        type: "error",
+        message:
+          collateralAction === "ADD"
+            ? "No se pudo agregar garantía. (COLLATERAL_ERROR)"
+            : "No se pudo retirar garantía. (COLLATERAL_ERROR)",
+      });
+    } finally {
+      setCollateralLoading((prev) => ({ ...prev, [collateralLoanId]: false }));
+    }
+  }, [
+    closeCollateralModal,
+    collateralAction,
+    collateralLoanId,
+    collateralLoading,
+    collateralSatsValue,
+  ]);
 
   const handleGrantCredit = useCallback(
     async (loan: any) => {
@@ -487,7 +575,7 @@ export default function MisCreditosPage() {
 
         <section className="k21-card mt-4 p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-xs uppercase tracking-wide text-neutral-500">Riesgo agregado</div>
+            <div className="text-xs uppercase tracking-wide text-neutral-500">{riskTitle}</div>
             <div className="text-xs text-neutral-500">
               Spot BTC/CLP: {spotBtcClp !== null ? formatClpNumber(spotBtcClp) : "—"}
             </div>
@@ -502,25 +590,44 @@ export default function MisCreditosPage() {
                 <span>LTV ponderado</span>
                 <span className="font-semibold text-white">{weightedLtvPct.toFixed(1)}%</span>
               </div>
-              <div className="relative mt-3 h-2 rounded-full bg-white/10">
+              <div className="relative mt-3 h-3 overflow-hidden rounded-full border border-white/10 bg-white/5">
+                {LTV_SEGMENTS.map((segment) => (
+                  <div
+                    key={`${segment.from}-${segment.to}`}
+                    className={`absolute inset-y-0 ${segment.cls}`}
+                    style={{ left: `${segment.from}%`, width: `${segment.to - segment.from}%` }}
+                  />
+                ))}
                 <div
-                  className="absolute left-0 top-0 h-2 rounded-full bg-emerald-500/30"
-                  style={{ width: `${weightedLtvClamped ?? 0}%` }}
-                />
-                <div
-                  className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 bg-neutral-900"
+                  className={`absolute top-0 h-3 w-0.5 ${riskTone.markerCls}`}
                   style={{ left: `${weightedLtvClamped ?? 0}%` }}
                 />
-                {ltvMetrics.ticks.map((tick, idx) => {
-                  const left = Math.min(Math.max(tick * 100, 0), 100);
-                  return (
-                    <span
-                      key={`${tick}-${idx}`}
-                      className="absolute top-0 h-2 w-px bg-white/50"
-                      style={{ left: `${left}%` }}
-                    />
-                  );
-                })}
+                <div
+                  className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border ${riskTone.dotCls}`}
+                  style={{ left: `${weightedLtvClamped ?? 0}%` }}
+                />
+                {showRiskTicks &&
+                  ltvMetrics.ticks.map((tick, idx) => {
+                    const left = clamp(tick * 100, 0, 100);
+                    return (
+                      <span
+                        key={`${tick}-${idx}`}
+                        className="absolute top-0 h-3 w-px bg-white/40"
+                        style={{ left: `${left}%` }}
+                      />
+                    );
+                  })}
+              </div>
+              <div className="relative mt-2 h-4 text-[10px] text-neutral-500">
+                {LTV_MARKERS.map((p) => (
+                  <span
+                    key={p}
+                    className="absolute -translate-x-1/2"
+                    style={{ left: `${p}%` }}
+                  >
+                    {p}%
+                  </span>
+                ))}
               </div>
               <div className="mt-2 text-xs text-neutral-500">
                 Basado en colateral y spot actual.
@@ -554,12 +661,14 @@ export default function MisCreditosPage() {
                 const isClosed = status === "CLOSED";
                 const isDisbursing = Boolean(disbursing[loan.id]);
                 const isPaying = Boolean(paying[loan.id]);
+                const isCollateralBusy = Boolean(collateralLoading[loan.id]);
                 const canGrant = isAdmin && (status === "CREATED" || status === "APPROVED");
                 const isBorrower =
                   typeof currentUserId === "string" && loan?.userId === currentUserId;
                 const canPay = isDisbursed && (isBorrower || isAdmin);
                 const showDisbursed = isAdmin && isDisbursed;
-                const hasActions = canGrant || canPay || showDisbursed;
+                const canCollateral = true;
+                const hasActions = canGrant || canPay || showDisbursed || canCollateral;
                 const truncatedId = loan.id ? truncateId(loan.id) : "";
                 return (
                   <div
@@ -651,6 +760,24 @@ export default function MisCreditosPage() {
                           Desembolsado
                         </span>
                       ) : null}
+                      {canCollateral ? (
+                        <button
+                          className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                          disabled={isDisbursing || isPaying || isCollateralBusy}
+                          onClick={() => openCollateralModal("ADD", loan.id)}
+                        >
+                          Agregar garantía
+                        </button>
+                      ) : null}
+                      {canCollateral ? (
+                        <button
+                          className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                          disabled={isDisbursing || isPaying || isCollateralBusy}
+                          onClick={() => openCollateralModal("WITHDRAW", loan.id)}
+                        >
+                          Retirar garantía
+                        </button>
+                      ) : null}
                       {canGrant ? (
                         <button
                           className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
@@ -680,6 +807,56 @@ export default function MisCreditosPage() {
           )}
         </section>
       </div>
+      {collateralModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={closeCollateralModal}
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-neutral-900 p-6 shadow-xl">
+            <div className="text-lg font-semibold text-white">
+              {collateralAction === "WITHDRAW" ? "Retirar garantía" : "Agregar garantía"}
+            </div>
+            <div className="mt-1 text-sm text-neutral-400">
+              Ingresa la cantidad de sats para continuar.
+            </div>
+            <label className="mt-4 block text-xs uppercase tracking-wide text-neutral-500">
+              Sats
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="ej: 100000"
+              className="mt-2 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-white/20 focus:outline-none"
+              value={collateralSats}
+              onChange={(event) => setCollateralSats(event.target.value)}
+              disabled={collateralSubmitting}
+              min={1}
+            />
+            <div className="mt-2 text-xs text-neutral-500">
+              Equivalente: {collateralClpValue !== null ? formatClp(collateralClpValue) : "—"}
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+                onClick={closeCollateralModal}
+                disabled={collateralSubmitting}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className="k21-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+                onClick={handleCollateralSubmit}
+                disabled={collateralSubmitting}
+                type="button"
+              >
+                {collateralSubmitting ? "Procesando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <ConfirmModal
         open={confirmOpen}
         title={confirmTitle}
