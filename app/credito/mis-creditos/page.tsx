@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/k21/ConfirmModal";
 
@@ -120,6 +120,7 @@ export default function MisCreditosPage() {
   const [disbursing, setDisbursing] = useState<Record<string, boolean>>({});
   const [paying, setPaying] = useState<Record<string, boolean>>({});
   const [spotBtcClp, setSpotBtcClp] = useState<number | null>(null);
+  const spotLogRef = useRef(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTitle, setConfirmTitle] = useState("");
   const [confirmDesc, setConfirmDesc] = useState<string | undefined>(undefined);
@@ -175,10 +176,15 @@ export default function MisCreditosPage() {
       const res = await fetch("/api/prices/spot?pair=BTC_CLP", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.ok) {
+        if (process.env.NODE_ENV !== "production" && !spotLogRef.current) {
+          console.debug("SPOT_FETCH_FAILED", { status: res.status, data });
+          spotLogRef.current = true;
+        }
         setSpotBtcClp(null);
         return;
       }
-      const parsed = parseNumberLike(data?.price);
+      const raw = data?.price ?? data?.spot ?? data?.value ?? data?.last ?? data?.btcClp;
+      const parsed = parseNumberLike(raw);
       setSpotBtcClp(parsed !== null && parsed > 0 ? parsed : null);
     } catch {
       setSpotBtcClp(null);
@@ -465,7 +471,7 @@ export default function MisCreditosPage() {
               <div className="mt-1 text-xs text-neutral-500">
                 {ltvMetrics.weightedLtv !== null
                   ? "Ponderado por colateral"
-                  : "Ponderado por principal (legacy)"}
+                  : "LTV objetivo (legacy)"}
               </div>
             </div>
             <div className="rounded-xl border border-white/5 bg-white/5 p-4">
@@ -617,7 +623,7 @@ export default function MisCreditosPage() {
                           {ltvDyn !== null && Number.isFinite(ltvDyn)
                             ? `${(ltvDyn * 100).toFixed(1)}%`
                             : ltvTarget !== null
-                              ? `${Math.round(ltvTarget * 100)}% (legacy)`
+                              ? `${Math.round(ltvTarget * 100)}% (objetivo, legacy)`
                               : "—"}
                         </div>
                       </div>
