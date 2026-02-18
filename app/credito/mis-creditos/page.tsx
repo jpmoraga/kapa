@@ -694,6 +694,7 @@ export default function MisCreditosPage() {
                   ? "Disponible 7 días antes del vencimiento"
                   : "Disponible cerca del vencimiento";
                 const hasActions = canGrant || canPay || canCollateral || canRenew;
+                const renewTooltipId = loan.id ? `renew-tooltip-${loan.id}` : undefined;
                 const truncatedId = loan.id ? truncateId(loan.id) : "";
                 return (
                   <div
@@ -798,7 +799,7 @@ export default function MisCreditosPage() {
                           Retirar garantía
                         </button>
                       ) : null}
-                      <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1">
                         <button
                           className="k21-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
                           disabled={!canRenew}
@@ -807,7 +808,23 @@ export default function MisCreditosPage() {
                           Renovar crédito
                         </button>
                         {!canRenew ? (
-                          <span className="mt-1 text-[11px] text-neutral-500">{renewHint}</span>
+                          <span className="relative group">
+                            <button
+                              type="button"
+                              className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[11px] text-neutral-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+                              aria-label={renewHint}
+                              aria-describedby={renewTooltipId}
+                            >
+                              i
+                            </button>
+                            <span
+                              id={renewTooltipId}
+                              role="tooltip"
+                              className="pointer-events-none absolute right-0 top-8 z-10 w-52 rounded-lg border border-white/10 bg-neutral-900 px-3 py-2 text-[11px] text-neutral-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                            >
+                              {renewHint}
+                            </span>
+                          </span>
                         ) : null}
                       </div>
                       {canGrant ? (
