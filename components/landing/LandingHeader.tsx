@@ -1,11 +1,19 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type LandingHeaderProps = {
   comingSoon?: boolean;
 };
 
 export function LandingHeader({ comingSoon = false }: LandingHeaderProps) {
+  const pathname = usePathname();
+  const isServicios = pathname === "/servicios";
+  const navLabel = isServicios ? "Inicio" : "Servicios";
+  const navHref = isServicios ? "/" : "/servicios";
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -23,10 +31,10 @@ export function LandingHeader({ comingSoon = false }: LandingHeaderProps) {
         <div className="flex flex-wrap items-center justify-end gap-3">
           <nav className="flex items-center gap-3 text-xs sm:text-sm text-neutral-300">
             <Link
-              href="/servicios"
+              href={navHref}
               className="hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             >
-              Servicios
+              {navLabel}
             </Link>
           </nav>
           {comingSoon ? (
