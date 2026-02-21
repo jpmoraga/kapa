@@ -25,16 +25,16 @@ export default function ServiciosPage() {
       <LandingHeader />
 
       <div className="mx-auto max-w-5xl px-6 pb-12">
-        <section className="k21-card p-6">
+        <section className="k21-card p-6 sm:p-8">
           <div className="text-xs uppercase tracking-wide text-neutral-500">Servicios</div>
-          <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight text-white">
-            Infraestructura y asesoría estratégica sobre Bitcoin en Chile
+          <h1 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+            Bitcoin como base estratégica.
           </h1>
-          <p className="mt-3 text-base text-neutral-300 max-w-2xl">
-            Para personas, familias e instituciones que quieren entender, proteger y estructurar
-            su patrimonio en la era digital.
+          <p className="mt-4 text-base text-neutral-300 max-w-3xl">
+            Diseño, formación e implementación para organizaciones y patrimonios que quieren ir
+            más allá del titular y entender el impacto real de Bitcoin en su estructura financiera.
           </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <a
               href={calendlyUrl}
               target="_blank"
@@ -43,17 +43,15 @@ export default function ServiciosPage() {
             >
               Agendar reunión
             </a>
-            <div className="flex items-center">
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="k21-btn-secondary px-4 py-2 text-sm"
-                aria-label="Abrir WhatsApp"
-              >
-                WhatsApp
-              </a>
-            </div>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="k21-btn-secondary px-4 py-2 text-sm"
+              aria-label="Abrir WhatsApp"
+            >
+              WhatsApp
+            </a>
             <Link
               href="/"
               className="text-sm text-neutral-300 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
@@ -63,104 +61,69 @@ export default function ServiciosPage() {
           </div>
         </section>
 
-        <div className="mt-8 grid gap-4">
-          <section className="k21-card p-6" aria-labelledby="servicios-asesoria">
-            <h2 id="servicios-asesoria" className="text-lg font-semibold text-white">
-              Asesoría patrimonial en Bitcoin
-            </h2>
-            <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-              <li>Estrategia de exposición y acumulación responsable</li>
-              <li>Diseño de custodia (individual o multisig)</li>
-              <li>Planificación de herencia y continuidad familiar</li>
-              <li>Coordinación con abogados y contadores (cuando aplique)</li>
-              <li>Compras de alto volumen con ejecución estructurada</li>
-            </ul>
-          </section>
-
-          <section className="k21-card p-6" aria-labelledby="servicios-balance">
-            <h2 id="servicios-balance" className="text-lg font-semibold text-white">
-              Bitcoin en el balance
-            </h2>
-            <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-              <li>Política de tesorería en BTC</li>
-              <li>Gobernanza, custodia y controles</li>
-              <li>Implementación operativa y reporting</li>
-              <li>Capacitación de equipos financieros</li>
-              <li>Créditos colateralizados (cuando corresponda)</li>
-            </ul>
-          </section>
-
-          <section className="k21-card p-6" aria-labelledby="servicios-educacion">
-            <h2 id="servicios-educacion" className="text-lg font-semibold text-white">
-              Charlas, talleres y formación
-            </h2>
-            <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-              <li>Directorios y equipos ejecutivos</li>
-              <li>Fondos y gestores</li>
-              <li>Familias empresarias</li>
-              <li>Colegios y universidades</li>
-              <li>Gremios e instituciones</li>
-            </ul>
-            <p className="mt-3 text-xs text-neutral-500">
-              Formatos: charla, taller práctico, seminario cerrado.
-            </p>
-          </section>
-
-          <section className="k21-card p-6" aria-labelledby="servicios-otc">
-            <h2 id="servicios-otc" className="text-lg font-semibold text-white">
-              Ejecución OTC y operaciones de alto volumen
-            </h2>
-            <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-              <li>Intermediación con mesas OTC locales (cuando aplique)</li>
-              <li>Ejecución escalonada para minimizar impacto</li>
-              <li>Acompañamiento de custodia posterior</li>
-              <li>Estandarización operativa y compliance básico</li>
-            </ul>
-          </section>
-
-          <section className="k21-card p-6" aria-labelledby="servicios-seguridad">
-            <h2 id="servicios-seguridad" className="text-lg font-semibold text-white">
-              Autocustodia y seguridad
-            </h2>
-            <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
-              <li>Taller de autocustodia (hardware wallets)</li>
-              <li>Buenas prácticas operativas</li>
-              <li>Esquemas de respaldo y recuperación</li>
-              <li>Capacitación familiar/equipos</li>
-            </ul>
-          </section>
-        </div>
-
-        <section className="k21-card mt-8 p-6" aria-labelledby="servicios-sobre">
-          <h2 id="servicios-sobre" className="text-lg font-semibold text-white">
-            Sobre Juan Pablo Moraga
-          </h2>
-          <p className="mt-3 text-sm text-neutral-300 max-w-2xl">
-            Autor de &quot;Bitcoin, un imperativo moral&quot;. Consultor y expositor en estrategia
-            patrimonial y adopción de Bitcoin en Chile.
-          </p>
-        </section>
-
-        <section className="k21-card mt-8 p-6" aria-labelledby="servicios-faq">
-          <h2 id="servicios-faq" className="text-lg font-semibold text-white">
-            Preguntas frecuentes
-          </h2>
-          <div className="mt-4 space-y-4 text-sm text-neutral-300">
-            <div>
-              <div className="font-medium text-neutral-100">¿Esto es solo para empresas?</div>
-              <div>No. También para personas, familias e instituciones.</div>
+        <section className="mt-10">
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="k21-card p-6">
+              <h2 className="text-lg font-semibold text-white">Análisis estratégico</h2>
+              <p className="mt-3 text-sm text-neutral-300">
+                Impacto macroeconómico, regulación, balance, riesgos y oportunidades estructurales.
+              </p>
             </div>
-            <div>
-              <div className="font-medium text-neutral-100">
-                ¿Puedo pedir una charla para mi colegio/universidad?
-              </div>
-              <div>Sí, se adaptan formatos y contenidos.</div>
+            <div className="k21-card p-6">
+              <h2 className="text-lg font-semibold text-white">Diseño financiero</h2>
+              <p className="mt-3 text-sm text-neutral-300">
+                Política de tesorería, exposición estructurada y planificación patrimonial sobre
+                Bitcoin.
+              </p>
             </div>
-            <div>
-              <div className="font-medium text-neutral-100">¿Hacen ejecución OTC?</div>
-              <div>Sí, para montos relevantes y según disponibilidad.</div>
+            <div className="k21-card p-6">
+              <h2 className="text-lg font-semibold text-white">Arquitectura técnica</h2>
+              <p className="mt-3 text-sm text-neutral-300">
+                Custodia, esquemas multisig y diseño de seguridad institucional.
+              </p>
+            </div>
+            <div className="k21-card p-6">
+              <h2 className="text-lg font-semibold text-white">Formación ejecutiva</h2>
+              <p className="mt-3 text-sm text-neutral-300">
+                Charlas para directorios, workshops y sesiones estratégicas para equipos
+                financieros.
+              </p>
             </div>
           </div>
+        </section>
+
+        <section className="k21-card mt-10 p-6" aria-labelledby="servicios-audiencia">
+          <h2 id="servicios-audiencia" className="text-lg font-semibold text-white">
+            A quién acompañamos
+          </h2>
+          <ul className="mt-4 space-y-2 text-sm text-neutral-300 list-disc pl-5">
+            <li>Directorios y equipos de management</li>
+            <li>Empresas que evalúan Bitcoin en su balance</li>
+            <li>Think tanks e instituciones</li>
+            <li>Empresarios con patrimonio relevante</li>
+          </ul>
+        </section>
+
+        <section className="k21-card mt-10 p-6" aria-labelledby="servicios-metodo">
+          <h2 id="servicios-metodo" className="text-lg font-semibold text-white">
+            Cómo trabajamos
+          </h2>
+          <ol className="mt-4 space-y-2 text-sm text-neutral-300 list-decimal pl-5">
+            <li>Diagnóstico estratégico</li>
+            <li>Diseño estructural</li>
+            <li>Implementación técnica</li>
+            <li>Acompañamiento continuo</li>
+          </ol>
+        </section>
+
+        <section className="k21-card mt-10 p-6" aria-labelledby="servicios-libro">
+          <h2 id="servicios-libro" className="text-lg font-semibold text-white">
+            Referencia
+          </h2>
+          <p className="mt-3 text-sm text-neutral-300">
+            Esta visión se desarrolla en profundidad en el libro{" "}
+            <span className="italic">&quot;Bitcoin, un imperativo moral.&quot;</span>
+          </p>
         </section>
 
         <section className="k21-card mt-8 p-6 flex flex-col items-start gap-3">
