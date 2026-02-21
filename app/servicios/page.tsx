@@ -16,6 +16,9 @@ export const metadata: Metadata = {
 
 export default function ServiciosPage() {
   const mailto = `mailto:${CONTACT_EMAIL}`;
+  const calendlyUrl = "https://calendly.com/contacto-kapa21/30min";
+  const whatsappUrl =
+    "https://wa.me/56971381604?text=Hola%2C%20quiero%20conversar%20sobre%20los%20servicios%20de%20Kapa21.";
 
   return (
     <main className="min-h-screen text-neutral-100 bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(247,147,26,0.12),transparent_45%),radial-gradient(900px_circle_at_80%_20%,rgba(255,255,255,0.06),transparent_40%),linear-gradient(to_bottom,rgba(0,0,0,1),rgba(0,0,0,1))]">
@@ -32,9 +35,25 @@ export default function ServiciosPage() {
             su patrimonio en la era digital.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <a href={mailto} className="k21-btn-secondary px-5 py-2">
+            <a
+              href={calendlyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="k21-btn-secondary px-5 py-2"
+            >
               Agendar reunión
             </a>
+            <div className="flex items-center">
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="k21-btn-secondary px-4 py-2 text-sm"
+                aria-label="Abrir WhatsApp"
+              >
+                WhatsApp
+              </a>
+            </div>
             <Link
               href="/"
               className="text-sm text-neutral-300 hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
@@ -146,7 +165,12 @@ export default function ServiciosPage() {
 
         <section className="k21-card mt-8 p-6 flex flex-col items-start gap-3">
           <div className="text-lg font-semibold text-white">¿Conversamos?</div>
-          <a href={mailto} className="k21-btn-secondary px-5 py-2">
+          <a
+            href={calendlyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="k21-btn-secondary px-5 py-2"
+          >
             Agendar reunión
           </a>
         </section>
