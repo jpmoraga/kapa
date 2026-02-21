@@ -53,7 +53,7 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen text-neutral-100 bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(247,147,26,0.12),transparent_45%),radial-gradient(900px_circle_at_80%_20%,rgba(255,255,255,0.06),transparent_40%),linear-gradient(to_bottom,rgba(0,0,0,1),rgba(0,0,0,1))]">
       <div className="mx-auto max-w-6xl px-6 py-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Brand */}
           <Link href="/" className="flex items-center">
             <Image
@@ -67,7 +67,12 @@ export default function LandingPage() {
           </Link>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <nav className="flex items-center gap-3 text-xs sm:text-sm text-neutral-300">
+              <Link href="/servicios" className="hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
+                Servicios
+              </Link>
+            </nav>
             {COMING_SOON ? (
               <>
                 <button title="Sitio en construcción" disabled className="k21-btn-disabled">
@@ -147,6 +152,14 @@ export default function LandingPage() {
                 </Link>
               )}
             </div>
+            <div className="mt-3 text-xs text-neutral-400">
+              <Link
+                href="/servicios"
+                className="hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                ¿Buscas asesoría y formación? Ver servicios →
+              </Link>
+            </div>
           </header>
 
           <section className="lg:col-span-6">
@@ -199,6 +212,9 @@ export default function LandingPage() {
                 <span title="Sitio en construcción" className="opacity-60 cursor-not-allowed">
                   Registro
                 </span>
+                <span title="Sitio en construcción" className="opacity-60 cursor-not-allowed">
+                  Servicios
+                </span>
               </>
             ) : (
               <>
@@ -207,6 +223,9 @@ export default function LandingPage() {
                 </Link>
                 <Link className="hover:text-neutral-300" href="/auth/register">
                   Registro
+                </Link>
+                <Link className="hover:text-neutral-300" href="/servicios">
+                  Servicios
                 </Link>
               </>
             )}
