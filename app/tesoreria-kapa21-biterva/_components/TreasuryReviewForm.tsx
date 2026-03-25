@@ -1,24 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  MAX_MULTI_SELECT,
+  isValidTreasuryReviewEmail,
+  type TreasuryReviewApplicationPayload,
+} from "../_lib/treasuryReviewApplication";
 
-type TreasuryReviewFormValues = {
-  name: string;
-  company: string;
-  role: string;
-  email: string;
-  country: string;
-  annualRevenue: string;
-  industry: string;
-  hasRecurringCashFlow: string;
-  mainNeeds: string[];
-  context: string;
-  interestHorizon: string;
-  decisionRole: string;
-  bitcoinRelationship: string[];
-  conversationGoal: string;
-  termsAccepted: boolean;
-};
+type TreasuryReviewFormValues = TreasuryReviewApplicationPayload;
 
 type FormErrorKey = keyof TreasuryReviewFormValues | "form";
 type FormErrors = Partial<Record<FormErrorKey, string>>;
@@ -38,8 +27,6 @@ const STEP_TITLES = [
   "Relación con Bitcoin",
   "Objetivo de la conversación",
 ] as const;
-
-const MAX_MULTI_SELECT = 2;
 
 const ANNUAL_REVENUE_OPTIONS: Option[] = [
   { value: "under-1m", label: "Menos de USD 1 millón" },
@@ -95,19 +82,15 @@ const INITIAL_VALUES: TreasuryReviewFormValues = {
   country: "",
   annualRevenue: "",
   industry: "",
-  hasRecurringCashFlow: "",
+  hasRealOperations: "",
   mainNeeds: [],
   context: "",
   interestHorizon: "",
   decisionRole: "",
   bitcoinRelationship: [],
   conversationGoal: "",
-  termsAccepted: false,
+  acceptedTerms: false,
 };
-
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
 
 function validateStep(step: number, values: TreasuryReviewFormValues): FormErrors {
   const errors: FormErrors = {};
@@ -119,7 +102,7 @@ function validateStep(step: number, values: TreasuryReviewFormValues): FormError
       if (!values.role.trim()) errors.role = "Ingresa tu cargo.";
       if (!values.email.trim()) {
         errors.email = "Ingresa tu email.";
-      } else if (!isValidEmail(values.email)) {
+      } else if (!isValidTreasuryReviewEmail(values.email)) {
         errors.email = "Ingresa un email válido.";
       }
       if (!values.country.trim()) errors.country = "Ingresa tu país.";
@@ -129,8 +112,8 @@ function validateStep(step: number, values: TreasuryReviewFormValues): FormError
         errors.annualRevenue = "Selecciona un nivel aproximado de ventas anuales.";
       }
       if (!values.industry.trim()) errors.industry = "Ingresa la industria.";
-      if (!values.hasRecurringCashFlow) {
-        errors.hasRecurringCashFlow = "Selecciona una opción.";
+      if (!values.hasRealOperations) {
+        errors.hasRealOperations = "Selecciona una opción.";
       }
       break;
     case 2:
@@ -158,8 +141,8 @@ function validateStep(step: number, values: TreasuryReviewFormValues): FormError
       if (!values.conversationGoal.trim()) {
         errors.conversationGoal = "Cuéntanos qué te gustaría obtener.";
       }
-      if (!values.termsAccepted) {
-        errors.termsAccepted = "Debes aceptar esta condición para postular.";
+      if (!values.acceptedTerms) {
+        errors.acceptedTerms = "Debes aceptar esta condición para postular.";
       }
       break;
     default:
@@ -260,9 +243,23 @@ function MultiOptionGrid({
 }
 
 async function submitTreasuryReview(values: TreasuryReviewFormValues) {
-  void values;
-  await new Promise((resolve) => window.setTimeout(resolve, 450));
-  // TODO: conectar esta postulación a un endpoint cuando exista el flujo backend.
+  const response = await fetch("/api/treasury-review-applications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(values),
+  });
+
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok || !result?.ok) {
+    throw new Error(
+      typeof result?.error === "string"
+        ? result.error
+        : "No pudimos guardar tu postulación en este momento. Intenta nuevamente."
+    );
+  }
 }
 
 export function TreasuryReviewForm() {
@@ -292,6 +289,7 @@ export function TreasuryReviewForm() {
   ) => {
     setValues((current) => ({ ...current, [key]: value }));
     clearError(key);
+    clearError("form");
   };
 
   const toggleMultiValue = (key: MultiSelectField, value: string) => {
@@ -343,9 +341,12 @@ export function TreasuryReviewForm() {
     try {
       await submitTreasuryReview(values);
       setIsSubmitted(true);
-    } catch {
+    } catch (error) {
       setErrors({
-        form: "No pudimos procesar tu postulación. Intenta nuevamente.",
+        form:
+          error instanceof Error && error.message
+            ? error.message
+            : "No pudimos procesar tu postulación. Intenta nuevamente.",
       });
     } finally {
       setIsSubmitting(false);
@@ -534,11 +535,11 @@ export function TreasuryReviewForm() {
               <OptionGrid
                 name="cash-flow"
                 options={CASH_FLOW_OPTIONS}
-                value={values.hasRecurringCashFlow}
-                onChange={(value) => updateValue("hasRecurringCashFlow", value)}
+                value={values.hasRealOperations}
+                onChange={(value) => updateValue("hasRealOperations", value)}
               />
-              {errors.hasRecurringCashFlow && (
-                <p className="mt-2 text-xs text-red-300">{errors.hasRecurringCashFlow}</p>
+              {errors.hasRealOperations && (
+                <p className="mt-2 text-xs text-red-300">{errors.hasRealOperations}</p>
               )}
             </div>
           </>
@@ -652,8 +653,8 @@ export function TreasuryReviewForm() {
             <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <input
                 type="checkbox"
-                checked={values.termsAccepted}
-                onChange={(event) => updateValue("termsAccepted", event.target.checked)}
+                checked={values.acceptedTerms}
+                onChange={(event) => updateValue("acceptedTerms", event.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent accent-[#F7931A]"
               />
               <span className="text-sm leading-6 text-neutral-300">
@@ -661,15 +662,18 @@ export function TreasuryReviewForm() {
                 evaluar encaje.
               </span>
             </label>
-            {errors.termsAccepted && (
-              <p className="text-xs text-red-300">{errors.termsAccepted}</p>
+            {errors.acceptedTerms && (
+              <p className="text-xs text-red-300">{errors.acceptedTerms}</p>
             )}
           </>
         )}
       </div>
 
       {errors.form && (
-        <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div
+          role="alert"
+          className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+        >
           {errors.form}
         </div>
       )}
