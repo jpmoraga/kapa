@@ -8,14 +8,14 @@ type TreasuryReviewFormValues = {
   role: string;
   email: string;
   country: string;
-  companySize: string;
+  annualRevenue: string;
   industry: string;
   hasRecurringCashFlow: string;
-  mainNeed: string;
+  mainNeeds: string[];
   context: string;
   interestHorizon: string;
   decisionRole: string;
-  bitcoinFamiliarity: string;
+  bitcoinRelationship: string[];
   conversationGoal: string;
   termsAccepted: boolean;
 };
@@ -28,20 +28,26 @@ type Option = {
   label: string;
 };
 
+type MultiSelectField = "mainNeeds" | "bitcoinRelationship";
+
 const STEP_TITLES = [
   "Identidad básica",
   "Contexto de empresa",
   "Necesidad principal",
   "Horizonte y decisión",
-  "Familiaridad con Bitcoin",
+  "Relación con Bitcoin",
   "Objetivo de la conversación",
 ] as const;
 
-const COMPANY_SIZE_OPTIONS: Option[] = [
-  { value: "1-10", label: "1–10" },
-  { value: "11-50", label: "11–50" },
-  { value: "51-200", label: "51–200" },
-  { value: "200-plus", label: "200+" },
+const MAX_MULTI_SELECT = 2;
+
+const ANNUAL_REVENUE_OPTIONS: Option[] = [
+  { value: "under-1m", label: "Menos de USD 1 millón" },
+  { value: "1m-3m", label: "Entre USD 1 y 3 millones" },
+  { value: "3m-10m", label: "Entre USD 3 y 10 millones" },
+  { value: "10m-50m", label: "Entre USD 10 y 50 millones" },
+  { value: "over-50m", label: "Más de USD 50 millones" },
+  { value: "prefer-discuss", label: "Prefiero conversarlo" },
 ];
 
 const CASH_FLOW_OPTIONS: Option[] = [
@@ -72,11 +78,13 @@ const DECISION_ROLE_OPTIONS: Option[] = [
   { value: "explorando", label: "Estoy explorando para otra persona" },
 ];
 
-const BITCOIN_FAMILIARITY_OPTIONS: Option[] = [
-  { value: "basico", label: "Básico" },
-  { value: "intermedio", label: "Intermedio" },
-  { value: "avanzado", label: "Avanzado" },
-  { value: "ejecutivo", label: "Lo suficiente para una conversación ejecutiva" },
+const BITCOIN_RELATIONSHIP_OPTIONS: Option[] = [
+  { value: "tengo-o-tuve", label: "Tengo o he tenido Bitcoin" },
+  { value: "vivi-volatilidad", label: "He vivido su volatilidad por al menos 12 meses" },
+  { value: "entiendo-valor", label: "Entiendo su propuesta de valor más allá del precio" },
+  { value: "aplicacion-empresa", label: "He pensado cómo podría aplicarse en una empresa" },
+  { value: "explorar-empresa", label: "Quiero explorar su uso en mi empresa" },
+  { value: "recien-empezando", label: "Estoy recién empezando a entenderlo" },
 ];
 
 const INITIAL_VALUES: TreasuryReviewFormValues = {
@@ -85,14 +93,14 @@ const INITIAL_VALUES: TreasuryReviewFormValues = {
   role: "",
   email: "",
   country: "",
-  companySize: "",
+  annualRevenue: "",
   industry: "",
   hasRecurringCashFlow: "",
-  mainNeed: "",
+  mainNeeds: [],
   context: "",
   interestHorizon: "",
   decisionRole: "",
-  bitcoinFamiliarity: "",
+  bitcoinRelationship: [],
   conversationGoal: "",
   termsAccepted: false,
 };
@@ -117,14 +125,20 @@ function validateStep(step: number, values: TreasuryReviewFormValues): FormError
       if (!values.country.trim()) errors.country = "Ingresa tu país.";
       break;
     case 1:
-      if (!values.companySize) errors.companySize = "Selecciona un tamaño aproximado.";
+      if (!values.annualRevenue) {
+        errors.annualRevenue = "Selecciona un nivel aproximado de ventas anuales.";
+      }
       if (!values.industry.trim()) errors.industry = "Ingresa la industria.";
       if (!values.hasRecurringCashFlow) {
         errors.hasRecurringCashFlow = "Selecciona una opción.";
       }
       break;
     case 2:
-      if (!values.mainNeed) errors.mainNeed = "Selecciona la necesidad principal.";
+      if (values.mainNeeds.length === 0) {
+        errors.mainNeeds = "Selecciona al menos una necesidad principal.";
+      } else if (values.mainNeeds.length > MAX_MULTI_SELECT) {
+        errors.mainNeeds = `Puedes marcar hasta ${MAX_MULTI_SELECT} opciones.`;
+      }
       if (!values.context.trim()) {
         errors.context = "Explícanos brevemente el contexto.";
       }
@@ -134,8 +148,10 @@ function validateStep(step: number, values: TreasuryReviewFormValues): FormError
       if (!values.decisionRole) errors.decisionRole = "Selecciona tu nivel de participación.";
       break;
     case 4:
-      if (!values.bitcoinFamiliarity) {
-        errors.bitcoinFamiliarity = "Selecciona una opción.";
+      if (values.bitcoinRelationship.length === 0) {
+        errors.bitcoinRelationship = "Selecciona al menos una opción.";
+      } else if (values.bitcoinRelationship.length > MAX_MULTI_SELECT) {
+        errors.bitcoinRelationship = `Puedes marcar hasta ${MAX_MULTI_SELECT} opciones.`;
       }
       break;
     case 5:
@@ -161,6 +177,15 @@ function inputClass(hasError: boolean) {
   ].join(" ");
 }
 
+function optionCardClass(selected: boolean) {
+  return [
+    "cursor-pointer rounded-2xl border p-4 text-sm transition",
+    selected
+      ? "border-[#F7931A]/70 bg-[#F7931A]/10 text-white"
+      : "border-white/10 bg-white/[0.03] text-neutral-300 hover:bg-white/[0.06]",
+  ].join(" ");
+}
+
 function OptionGrid({
   name,
   options,
@@ -182,12 +207,7 @@ function OptionGrid({
         return (
           <label
             key={option.value}
-            className={[
-              "cursor-pointer rounded-2xl border p-4 text-sm transition",
-              selected
-                ? "border-[#F7931A]/70 bg-[#F7931A]/10 text-white"
-                : "border-white/10 bg-white/[0.03] text-neutral-300 hover:bg-white/[0.06]",
-            ].join(" ")}
+            className={optionCardClass(selected)}
           >
             <input
               type="radio"
@@ -195,6 +215,41 @@ function OptionGrid({
               className="sr-only"
               checked={selected}
               onChange={() => onChange(option.value)}
+            />
+            <span className="font-medium">{option.label}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function MultiOptionGrid({
+  name,
+  options,
+  values,
+  onToggle,
+  columns = "sm:grid-cols-2",
+}: {
+  name: string;
+  options: Option[];
+  values: string[];
+  onToggle: (value: string) => void;
+  columns?: string;
+}) {
+  return (
+    <div className={`mt-3 grid gap-3 ${columns}`}>
+      {options.map((option) => {
+        const selected = values.includes(option.value);
+
+        return (
+          <label key={option.value} className={optionCardClass(selected)}>
+            <input
+              type="checkbox"
+              name={name}
+              className="sr-only"
+              checked={selected}
+              onChange={() => onToggle(option.value)}
             />
             <span className="font-medium">{option.label}</span>
           </label>
@@ -222,17 +277,43 @@ export function TreasuryReviewForm() {
     [step]
   );
 
-  const updateValue = <K extends keyof TreasuryReviewFormValues>(
-    key: K,
-    value: TreasuryReviewFormValues[K]
-  ) => {
-    setValues((current) => ({ ...current, [key]: value }));
+  const clearError = (key: FormErrorKey) => {
     setErrors((current) => {
       if (!current[key]) return current;
       const next = { ...current };
       delete next[key];
       return next;
     });
+  };
+
+  const updateValue = <K extends keyof TreasuryReviewFormValues>(
+    key: K,
+    value: TreasuryReviewFormValues[K]
+  ) => {
+    setValues((current) => ({ ...current, [key]: value }));
+    clearError(key);
+  };
+
+  const toggleMultiValue = (key: MultiSelectField, value: string) => {
+    const selectedValues = values[key];
+
+    if (selectedValues.includes(value)) {
+      updateValue(
+        key,
+        selectedValues.filter((item) => item !== value)
+      );
+      return;
+    }
+
+    if (selectedValues.length >= MAX_MULTI_SELECT) {
+      setErrors((current) => ({
+        ...current,
+        [key]: `Puedes marcar hasta ${MAX_MULTI_SELECT} opciones.`,
+      }));
+      return;
+    }
+
+    updateValue(key, [...selectedValues, value]);
   };
 
   const goToNextStep = () => {
@@ -418,16 +499,16 @@ export function TreasuryReviewForm() {
           <>
             <div>
               <label className="text-sm font-medium text-white/80">
-                Tamaño aproximado de la empresa
+                ¿Cuál es el nivel aproximado de ventas anuales de la empresa?
               </label>
               <OptionGrid
-                name="company-size"
-                options={COMPANY_SIZE_OPTIONS}
-                value={values.companySize}
-                onChange={(value) => updateValue("companySize", value)}
+                name="annual-revenue"
+                options={ANNUAL_REVENUE_OPTIONS}
+                value={values.annualRevenue}
+                onChange={(value) => updateValue("annualRevenue", value)}
               />
-              {errors.companySize && (
-                <p className="mt-2 text-xs text-red-300">{errors.companySize}</p>
+              {errors.annualRevenue && (
+                <p className="mt-2 text-xs text-red-300">{errors.annualRevenue}</p>
               )}
             </div>
 
@@ -469,15 +550,16 @@ export function TreasuryReviewForm() {
               <label className="text-sm font-medium text-white/80">
                 ¿Cuál describe mejor la necesidad actual de la empresa?
               </label>
-              <OptionGrid
-                name="main-need"
+              <p className="mt-1 text-xs text-neutral-500">Puedes marcar hasta 2 opciones.</p>
+              <MultiOptionGrid
+                name="main-needs"
                 options={MAIN_NEED_OPTIONS}
-                value={values.mainNeed}
-                onChange={(value) => updateValue("mainNeed", value)}
+                values={values.mainNeeds}
+                onToggle={(value) => toggleMultiValue("mainNeeds", value)}
                 columns="sm:grid-cols-2"
               />
-              {errors.mainNeed && (
-                <p className="mt-2 text-xs text-red-300">{errors.mainNeed}</p>
+              {errors.mainNeeds && (
+                <p className="mt-2 text-xs text-red-300">{errors.mainNeeds}</p>
               )}
             </div>
 
@@ -534,16 +616,17 @@ export function TreasuryReviewForm() {
         {step === 4 && (
           <div>
             <label className="text-sm font-medium text-white/80">
-              ¿Cuál es tu familiaridad actual con Bitcoin?
+              ¿Qué te describe mejor hoy respecto a Bitcoin?
             </label>
-            <OptionGrid
-              name="bitcoin-familiarity"
-              options={BITCOIN_FAMILIARITY_OPTIONS}
-              value={values.bitcoinFamiliarity}
-              onChange={(value) => updateValue("bitcoinFamiliarity", value)}
+            <p className="mt-1 text-xs text-neutral-500">Puedes marcar hasta 2 opciones.</p>
+            <MultiOptionGrid
+              name="bitcoin-relationship"
+              options={BITCOIN_RELATIONSHIP_OPTIONS}
+              values={values.bitcoinRelationship}
+              onToggle={(value) => toggleMultiValue("bitcoinRelationship", value)}
             />
-            {errors.bitcoinFamiliarity && (
-              <p className="mt-2 text-xs text-red-300">{errors.bitcoinFamiliarity}</p>
+            {errors.bitcoinRelationship && (
+              <p className="mt-2 text-xs text-red-300">{errors.bitcoinRelationship}</p>
             )}
           </div>
         )}
