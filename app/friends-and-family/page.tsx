@@ -13,7 +13,7 @@ const CALENDLY_URL = "https://calendly.com/contacto-kapa21/30min";
 const WHATSAPP_URL =
   "https://wa.me/56971381604?text=Hola%2C%20quiero%20conocer%20la%20oportunidad%20Friends%20%26%20Family%20de%20Kapa21.";
 const PAGE_BACKGROUND =
-  "min-h-screen text-neutral-100 bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(247,147,26,0.12),transparent_45%),radial-gradient(900px_circle_at_80%_20%,rgba(255,255,255,0.06),transparent_40%),linear-gradient(to_bottom,rgba(0,0,0,1),rgba(0,0,0,1))]";
+  "min-h-screen text-neutral-100 bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(247,147,26,0.14),transparent_45%),radial-gradient(900px_circle_at_80%_20%,rgba(255,255,255,0.08),transparent_42%),linear-gradient(to_bottom,rgba(11,12,15,1),rgba(5,5,7,1))]";
 const KAPA21_CORE_STATEMENT =
   "Kapa21 construye infraestructura financiera sobre Bitcoin para personas, pymes y empresas que quieren ahorrar mejor, ordenar su tesorería y acceder a liquidez con una lógica más simple, más flexible, más sólida y más alineada con el largo plazo.";
 
@@ -194,26 +194,26 @@ const documents = [
   {
     title: "SAFE",
     body: "Instrumento de la ronda Friends & Family con valorización por tramo y lógica de acceso.",
-    status: "Disponible bajo conversación",
-    availability: "Acceso por solicitud.",
+    status: "Acceso privado",
+    availability: "Se comparte en conversación.",
   },
   {
     title: "Resumen de la ronda",
     body: "Síntesis de tesis, estructura del levantamiento, uso previsto del capital y secuencia de ejecución.",
-    status: "Disponible bajo conversación",
-    availability: "Acceso por solicitud.",
+    status: "Disponible por solicitud",
+    availability: "Se comparte en conversación.",
   },
   {
     title: "Uso de fondos",
     body: "Desglose del tramo 1, prioridades operativas y foco de despliegue en producto, estructura y demanda.",
-    status: "Disponible bajo conversación",
-    availability: "Disponible en conversación directa.",
+    status: "Disponible para revisión",
+    availability: "Acceso por solicitud.",
   },
   {
     title: "Preguntas frecuentes",
     body: "Respuestas breves sobre estructura, timing, foco comercial, validación inicial y siguientes hitos.",
-    status: "En preparación final",
-    availability: "Versión de trabajo.",
+    status: "Disponible por solicitud",
+    availability: "Se comparte en conversación.",
   },
   {
     title: "Conversación directa con founder",
@@ -252,11 +252,11 @@ function SectionHeader({
 }) {
   return (
     <div className="max-w-3xl">
-      <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">{eyebrow}</div>
+      <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">{eyebrow}</div>
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
         {title}
       </h2>
-      {description && <p className="mt-3 text-sm leading-7 text-neutral-300">{description}</p>}
+      {description && <p className="mt-3 text-sm leading-7 text-neutral-200">{description}</p>}
     </div>
   );
 }
@@ -273,10 +273,10 @@ function SummaryStat({
   className?: string;
 }) {
   return (
-    <div className={`border-t border-white/10 pt-3 ${className}`}>
-      <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">{label}</div>
+    <div className={`border-t border-white/12 pt-3 ${className}`}>
+      <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">{label}</div>
       <div className="mt-2 text-lg font-semibold tracking-tight text-white">{value}</div>
-      {hint && <p className="mt-2 text-sm leading-6 text-neutral-400">{hint}</p>}
+      {hint && <p className="mt-2 text-sm leading-6 text-neutral-300">{hint}</p>}
     </div>
   );
 }
@@ -293,12 +293,12 @@ function ValidationCaseCard({
   sector: string;
 }) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+    <article className="rounded-2xl border border-white/12 bg-white/[0.04] p-5 shadow-[0_16px_42px_rgba(0,0,0,0.18)]">
       <div className="text-2xl leading-none text-[#F7931A]">“</div>
-      <p className="mt-3 text-sm leading-7 text-neutral-200">{quote}</p>
-      <div className="mt-5 border-t border-white/10 pt-4">
+      <p className="mt-3 text-sm leading-7 text-neutral-100">{quote}</p>
+      <div className="mt-5 border-t border-white/12 pt-4">
         <div className="text-sm font-semibold text-white">{name}</div>
-        <div className="mt-1 text-sm text-neutral-400">
+        <div className="mt-1 text-sm text-neutral-300">
           {company} · {sector}
         </div>
       </div>
@@ -316,41 +316,48 @@ function FundUseRow({
   share: number;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+    <div className="rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-base font-semibold text-white">{amount}</div>
-        <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">{share}%</div>
+        <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">{share}%</div>
       </div>
-      <p className="mt-2 text-sm leading-6 text-neutral-300">{label}</p>
+      <p className="mt-2 text-sm leading-6 text-neutral-200">{label}</p>
     </div>
   );
 }
 
 function DocumentRow({
   title,
+  body,
   status,
   availability,
 }: {
   title: string;
+  body: string;
   status: string;
   availability: string;
 }) {
   const statusClassName =
-    status === "En preparación final"
-      ? "text-neutral-300"
-      : status === "Agenda abierta"
-        ? "text-emerald-200"
-        : "text-[#F7931A]";
+    status === "Agenda abierta"
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-100"
+      : status === "Acceso privado"
+        ? "border-[#F7931A]/25 bg-[#F7931A]/10 text-[#FFD29E]"
+        : "border-white/12 bg-white/[0.04] text-neutral-200";
 
   return (
-    <div className="flex flex-col gap-2 border-b border-white/10 px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <div className="text-sm font-medium text-white">{title}</div>
-        <div className="mt-1 text-xs uppercase tracking-[0.18em] text-neutral-500">
+    <div className="flex flex-col gap-3 border-b border-white/12 px-4 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-white">{title}</div>
+        <p className="mt-1 text-sm leading-6 text-neutral-200">{body}</p>
+        <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-neutral-400">
           {availability}
         </div>
       </div>
-      <div className={`text-xs uppercase tracking-[0.18em] ${statusClassName}`}>{status}</div>
+      <div
+        className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] ${statusClassName}`}
+      >
+        {status}
+      </div>
     </div>
   );
 }
@@ -366,13 +373,13 @@ function AssetPlaceholder({
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-dashed border-white/10 bg-white/[0.02] ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-dashed border-white/12 bg-white/[0.035] ${className}`}
     >
-      <div className="absolute inset-2 rounded-[0.9rem] border border-white/10" />
+      <div className="absolute inset-2 rounded-[0.9rem] border border-white/12" />
       {variant === "portrait" ? (
         <>
-          <div className="absolute left-1/2 top-[24%] h-9 w-9 -translate-x-1/2 rounded-full border border-white/10 bg-white/[0.04]" />
-          <div className="absolute bottom-4 left-1/2 h-14 w-[4.5rem] -translate-x-1/2 rounded-t-[999px] border border-white/10 bg-white/[0.03]" />
+          <div className="absolute left-1/2 top-[24%] h-9 w-9 -translate-x-1/2 rounded-full border border-white/12 bg-white/[0.06]" />
+          <div className="absolute bottom-4 left-1/2 h-14 w-[4.5rem] -translate-x-1/2 rounded-t-[999px] border border-white/12 bg-white/[0.04]" />
         </>
       ) : (
         <Image
@@ -383,7 +390,7 @@ function AssetPlaceholder({
           className="absolute right-3 top-1/2 h-11 w-11 -translate-y-1/2 opacity-[0.05]"
         />
       )}
-      <div className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.24em] text-white/55">
+      <div className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.24em] text-white/70">
         {label}
       </div>
     </div>
@@ -400,10 +407,10 @@ export default function FriendsAndFamilyPage() {
           <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="inline-flex rounded-full border border-[#F7931A]/20 bg-[#F7931A]/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-[#F7931A]">
+                <div className="inline-flex rounded-full border border-[#F7931A]/25 bg-[#F7931A]/12 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-[#F9B662]">
                   Friends &amp; Family
                 </div>
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                   Ronda privada Kapa21
                 </div>
               </div>
@@ -412,12 +419,15 @@ export default function FriendsAndFamilyPage() {
                 La ronda privada para construir Kapa21.
               </h1>
 
-              <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-300">
+              <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-200">
                 Infraestructura financiera sobre Bitcoin para ahorro, tesorería y liquidez.
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <a href={MAILTO_URL} className="k21-btn-primary px-5 py-3">
+                <a
+                  href={MAILTO_URL}
+                  className="k21-btn-primary px-5 py-3 shadow-[0_14px_34px_rgba(247,147,26,0.22)]"
+                >
                   Solicitar acceso
                 </a>
                 <a
@@ -428,27 +438,35 @@ export default function FriendsAndFamilyPage() {
                 >
                   Agendar conversación
                 </a>
+                <a
+                  href={WHATSAPP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="k21-btn-secondary border-white/12 bg-white/[0.04] px-5 py-3 text-neutral-100 hover:bg-white/[0.08]"
+                >
+                  WhatsApp
+                </a>
               </div>
 
-              <p className="mt-4 text-sm leading-6 text-neutral-400">
+              <p className="mt-4 text-sm leading-6 text-neutral-300">
                 SAFE · Desde US$3.000 · Por invitación
               </p>
             </div>
 
-            <aside className="k21-card p-5 sm:p-6">
+            <aside className="k21-card border-white/12 bg-white/[0.04] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.24)] sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                     Resumen de ronda
                   </div>
                   <div className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                     US$50.000
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-neutral-300">
+                  <p className="mt-2 text-sm leading-6 text-neutral-200">
                     Tramo inicial para instalar la base operativa, comercial y societaria.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                <div className="rounded-2xl border border-white/12 bg-white/[0.05] p-3">
                   <Image
                     src="/logo/kapa21-symbol.svg"
                     alt="Símbolo Kapa21"
@@ -466,24 +484,27 @@ export default function FriendsAndFamilyPage() {
                 <SummaryStat label={roundSummary[4].label} value={roundSummary[4].value} />
               </div>
 
-              <div className="mt-4 border-t border-white/10 pt-4">
+              <div className="mt-4 border-t border-white/12 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">
                       Instrumento
                     </div>
                     <div className="mt-1 text-lg font-semibold text-white">SAFE</div>
                   </div>
-                  <div className="text-sm text-neutral-400">Ronda privada, por invitación.</div>
+                  <div className="text-sm text-neutral-300">Ronda privada, por invitación.</div>
                 </div>
               </div>
             </aside>
           </div>
         </section>
 
-        <nav className="sticky top-0 z-20 -mx-6 mb-10 px-6" aria-label="Secciones de la página">
-          <div className="mx-auto max-w-6xl overflow-x-auto rounded-2xl border border-white/10 bg-black/70 backdrop-blur">
-            <div className="flex min-w-max gap-2 px-3 py-3">
+        <nav className="sticky top-3 z-20 -mx-6 mb-10 px-6" aria-label="Secciones de la página">
+          <div className="mx-auto max-w-6xl overflow-x-auto rounded-2xl border border-white/12 bg-neutral-950/85 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+            <div className="flex min-w-max items-center gap-2 px-3 py-3">
+              <div className="pr-2 text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                Navegación
+              </div>
               {[
                 { href: "#oportunidad", label: "Oportunidad" },
                 { href: "#modelo", label: "Modelo" },
@@ -495,7 +516,7 @@ export default function FriendsAndFamilyPage() {
                 <a
                   key={item.href}
                   href={item.href}
-                  className="rounded-xl px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                  className="rounded-xl border border-transparent bg-white/[0.03] px-3 py-2 text-sm text-neutral-200 transition hover:border-white/12 hover:bg-white/[0.09] hover:text-white active:bg-white/[0.13] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                 >
                   {item.label}
                 </a>
@@ -505,7 +526,7 @@ export default function FriendsAndFamilyPage() {
         </nav>
 
         <section className="mt-12 scroll-mt-28" id="modelo">
-          <div className="k21-card p-6 sm:p-7">
+          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
             <SectionHeader
               eyebrow="Modelo"
               title="Qué es Kapa21."
@@ -514,11 +535,11 @@ export default function FriendsAndFamilyPage() {
 
             <div className="mt-5 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
               <div>
-                <p className="text-sm leading-7 text-neutral-300 sm:text-base">
+                <p className="text-sm leading-7 text-neutral-200 sm:text-base">
                   {KAPA21_CORE_STATEMENT}
                 </p>
               </div>
-              <div className="text-sm leading-7 text-neutral-300">
+              <div className="text-sm leading-7 text-neutral-200">
                 Bitcoin ya entró en la conversación financiera seria. Kapa21 se está construyendo
                 para resolver el tramo entre ahorro, tesorería y liquidez con una arquitectura más
                 simple y de más alto contexto.
@@ -530,16 +551,16 @@ export default function FriendsAndFamilyPage() {
                 <div
                   key={item.title}
                   className={`border-t pt-4 ${
-                    index === 0 ? "border-[#F7931A]/40" : "border-white/10"
+                    index === 0 ? "border-[#F7931A]/40" : "border-white/12"
                   }`}
                 >
                   <h3 className="text-lg font-semibold tracking-tight text-white">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                  <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-8 border-t border-white/10 pt-8">
+            <div className="mt-8 border-t border-white/12 pt-8">
               <SectionHeader
                 eyebrow="Mercado y monetización"
                 title="Para quién y cómo captura valor."
@@ -547,7 +568,7 @@ export default function FriendsAndFamilyPage() {
               />
 
               <div className="mt-5">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                   Segmentos
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -555,25 +576,25 @@ export default function FriendsAndFamilyPage() {
                     <div
                       key={item.title}
                       className={`border-t pt-4 ${
-                        index === 0 ? "border-[#F7931A]/40" : "border-white/10"
+                        index === 0 ? "border-[#F7931A]/40" : "border-white/12"
                       }`}
                     >
                       <div className="text-base font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                      <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-8 border-t border-white/10 pt-8">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+              <div className="mt-8 border-t border-white/12 pt-8">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                   Ingresos
                 </div>
                 <div className="mt-4 grid gap-x-6 gap-y-4 md:grid-cols-2">
                   {revenueStreams.map((item) => (
-                    <div key={item.title} className="border-t border-white/10 pt-4">
+                    <div key={item.title} className="border-t border-white/12 pt-4">
                       <div className="text-base font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                      <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
                     </div>
                   ))}
                 </div>
@@ -583,7 +604,7 @@ export default function FriendsAndFamilyPage() {
         </section>
 
         <section className="mt-12 scroll-mt-28" id="casos">
-          <div className="k21-card p-6 sm:p-7">
+          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
               <div>
                 <SectionHeader
@@ -594,16 +615,16 @@ export default function FriendsAndFamilyPage() {
 
                 <div className="mt-5 space-y-4">
                   {differentiators.map((item) => (
-                    <div key={item.title} className="border-l border-white/10 pl-4">
+                    <div key={item.title} className="border-l border-white/12 pl-4">
                       <div className="text-base font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                      <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div>
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                   Validación temprana
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -623,14 +644,14 @@ export default function FriendsAndFamilyPage() {
         </section>
 
         <section className="mt-12 scroll-mt-28" id="fondos">
-          <div className="k21-card p-6 sm:p-7">
+          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <SectionHeader
                 eyebrow="Fondos"
                 title="Uso del tramo 1."
                 description="Distribución sobria para estructura, software, validación comercial y ejecución del founder."
               />
-              <div className="rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-sm text-neutral-300">
+              <div className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-sm text-neutral-200">
                 US$50.000 total
               </div>
             </div>
@@ -649,7 +670,7 @@ export default function FriendsAndFamilyPage() {
         </section>
 
         <section className="mt-12 scroll-mt-28" id="founder">
-          <div className="k21-card p-6 sm:p-7">
+          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
             <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
               <div>
                 <SectionHeader
@@ -657,13 +678,13 @@ export default function FriendsAndFamilyPage() {
                   title="Founder y visión."
                   description="Bitcoin como infraestructura financiera cotidiana."
                 />
-                <p className="mt-4 text-sm leading-7 text-neutral-300">
+                <p className="mt-4 text-sm leading-7 text-neutral-200">
                   La tesis del founder es que Bitcoin puede reordenar cómo personas y empresas
                   ahorran, protegen caja y toman decisiones con más libertad.
                 </p>
                 <div className="mt-5 space-y-3">
                   {founderLoop.map((item) => (
-                    <div key={item} className="text-sm leading-6 text-neutral-400">
+                    <div key={item} className="text-sm leading-6 text-neutral-300">
                       {item}
                     </div>
                   ))}
@@ -685,7 +706,7 @@ export default function FriendsAndFamilyPage() {
         </section>
 
         <section className="mt-12 scroll-mt-28" id="documentos">
-          <div className="k21-card p-6 sm:p-7">
+          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
             <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
               <div>
                 <SectionHeader
@@ -695,11 +716,12 @@ export default function FriendsAndFamilyPage() {
                 />
 
                 {/* Replace each row with final links or attachments when documents are ready to share. */}
-                <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+                <div className="mt-5 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04]">
                   {documents.map((item) => (
                     <DocumentRow
                       key={item.title}
                       title={item.title}
+                      body={item.body}
                       status={item.status}
                       availability={item.availability}
                     />
@@ -708,13 +730,15 @@ export default function FriendsAndFamilyPage() {
               </div>
 
               <div>
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">CTA</div>
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                  Siguiente paso
+                </div>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
                   Solicitar acceso o agendar una conversación.
                 </h2>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-neutral-300">
-                  Email, agenda o mensaje directo. Después compartimos el material que haga sentido
-                  para avanzar.
+                <p className="mt-3 max-w-xl text-sm leading-7 text-neutral-200">
+                  Email, agenda o WhatsApp. Después compartimos el material que haga sentido para
+                  avanzar.
                 </p>
 
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -735,7 +759,7 @@ export default function FriendsAndFamilyPage() {
                     rel="noopener noreferrer"
                     className="k21-btn-secondary px-5 py-3"
                   >
-                    Escribir directamente
+                    WhatsApp
                   </a>
                 </div>
               </div>
