@@ -362,34 +362,31 @@ function DocumentRow({
   );
 }
 
-function AssetPlaceholder({
+function AssetImageCard({
   label,
-  variant,
+  src,
+  alt,
+  imageClassName,
   className,
 }: {
   label: string;
-  variant: "portrait" | "book";
+  src: string;
+  alt: string;
+  imageClassName?: string;
   className: string;
 }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-dashed border-white/12 bg-white/[0.035] ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${className}`}
     >
-      <div className="absolute inset-2 rounded-[0.9rem] border border-white/12" />
-      {variant === "portrait" ? (
-        <>
-          <div className="absolute left-1/2 top-[24%] h-9 w-9 -translate-x-1/2 rounded-full border border-white/12 bg-white/[0.06]" />
-          <div className="absolute bottom-4 left-1/2 h-14 w-[4.5rem] -translate-x-1/2 rounded-t-[999px] border border-white/12 bg-white/[0.04]" />
-        </>
-      ) : (
-        <Image
-          src="/brand/k21-mark-white.svg"
-          alt="Marca Kapa21"
-          width={44}
-          height={44}
-          className="absolute right-3 top-1/2 h-11 w-11 -translate-y-1/2 opacity-[0.05]"
-        />
-      )}
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="(min-width: 1024px) 18vw, (min-width: 640px) 40vw, 100vw"
+        className={imageClassName || "object-cover"}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" />
       <div className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.24em] text-white/70">
         {label}
       </div>
@@ -692,14 +689,20 @@ export default function FriendsAndFamilyPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                {/* Replace with final founder portrait when the asset is ready. */}
-                <AssetPlaceholder
+                <AssetImageCard
                   label="Founder portrait"
-                  variant="portrait"
-                  className="h-32 w-full"
+                  src="/friends-and-family/founder.png"
+                  alt="Founder de Kapa21"
+                  imageClassName="object-cover object-[center_18%]"
+                  className="aspect-[4/5] w-full sm:aspect-[3/4]"
                 />
-                {/* Replace with final production book cover when the asset is ready. */}
-                <AssetPlaceholder label="Book cover" variant="book" className="h-32 w-full" />
+                <AssetImageCard
+                  label="Book cover"
+                  src="/friends-and-family/book-cover.png"
+                  alt="Portada del libro del founder"
+                  imageClassName="object-contain p-3"
+                  className="aspect-[4/5] w-full sm:aspect-[3/4]"
+                />
               </div>
             </div>
           </div>
