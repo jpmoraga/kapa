@@ -273,30 +273,10 @@ function SummaryStat({
   className?: string;
 }) {
   return (
-    <div className={`rounded-2xl border border-white/10 bg-white/[0.02] p-4 ${className}`}>
+    <div className={`border-t border-white/10 pt-3 ${className}`}>
       <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">{label}</div>
-      <div className="mt-2 text-xl font-semibold tracking-tight text-white">{value}</div>
+      <div className="mt-2 text-lg font-semibold tracking-tight text-white">{value}</div>
       {hint && <p className="mt-2 text-sm leading-6 text-neutral-400">{hint}</p>}
-    </div>
-  );
-}
-
-function TextBlock({
-  title,
-  body,
-  eyebrow,
-}: {
-  title: string;
-  body: string;
-  eyebrow?: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-      {eyebrow && <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">{eyebrow}</div>}
-      <div className={eyebrow ? "mt-2" : ""}>
-        <h3 className="text-lg font-semibold tracking-tight text-white">{title}</h3>
-        <p className="mt-2 text-sm leading-6 text-neutral-300">{body}</p>
-      </div>
     </div>
   );
 }
@@ -416,7 +396,7 @@ export default function FriendsAndFamilyPage() {
       <LandingHeader />
 
       <div className="mx-auto max-w-6xl px-6 pb-14">
-        <section className="pb-12 pt-4">
+        <section className="scroll-mt-28 pb-8 pt-4" id="oportunidad">
           <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
             <div>
               <div className="flex flex-wrap items-center gap-3">
@@ -428,19 +408,13 @@ export default function FriendsAndFamilyPage() {
                 </div>
               </div>
 
-              <h1 className="mt-5 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl">
-                La oportunidad privada para construir la capa financiera sobre Bitcoin que falta.
+              <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[2.9rem]">
+                La ronda privada para construir Kapa21.
               </h1>
 
-              <p className="mt-5 max-w-3xl text-base leading-7 text-neutral-300 sm:text-lg">
-                {KAPA21_CORE_STATEMENT}
+              <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-300">
+                Infraestructura financiera sobre Bitcoin para ahorro, tesorería y liquidez.
               </p>
-
-              <div className="mt-6 flex flex-wrap gap-2">
-                <div className="k21-badge">SAFE</div>
-                <div className="k21-badge">Desde US$3.000</div>
-                <div className="k21-badge">Por invitación</div>
-              </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <a href={MAILTO_URL} className="k21-btn-primary px-5 py-3">
@@ -457,8 +431,7 @@ export default function FriendsAndFamilyPage() {
               </div>
 
               <p className="mt-4 text-sm leading-6 text-neutral-400">
-                Ronda pensada para una fase de construcción con foco: estructura, software,
-                distribución y validación comercial.
+                SAFE · Desde US$3.000 · Por invitación
               </p>
             </div>
 
@@ -472,8 +445,7 @@ export default function FriendsAndFamilyPage() {
                     US$50.000
                   </div>
                   <p className="mt-2 text-sm leading-6 text-neutral-300">
-                    Tramo inicial para instalar la base operativa, comercial y societaria de
-                    Kapa21.
+                    Tramo inicial para instalar la base operativa, comercial y societaria.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
@@ -487,30 +459,14 @@ export default function FriendsAndFamilyPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <SummaryStat
-                  label={roundSummary[1].label}
-                  value={roundSummary[1].value}
-                  hint={roundSummary[1].hint}
-                />
-                <SummaryStat
-                  label={roundSummary[2].label}
-                  value={roundSummary[2].value}
-                  hint={roundSummary[2].hint}
-                />
-                <SummaryStat
-                  label={roundSummary[3].label}
-                  value={roundSummary[3].value}
-                  hint={roundSummary[3].hint}
-                />
-                <SummaryStat
-                  label={roundSummary[4].label}
-                  value={roundSummary[4].value}
-                  hint={roundSummary[4].hint}
-                />
+              <div className="mt-5 grid gap-x-5 gap-y-1 sm:grid-cols-2">
+                <SummaryStat label={roundSummary[1].label} value={roundSummary[1].value} />
+                <SummaryStat label={roundSummary[2].label} value={roundSummary[2].value} />
+                <SummaryStat label={roundSummary[3].label} value={roundSummary[3].value} />
+                <SummaryStat label={roundSummary[4].label} value={roundSummary[4].value} />
               </div>
 
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3">
+              <div className="mt-4 border-t border-white/10 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
@@ -525,128 +481,154 @@ export default function FriendsAndFamilyPage() {
           </div>
         </section>
 
-        <section className="mt-14">
-          <div className="k21-card p-6 sm:p-7">
-            <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-              <div>
-                <SectionHeader
-                  eyebrow="Qué es Kapa21"
-                  title="Infraestructura financiera sobre Bitcoin."
-                  description="Kapa21 parte desde problemas financieros reales: ahorro, tesorería, liquidez y flexibilidad de decisión."
-                />
-                <p className="mt-5 max-w-2xl text-sm leading-7 text-neutral-300 sm:text-base">
-                  {KAPA21_CORE_STATEMENT}
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {valuePillars.map((item, index) => (
-                  <div
-                    key={item.title}
-                    className={`border-l pl-4 ${
-                      index === 0 ? "border-[#F7931A]/40" : "border-white/10"
-                    }`}
-                  >
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                      Pilar 0{index + 1}
-                    </div>
-                    <h3 className="mt-2 text-lg font-semibold tracking-tight text-white">
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-14">
-          <SectionHeader
-            eyebrow="Mercado y modelo"
-            title="A quién sirve Kapa21 y cómo captura valor."
-            description="La misma infraestructura se despliega con distinta profundidad comercial según segmento y necesidad."
-          />
-
-          <div className="mt-6 grid gap-3 lg:grid-cols-3">
-            {segments.map((item, index) => (
-              <TextBlock
-                key={item.title}
-                title={item.title}
-                body={item.body}
-                eyebrow={`Segmento 0${index + 1}`}
-              />
-            ))}
-          </div>
-
-          <div className="mt-6 border-t border-white/10 pt-6">
-            <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
-              Ingresos
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {revenueStreams.map((item, index) => (
-                <TextBlock
-                  key={item.title}
-                  title={item.title}
-                  body={item.body}
-                  eyebrow={`Ingreso 0${index + 1}`}
-                />
+        <nav className="sticky top-0 z-20 -mx-6 mb-10 px-6" aria-label="Secciones de la página">
+          <div className="mx-auto max-w-6xl overflow-x-auto rounded-2xl border border-white/10 bg-black/70 backdrop-blur">
+            <div className="flex min-w-max gap-2 px-3 py-3">
+              {[
+                { href: "#oportunidad", label: "Oportunidad" },
+                { href: "#modelo", label: "Modelo" },
+                { href: "#casos", label: "Casos" },
+                { href: "#fondos", label: "Fondos" },
+                { href: "#founder", label: "Founder" },
+                { href: "#documentos", label: "Documentos" },
+              ].map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-xl px-3 py-2 text-sm text-neutral-300 transition hover:bg-white/[0.04] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                >
+                  {item.label}
+                </a>
               ))}
             </div>
           </div>
-        </section>
+        </nav>
 
-        <section className="mt-14">
-          <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-            <div className="k21-card p-6 sm:p-7">
-              <SectionHeader
-                eyebrow="Diferenciación"
-                title="Producto, criterio financiero y validación inicial."
-                description="Kapa21 une tesis, software, acompañamiento y conversación comercial en una misma arquitectura."
-              />
+        <section className="mt-12 scroll-mt-28" id="modelo">
+          <div className="k21-card p-6 sm:p-7">
+            <SectionHeader
+              eyebrow="Modelo"
+              title="Qué es Kapa21."
+              description="Infraestructura financiera sobre Bitcoin para personas, pymes y empresas."
+            />
 
-              <div className="mt-6 space-y-4">
-                {differentiators.map((item, index) => (
-                  <div key={item.title} className="border-l border-white/10 pl-4">
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                      0{index + 1}
-                    </div>
-                    <div className="mt-2 text-base font-semibold text-white">{item.title}</div>
-                    <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
-                  </div>
-                ))}
+            <div className="mt-5 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+              <div>
+                <p className="text-sm leading-7 text-neutral-300 sm:text-base">
+                  {KAPA21_CORE_STATEMENT}
+                </p>
+              </div>
+              <div className="text-sm leading-7 text-neutral-300">
+                Bitcoin ya entró en la conversación financiera seria. Kapa21 se está construyendo
+                para resolver el tramo entre ahorro, tesorería y liquidez con una arquitectura más
+                simple y de más alto contexto.
               </div>
             </div>
 
-            <div className="k21-card p-6 sm:p-7">
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {valuePillars.map((item, index) => (
+                <div
+                  key={item.title}
+                  className={`border-t pt-4 ${
+                    index === 0 ? "border-[#F7931A]/40" : "border-white/10"
+                  }`}
+                >
+                  <h3 className="text-lg font-semibold tracking-tight text-white">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 border-t border-white/10 pt-8">
               <SectionHeader
-                eyebrow="Validación temprana"
-                title="Lo que ya estamos viendo en clientes reales."
-                description="Casos iniciales que muestran a Bitcoin funcionando como ahorro y como colateral con impacto directo en caja y flexibilidad."
+                eyebrow="Mercado y monetización"
+                title="Para quién y cómo captura valor."
+                description="La misma infraestructura se despliega con distinta profundidad según segmento y necesidad."
               />
 
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {validationCases.map((item) => (
-                  <ValidationCaseCard
-                    key={`${item.name}-${item.company}`}
-                    quote={item.quote}
-                    name={item.name}
-                    company={item.company}
-                    sector={item.sector}
-                  />
-                ))}
+              <div className="mt-5">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                  Segmentos
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                  {segments.map((item, index) => (
+                    <div
+                      key={item.title}
+                      className={`border-t pt-4 ${
+                        index === 0 ? "border-[#F7931A]/40" : "border-white/10"
+                      }`}
+                    >
+                      <div className="text-base font-semibold text-white">{item.title}</div>
+                      <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-8 border-t border-white/10 pt-8">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                  Ingresos
+                </div>
+                <div className="mt-4 grid gap-x-6 gap-y-4 md:grid-cols-2">
+                  {revenueStreams.map((item) => (
+                    <div key={item.title} className="border-t border-white/10 pt-4">
+                      <div className="text-base font-semibold text-white">{item.title}</div>
+                      <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-14">
+        <section className="mt-12 scroll-mt-28" id="casos">
+          <div className="k21-card p-6 sm:p-7">
+            <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+              <div>
+                <SectionHeader
+                  eyebrow="Casos"
+                  title="Diferenciación y validación."
+                  description="Producto, criterio financiero y clientes tempranos con problemas reales de caja y financiamiento."
+                />
+
+                <div className="mt-5 space-y-4">
+                  {differentiators.map((item) => (
+                    <div key={item.title} className="border-l border-white/10 pl-4">
+                      <div className="text-base font-semibold text-white">{item.title}</div>
+                      <p className="mt-2 text-sm leading-6 text-neutral-300">{item.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
+                  Validación temprana
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {validationCases.map((item) => (
+                    <ValidationCaseCard
+                      key={`${item.name}-${item.company}`}
+                      quote={item.quote}
+                      name={item.name}
+                      company={item.company}
+                      sector={item.sector}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-12 scroll-mt-28" id="fondos">
           <div className="k21-card p-6 sm:p-7">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <SectionHeader
-                eyebrow="Uso de fondos"
-                title="Asignación del tramo 1."
-                description="Una distribución sobria para resolver estructura, software, validación comercial y ejecución del founder."
+                eyebrow="Fondos"
+                title="Uso del tramo 1."
+                description="Distribución sobria para estructura, software, validación comercial y ejecución del founder."
               />
               <div className="rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-sm text-neutral-300">
                 US$50.000 total
@@ -666,94 +648,76 @@ export default function FriendsAndFamilyPage() {
           </div>
         </section>
 
-        <section className="mt-14 scroll-mt-24" id="documents">
+        <section className="mt-12 scroll-mt-28" id="founder">
           <div className="k21-card p-6 sm:p-7">
-            <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
               <div>
                 <SectionHeader
-                  eyebrow="Founder y visión"
-                  title="Bitcoin como infraestructura financiera cotidiana."
-                  description="La tesis del founder es que Bitcoin puede reordenar cómo personas y empresas ahorran, protegen caja y toman decisiones con más libertad."
+                  eyebrow="Founder"
+                  title="Founder y visión."
+                  description="Bitcoin como infraestructura financiera cotidiana."
                 />
-
-                {/* Replace with final founder portrait when the asset is ready. */}
-                <div className="mt-5 flex gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                  <AssetPlaceholder
-                    label="Founder portrait"
-                    variant="portrait"
-                    className="h-28 w-24 shrink-0"
-                  />
-                  <div>
-                    <div className="text-sm font-semibold text-white">Founder in the loop</div>
-                    <p className="mt-2 text-sm leading-6 text-neutral-300">
-                      Capital paciente para una fase de diseño de oferta, aprendizaje comercial,
-                      despliegue operativo y fortalecimiento de la tesis pública de Kapa21.
-                    </p>
-                    <div className="mt-3 space-y-2">
-                      {founderLoop.map((item) => (
-                        <div key={item} className="text-sm leading-6 text-neutral-400">
-                          {item}
-                        </div>
-                      ))}
+                <p className="mt-4 text-sm leading-7 text-neutral-300">
+                  La tesis del founder es que Bitcoin puede reordenar cómo personas y empresas
+                  ahorran, protegen caja y toman decisiones con más libertad.
+                </p>
+                <div className="mt-5 space-y-3">
+                  {founderLoop.map((item) => (
+                    <div key={item} className="text-sm leading-6 text-neutral-400">
+                      {item}
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="space-y-5">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Replace with final founder portrait when the asset is ready. */}
+                <AssetPlaceholder
+                  label="Founder portrait"
+                  variant="portrait"
+                  className="h-32 w-full"
+                />
                 {/* Replace with final production book cover when the asset is ready. */}
-                <div className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-                  <AssetPlaceholder
-                    label="Book cover"
-                    variant="book"
-                    className="h-24 w-[5.5rem] shrink-0"
-                  />
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
-                      Libro del founder
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-neutral-300">
-                      Espacio preparado para integrar la portada final y su relación editorial con
-                      la tesis de Kapa21.
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
-                    Documentos
-                  </div>
-                  {/* Replace each row with final links or attachments when documents are ready to share. */}
-                  <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
-                    {documents.map((item) => (
-                      <DocumentRow
-                        key={item.title}
-                        title={item.title}
-                        status={item.status}
-                        availability={item.availability}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <AssetPlaceholder label="Book cover" variant="book" className="h-32 w-full" />
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="mt-6 border-t border-white/10 pt-6">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">
-                    Conversación privada
-                  </div>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
-                    Solicitar acceso o agendar una conversación.
-                  </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-7 text-neutral-300">
-                    Email, agenda o mensaje directo. Después compartimos el material que haga
-                    sentido para avanzar.
-                  </p>
+        <section className="mt-12 scroll-mt-28" id="documentos">
+          <div className="k21-card p-6 sm:p-7">
+            <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+              <div>
+                <SectionHeader
+                  eyebrow="Documentos"
+                  title="Documentos y siguiente paso."
+                  description="Material compartido de forma gradual y con contexto, según avance la conversación."
+                />
+
+                {/* Replace each row with final links or attachments when documents are ready to share. */}
+                <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+                  {documents.map((item) => (
+                    <DocumentRow
+                      key={item.title}
+                      title={item.title}
+                      status={item.status}
+                      availability={item.availability}
+                    />
+                  ))}
                 </div>
+              </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-500">CTA</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
+                  Solicitar acceso o agendar una conversación.
+                </h2>
+                <p className="mt-3 max-w-xl text-sm leading-7 text-neutral-300">
+                  Email, agenda o mensaje directo. Después compartimos el material que haga sentido
+                  para avanzar.
+                </p>
+
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <a href={MAILTO_URL} className="k21-btn-primary px-5 py-3">
                     Solicitar acceso
                   </a>
