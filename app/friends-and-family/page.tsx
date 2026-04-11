@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Image from "next/image";
 import { ParticipationSimulator } from "./_components/ParticipationSimulator";
 import { InvestorHeader } from "./_components/InvestorHeader";
+import {
+  FRIENDS_FAMILY_ACCESS_COOKIE,
+  hasValidAccessCookie,
+} from "./_lib/access";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.kapa21.cl";
 const CONTACT_EMAIL =
@@ -372,13 +377,81 @@ function InvestorFooter() {
   );
 }
 
-export default function FriendsAndFamilyPage() {
+function AccessGate({ invalidPassword }: { invalidPassword: boolean }) {
+  return (
+    <main className={`${PAGE_BACKGROUND} relative`}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[32rem] bg-[radial-gradient(circle_at_15%_15%,rgba(247,147,26,0.18),transparent_30%),radial-gradient(circle_at_85%_10%,rgba(255,255,255,0.1),transparent_24%)]" />
+
+      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 pb-16 pt-8">
+        <div className="flex justify-center sm:justify-start">
+          <Image
+            src="/brand/k21-lockup-white.svg"
+            alt="Kapa21"
+            width={420}
+            height={120}
+            priority
+            className="h-16 w-auto sm:h-20"
+          />
+        </div>
+
+        <div className="flex flex-1 items-center justify-center py-10">
+          <div className="w-full max-w-md rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-6 shadow-[0_28px_90px_rgba(0,0,0,0.24)] sm:p-8">
+            <div className="inline-flex rounded-full border border-[#F7931A]/25 bg-[#F7931A]/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[#F9B662]">
+              Investor page
+            </div>
+
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight text-white">
+              Acceso privado
+            </h1>
+            <p className="mt-4 text-sm leading-7 text-neutral-200">
+              Esta página está disponible solo por invitación.
+            </p>
+
+            <form action="/friends-and-family/access" method="post" className="mt-8 space-y-4">
+              <div>
+                <label
+                  htmlFor="accessKey"
+                  className="text-[11px] uppercase tracking-[0.2em] text-neutral-400"
+                >
+                  Clave de acceso
+                </label>
+                <input
+                  id="accessKey"
+                  name="accessKey"
+                  type="password"
+                  autoComplete="current-password"
+                  className="mt-2 w-full rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3 text-base text-white outline-none transition placeholder:text-neutral-500 focus:border-[#F7931A]/30 focus:bg-white/[0.06]"
+                  placeholder="Ingresa la clave"
+                  required
+                />
+              </div>
+
+              {invalidPassword && (
+                <p className="text-sm text-[#FFD29E]">Clave incorrecta.</p>
+              )}
+
+              <button type="submit" className="k21-btn-primary w-full py-3">
+                Entrar
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function FriendsAndFamilyInvestorPageContent() {
   return (
     <main className={`${PAGE_BACKGROUND} relative`}>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_15%_15%,rgba(247,147,26,0.18),transparent_30%),radial-gradient(circle_at_85%_10%,rgba(255,255,255,0.12),transparent_24%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[40rem] h-[70rem] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04),transparent_34%)]" />
 
-      <InvestorHeader navItems={navItems} whatsappUrl={WHATSAPP_URL} />
+      <InvestorHeader
+        navItems={navItems}
+        whatsappUrl={WHATSAPP_URL}
+        logoutAction="/friends-and-family/logout"
+      />
 
       <div className="relative mx-auto max-w-6xl px-6 pb-20">
         <section className="pt-6">
@@ -794,4 +867,25 @@ export default function FriendsAndFamilyPage() {
       </div>
     </main>
   );
+}
+
+type FriendsAndFamilyPageProps = {
+  searchParams?: Promise<{ error?: string }>;
+};
+
+export default async function FriendsAndFamilyPage({
+  searchParams,
+}: FriendsAndFamilyPageProps) {
+  const cookieStore = await cookies();
+  const hasAccess = hasValidAccessCookie(
+    cookieStore.get(FRIENDS_FAMILY_ACCESS_COOKIE)?.value,
+  );
+
+  if (!hasAccess) {
+    const resolvedSearchParams = searchParams ? await searchParams : {};
+
+    return <AccessGate invalidPassword={resolvedSearchParams.error === "1"} />;
+  }
+
+  return <FriendsAndFamilyInvestorPageContent />;
 }

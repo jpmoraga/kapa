@@ -12,9 +12,10 @@ type NavItem = {
 type InvestorHeaderProps = {
   navItems: readonly NavItem[];
   whatsappUrl: string;
+  logoutAction: string;
 };
 
-export function InvestorHeader({ navItems, whatsappUrl }: InvestorHeaderProps) {
+export function InvestorHeader({ navItems, whatsappUrl, logoutAction }: InvestorHeaderProps) {
   const [activeHref, setActiveHref] = useState(navItems[0]?.href || "#oportunidad");
   const pillRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
@@ -72,14 +73,24 @@ export function InvestorHeader({ navItems, whatsappUrl }: InvestorHeaderProps) {
             />
           </Link>
 
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="k21-btn-secondary border-white/12 bg-white/[0.04] px-4 py-2.5 text-neutral-100 hover:bg-white/[0.08]"
-          >
-            WhatsApp
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="k21-btn-secondary border-white/12 bg-white/[0.04] px-4 py-2.5 text-neutral-100 hover:bg-white/[0.08]"
+            >
+              WhatsApp
+            </a>
+            <form action={logoutAction} method="post">
+              <button
+                type="submit"
+                className="text-sm text-neutral-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                Salir
+              </button>
+            </form>
+          </div>
         </div>
 
         <div className="relative mt-4">
