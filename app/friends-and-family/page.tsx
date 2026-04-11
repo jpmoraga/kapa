@@ -27,10 +27,10 @@ const navItems = [
 
 const roundHighlights = [
   { label: "Tramo 1", value: "US$50.000" },
-  { label: "Tramo 2 opcional", value: "Hasta US$100.000" },
+  { label: "Tramo extendido", value: "Hasta US$100.000" },
   { label: "Valorización tramo 1", value: "US$1M" },
-  { label: "Valorización tramo 2", value: "US$2M" },
-  { label: "Ticket visible", value: "Desde US$3.000" },
+  { label: "Referencia tramo 2", value: "US$1,5M – US$2M" },
+  { label: "Ticket mínimo", value: "US$3.000" },
   { label: "Instrumento", value: "SAFE" },
 ] as const;
 
@@ -107,8 +107,8 @@ const revenueStreams = [
 ] as const;
 
 const revenueSequence = [
-  "Primero ingresos de alto contacto, formación y validación comercial con clientes que ya tienen problemas reales de caja y financiamiento.",
-  "Luego más recurrencia y volumen vía crédito respaldado en Bitcoin, suscripción pyme y mayor profundidad transaccional.",
+  "Primero ingresos de alto contacto, advisory, validación comercial y suscripción pyme, con clientes que ya tienen problemas reales de caja y financiamiento.",
+  "Después mayor recurrencia y volumen vía crédito respaldado en Bitcoin y profundidad transaccional.",
 ] as const;
 
 const fundUse = [
@@ -144,16 +144,10 @@ const fundUse = [
   },
 ] as const;
 
-const founderLoop = [
-  "La tesis, el producto y la conversación comercial avanzan en una sola línea de decisión.",
-  "El founder participa directamente en fundraising, alianzas, ventas y definición de oferta.",
-  "El aprendizaje de mercado vuelve rápido a pricing, software, posicionamiento y ejecución comercial.",
-] as const;
-
 const validationCases = [
   {
     quote:
-      "Partí usando ahorro mensual desde la caja para construir posición. Eso me ha permitido reemplazar parte del factoring por financiamiento respaldado en Bitcoin, con más flexibilidad y mejor costo para la operación.",
+      "Partimos comprando Bitcoin de a poco todos los meses y al poco tiempo eso me ayudó a reemplazar una parte importante del factoring por financiamiento más flexible y más barato.",
     name: "Felipe Cordova",
     company: "HOREK",
     sector: "Distribución alimentaria B2B",
@@ -174,12 +168,12 @@ const documents = [
     status: "Acceso privado",
   },
   {
-    title: "Resumen de la ronda",
+    title: "Resumen ejecutivo de la ronda",
     availability: "Disponible por solicitud.",
     status: "Por solicitud",
   },
   {
-    title: "Uso de fondos",
+    title: "Detalle ampliado de uso de fondos",
     availability: "Disponible para revisión.",
     status: "Disponible",
   },
@@ -194,12 +188,12 @@ const faqItems = [
   {
     question: "¿Cómo se accede a la ronda?",
     answer:
-      "El acceso es privado y por invitación. La secuencia es conversación inicial, revisión de tesis y materiales, y luego acceso a la documentación que corresponda.",
+      "El acceso es privado y por invitación. La secuencia es simple: conversación inicial, resolución de dudas y firma del SAFE para quienes decidan avanzar.",
   },
   {
     question: "¿Qué instrumento se está usando?",
     answer:
-      "La ronda está estructurada vía SAFE, con un tramo inicial de US$50.000 a US$1M de valorización y un segundo tramo opcional que eleva el total hasta US$100.000.",
+      "La ronda se estructura vía SAFE (Simple Agreement for Future Equity), un instrumento usado en etapas tempranas para invertir hoy y convertir en equity en una ronda futura bajo términos predefinidos. El tramo inicial considera US$50.000 a US$1M de valorización, con posibilidad de ampliar la ronda en una etapa siguiente.",
   },
   {
     question: "¿Qué debe validar el tramo 1?",
@@ -209,7 +203,7 @@ const faqItems = [
   {
     question: "¿De dónde esperamos los primeros ingresos?",
     answer:
-      "Primero desde servicios de alto contacto, advisory y validación comercial. Luego con más recurrencia vía crédito respaldado en Bitcoin, suscripción pyme y volumen transaccional.",
+      "Primero desde servicios de alto contacto, advisory, validación comercial y suscripción pyme. Después, con mayor recurrencia vía crédito respaldado en Bitcoin y volumen transaccional.",
   },
 ] as const;
 
@@ -413,8 +407,8 @@ export default function FriendsAndFamilyPage() {
                 </h1>
 
                 <p className="mt-5 max-w-xl text-base leading-7 text-neutral-200 sm:text-lg">
-                  Infraestructura sobre Bitcoin para ahorro, tesorería y liquidez, con una lógica
-                  más simple, más flexible y más alineada con el largo plazo.
+                  Infraestructura sobre Bitcoin para ahorro, tesorería y crédito respaldado, con
+                  una lógica más simple, más flexible y más alineada con el largo plazo.
                 </p>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -432,19 +426,18 @@ export default function FriendsAndFamilyPage() {
                   >
                     Agendar conversación
                   </a>
-                </div>
-
-                <p className="mt-4 text-sm leading-6 text-neutral-300">
-                  Ronda privada por invitación vía SAFE. También disponible por{" "}
                   <a
                     href={WHATSAPP_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#F9B662] underline decoration-[#F7931A]/40 underline-offset-4 hover:text-[#FFD29E]"
+                    className="k21-btn-secondary border-[#F7931A]/20 bg-[#F7931A]/10 px-5 py-3 text-[#FFD29E] hover:bg-[#F7931A]/14"
                   >
                     WhatsApp
                   </a>
-                  .
+                </div>
+
+                <p className="mt-4 text-sm leading-6 text-neutral-300">
+                  Acceso por invitación vía SAFE. También disponible por WhatsApp.
                 </p>
               </div>
 
@@ -470,8 +463,8 @@ export default function FriendsAndFamilyPage() {
 
               <p className="mt-6 max-w-2xl text-sm leading-7 text-neutral-200 sm:text-base">
                 Bitcoin ya entró en la conversación financiera seria. La oportunidad no está solo
-                en comprar y vender, sino en ordenar mejor el tramo donde ahorro, tesorería y
-                liquidez todavía siguen desconectados entre sí.
+                en comprar y vender, sino en conectar mejor ahorro, tesorería y liquidez dentro de
+                una misma lógica financiera.
               </p>
             </div>
 
@@ -479,7 +472,11 @@ export default function FriendsAndFamilyPage() {
               {opportunityThemes.map((item) => (
                 <div key={item.title} className="border-t border-white/12 pt-5">
                   <h3 className="text-lg font-semibold tracking-tight text-white">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-neutral-200">{item.body}</p>
+                  <p className="mt-3 text-sm leading-7 text-neutral-200">
+                    {item.title === "Un espacio mal resuelto"
+                      ? "Entre la compra simple de Bitcoin, la deuda tradicional y la asesoría financiera de alto contacto, existe un espacio poco resuelto para personas y empresas que necesitan ahorrar mejor, ordenar caja y acceder a crédito con más flexibilidad."
+                      : item.body}
+                  </p>
                 </div>
               ))}
             </div>
@@ -515,13 +512,12 @@ export default function FriendsAndFamilyPage() {
                 <SectionIntro
                   eyebrow="Simulador"
                   title="Escenario simple de participación."
-                  description="Una referencia rápida para entender qué significa entrar en esta etapa, sin convertirlo en una calculadora compleja ni en una promesa de retorno."
+                  description="Una referencia rápida para entender qué representa entrar en esta etapa: monto, participación estimada y peso relativo dentro del tramo inicial."
                 />
 
                 <p className="mt-6 max-w-xl text-sm leading-7 text-neutral-200">
-                  Esta lectura usa el cap base de referencia del tramo 1 para dar una intuición
-                  simple sobre monto, etapa y exposición inicial. El objetivo es hacer legible la
-                  ronda, no modelar el instrumento completo.
+                  El objetivo es hacer legible la ronda y dar una intuición clara de entrada,
+                  usando como referencia el cap base del tramo 1.
                 </p>
               </div>
 
@@ -538,7 +534,7 @@ export default function FriendsAndFamilyPage() {
               <SectionIntro
                 eyebrow="Mercado"
                 title="Tres capas de oportunidad."
-                description="La tesis de mercado de Kapa21 no depende de una sola audiencia. Hay personas, pymes y empresas con dolores distintos, pero relacionados entre ahorro, caja y acceso a liquidez."
+                description="La oportunidad de Kapa21 se organiza en tres capas de mercado: personas, pymes y empresas que necesitan ahorrar mejor, ordenar caja y acceder a liquidez con más flexibilidad."
               />
 
               <div className="mt-8">
@@ -565,8 +561,8 @@ export default function FriendsAndFamilyPage() {
                 Un modelo que parte por alto contacto y luego gana recurrencia.
               </h3>
               <p className="mt-3 max-w-xl text-sm leading-7 text-neutral-200">
-                La captura de valor empieza por relaciones de alto contexto y luego gana volumen,
-                frecuencia y profundidad de producto.
+                El modelo parte por relaciones de alto contacto y evoluciona hacia mayor
+                recurrencia, volumen y profundidad de producto.
               </p>
 
               <div className="mt-7 divide-y divide-white/12 border-y border-white/12">
@@ -662,31 +658,39 @@ export default function FriendsAndFamilyPage() {
                 className="object-cover object-[center_18%]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10" />
-              <div className="absolute bottom-4 left-4 text-[11px] uppercase tracking-[0.22em] text-white/75">
-                Founder portrait
-              </div>
             </div>
 
             <div>
               <SectionIntro
-                eyebrow="Founder y visión"
-                title="Founder-led, Bitcoin-first."
-                description="La visión es construir una infraestructura financiera que use Bitcoin de forma práctica para ahorro, tesorería y liquidez."
+                eyebrow="Visión del founder"
+                title="De promesas a tesoro."
+                description="Kapa21 nace de una convicción concreta: que Bitcoin sirve para rediseñar cómo personas y empresas ahorran, protegen caja y toman decisiones financieras con mayor libertad."
               />
 
               <p className="mt-6 max-w-2xl text-sm leading-7 text-neutral-200 sm:text-base">
-                La tesis del founder es que Bitcoin puede reordenar cómo personas y empresas
-                ahorran, protegen caja y acceden a liquidez sin quedar atrapadas entre productos
-                genéricos, deuda rígida o asesoría desconectada de la operación diaria.
+                La visión es pasar de un mundo financiero basado en promesas a uno basado en
+                tesoro: reserva, caja y crédito construidos sobre Bitcoin para personas, pymes y
+                empresas que necesitan herramientas más simples, más útiles y más alineadas con el
+                largo plazo.
               </p>
 
               <div className="mt-8 grid gap-8 md:grid-cols-[1fr_220px] md:items-start">
                 <div className="space-y-4">
-                  {founderLoop.map((item) => (
-                    <div key={item} className="border-l border-white/12 pl-4 text-sm leading-7 text-neutral-200">
-                      {item}
-                    </div>
-                  ))}
+                  <div className="border-l border-white/12 pl-4 text-sm leading-7 text-neutral-200">
+                    Kapa21 busca construir productos y servicios sobre Bitcoin para ahorro,
+                    tesorería y crédito respaldado, con una arquitectura que una software,
+                    acompañamiento y criterio financiero en una sola capa.
+                  </div>
+                  <div className="border-l border-white/12 pl-4 text-sm leading-7 text-neutral-200">
+                    El libro funciona como una expresión de esa tesis: una forma de ordenar el
+                    marco intelectual de Kapa21 y traducirlo a producto, servicio y conversación
+                    comercial.
+                  </div>
+                  <div className="border-l border-white/12 pl-4 text-sm leading-7 text-neutral-200">
+                    Desde ahí, el rol del founder no es solo operar la ronda, sino articular una
+                    visión amplia sobre cómo Bitcoin puede convertirse en infraestructura financiera
+                    cotidiana.
+                  </div>
                 </div>
 
                 <div className="rounded-[1.75rem] border border-white/12 bg-white/[0.035] p-3">
@@ -699,8 +703,9 @@ export default function FriendsAndFamilyPage() {
                       className="object-contain p-3"
                     />
                   </div>
-                  <div className="mt-3 text-[11px] uppercase tracking-[0.22em] text-neutral-400">
-                    Book cover
+                  <div className="mt-3 text-sm leading-6 text-neutral-300">
+                    <span className="font-medium text-white">De promesas a tesoro</span> ordena la
+                    tesis que luego se traduce en producto, servicios y construcción de marca.
                   </div>
                 </div>
               </div>

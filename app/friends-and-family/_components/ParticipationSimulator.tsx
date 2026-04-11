@@ -8,14 +8,21 @@ const DEFAULT_INVESTMENT = 5000;
 const STEP = 1000;
 const CAP_BASE = 1_000_000;
 const TRAMO_1_SIZE = 50_000;
+const TRAMO_2_BASE = 1_500_000;
 const TRAMO_2_CAP = 2_000_000;
 const PRESET_AMOUNTS = [3000, 5000, 10000, 25000] as const;
 
-const formatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
+const amountFormatter = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 0,
 });
+
+function formatUsd(value: number) {
+  return `US$${amountFormatter.format(value)}`;
+}
+
+function formatPercent(value: number, decimals = 2) {
+  return `${value.toFixed(decimals).replace(".", ",")}%`;
+}
 
 export function ParticipationSimulator() {
   const [investment, setInvestment] = useState(DEFAULT_INVESTMENT);
@@ -23,6 +30,7 @@ export function ParticipationSimulator() {
   const progress = ((investment - MIN_INVESTMENT) / (MAX_INVESTMENT - MIN_INVESTMENT)) * 100;
   const capBaseParticipation = (investment / CAP_BASE) * 100;
   const tramoOneShare = (investment / TRAMO_1_SIZE) * 100;
+  const tramoTwoBaseShare = (investment / TRAMO_2_BASE) * 100;
   const tramoTwoEquivalent = (investment / TRAMO_2_CAP) * 100;
 
   return (
@@ -35,7 +43,7 @@ export function ParticipationSimulator() {
             Monto seleccionado
           </div>
           <div className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-[2.8rem]">
-            {formatter.format(investment)}
+            {formatUsd(investment)}
           </div>
         </div>
         <div className="space-y-2 text-right">
@@ -43,18 +51,18 @@ export function ParticipationSimulator() {
             Participación estimada
           </div>
           <div className="text-3xl font-semibold tracking-tight text-white">
-            {capBaseParticipation.toFixed(2)}%
+            {formatPercent(capBaseParticipation)}
           </div>
         </div>
       </div>
 
       <div className="relative mt-8">
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-neutral-400">
-          <span>{formatter.format(MIN_INVESTMENT)}</span>
+          <span>{formatUsd(MIN_INVESTMENT)}</span>
           <div className="rounded-full border border-white/12 bg-white/[0.04] px-3 py-1.5 text-[11px] text-neutral-200">
-            Ticket visible desde {formatter.format(MIN_INVESTMENT)}
+            Ticket visible desde {formatUsd(MIN_INVESTMENT)}
           </div>
-          <span>{formatter.format(MAX_INVESTMENT)}</span>
+          <span>{formatUsd(MAX_INVESTMENT)}</span>
         </div>
 
         <div className="relative mt-4">
@@ -90,7 +98,7 @@ export function ParticipationSimulator() {
                     : "border-white/12 bg-white/[0.03] text-neutral-300 hover:bg-white/[0.07] hover:text-white"
                 }`}
               >
-                {formatter.format(amount)}
+                {formatUsd(amount)}
               </button>
             );
           })}
@@ -102,56 +110,57 @@ export function ParticipationSimulator() {
           <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">
             Cap base de referencia
           </div>
-          <div className="mt-2 text-xl font-semibold text-white">{formatter.format(CAP_BASE)}</div>
+          <div className="mt-2 text-xl font-semibold text-white">{formatUsd(CAP_BASE)}</div>
         </div>
         <div className="rounded-2xl border border-[#F7931A]/18 bg-[#F7931A]/8 p-4">
           <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">
             Participación estimada
           </div>
           <div className="mt-2 text-xl font-semibold text-white">
-            {capBaseParticipation.toFixed(2)}%
+            {formatPercent(capBaseParticipation)}
           </div>
         </div>
         <div className="rounded-2xl border border-white/12 bg-white/[0.05] p-4">
           <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">
             Porción del tramo 1
           </div>
-          <div className="mt-2 text-xl font-semibold text-white">{tramoOneShare.toFixed(1)}%</div>
+          <div className="mt-2 text-xl font-semibold text-white">{formatPercent(tramoOneShare, 1)}</div>
         </div>
         <div className="rounded-2xl border border-white/12 bg-white/[0.05] p-4">
           <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">
             Referencia tramo 2
           </div>
-          <div className="mt-2 text-xl font-semibold text-white">
-            {tramoTwoEquivalent.toFixed(2)}% a US$2M
+          <div className="mt-2 space-y-1 text-sm leading-6 text-white">
+            <div className="font-semibold">{formatPercent(tramoTwoBaseShare)} a US$1,5M</div>
+            <div className="font-semibold">{formatPercent(tramoTwoEquivalent)} a US$2M</div>
           </div>
         </div>
       </div>
 
       <p className="relative mt-6 text-sm leading-7 text-neutral-100">
-        Con {formatter.format(investment)}, tu exposición inicial en esta etapa representa
-        aproximadamente <span className="font-semibold text-white">{capBaseParticipation.toFixed(2)}%</span>{" "}
+        Con {formatUsd(investment)}, tu exposición inicial en esta etapa representa
+        aproximadamente <span className="font-semibold text-white">{formatPercent(capBaseParticipation)}</span>{" "}
         del cap base de referencia y{" "}
-        <span className="font-semibold text-white">{tramoOneShare.toFixed(1)}%</span> del tramo 1
-        de US$50.000.
+        <span className="font-semibold text-white">{formatPercent(tramoOneShare, 1)}</span> del
+        tramo 1 de US$50.000.
       </p>
 
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="text-sm font-semibold text-white">Acceso temprano</div>
           <p className="mt-2 text-sm leading-6 text-neutral-200">
             Entrada en una fase de instalación de estructura, oferta y ejecución comercial.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="text-sm font-semibold text-white">Validación del tramo 1</div>
           <p className="mt-2 text-sm leading-6 text-neutral-200">
             El foco del capital es dejar lista la base societaria, regulatoria, operativa y de
             activación inicial.
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <div className="text-sm font-semibold text-white">Referencia de etapa siguiente</div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="text-sm font-semibold text-white">Lectura del tramo 2</div>
           <p className="mt-2 text-sm leading-6 text-neutral-200">
             Si se abre el tramo 2 a US$2M, cambia la referencia de entrada. Eso no implica retorno
             ni resultado asegurado.
