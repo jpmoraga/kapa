@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { LandingFooter } from "@/components/landing/LandingFooter";
-import { LandingHeader } from "@/components/landing/LandingHeader";
+import Link from "next/link";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.kapa21.cl";
 const CONTACT_EMAIL =
@@ -13,62 +12,59 @@ const CALENDLY_URL = "https://calendly.com/contacto-kapa21/30min";
 const WHATSAPP_URL =
   "https://wa.me/56971381604?text=Hola%2C%20quiero%20conocer%20la%20oportunidad%20Friends%20%26%20Family%20de%20Kapa21.";
 const PAGE_BACKGROUND =
-  "min-h-screen text-neutral-100 bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(247,147,26,0.14),transparent_45%),radial-gradient(900px_circle_at_80%_20%,rgba(255,255,255,0.08),transparent_42%),linear-gradient(to_bottom,rgba(11,12,15,1),rgba(5,5,7,1))]";
+  "min-h-screen overflow-x-clip bg-[radial-gradient(circle_at_top_right,rgba(247,147,26,0.16),transparent_24%),radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_20%),linear-gradient(to_bottom,rgba(11,12,15,1),rgba(7,8,11,1))] text-neutral-100";
 const KAPA21_CORE_STATEMENT =
   "Kapa21 construye infraestructura financiera sobre Bitcoin para personas, pymes y empresas que quieren ahorrar mejor, ordenar su tesorería y acceder a liquidez con una lógica más simple, más flexible, más sólida y más alineada con el largo plazo.";
 
-const roundSummary: Array<{
-  label: string;
-  value: string;
-  hint?: string;
-}> = [
-  {
-    label: "Tramo 1",
-    value: "US$50.000",
-    hint: "Capital de arranque para dejar montada la base operativa, comercial y societaria.",
-  },
-  {
-    label: "Tramo 2 opcional",
-    value: "Hasta US$100.000 total",
-    hint: "Capital adicional para profundizar distribución, producto y tracción si el tramo inicial se completa.",
-  },
-  {
-    label: "Valorización tramo 1",
-    value: "US$1M",
-    hint: "Entrada temprana para una fase de construcción y validación comercial.",
-  },
-  {
-    label: "Valorización tramo 2",
-    value: "US$2M",
-    hint: "Escalón siguiente una vez instalada la base de ejecución.",
-  },
-  {
-    label: "Ticket visible",
-    value: "Desde US$3.000",
-    hint: "Umbral comercial para una ronda Friends & Family por invitación.",
-  },
-  {
-    label: "Instrumento",
-    value: "SAFE",
-    hint: "Estructura simple para una ronda privada de etapa temprana.",
-  },
-];
+const navItems = [
+  { href: "#oportunidad", label: "Oportunidad" },
+  { href: "#inversion", label: "Inversión" },
+  { href: "#mercado", label: "Mercado" },
+  { href: "#founder", label: "Founder" },
+  { href: "#faq", label: "FAQ" },
+] as const;
 
-const valuePillars = [
+const roundHighlights = [
+  { label: "Tramo 1", value: "US$50.000" },
+  { label: "Tramo 2 opcional", value: "Hasta US$100.000" },
+  { label: "Valorización tramo 1", value: "US$1M" },
+  { label: "Valorización tramo 2", value: "US$2M" },
+  { label: "Ticket visible", value: "Desde US$3.000" },
+  { label: "Instrumento", value: "SAFE" },
+] as const;
+
+const opportunityThemes = [
   {
-    title: "Ahorro con estructura",
+    title: "Bitcoin como infraestructura financiera",
     body:
-      "Bitcoin como tecnología de ahorro de largo plazo, con una experiencia simple de compra, venta y lectura de posición.",
+      "El punto de partida es simple: usar Bitcoin para ahorro, tesorería y liquidez con una lógica financiera concreta, no como un producto aislado.",
   },
   {
-    title: "Tesorería sobre Bitcoin",
+    title: "Un espacio mal resuelto",
     body:
-      "Una capa para ordenar caja, reservas y exposición con lógica financiera y una lectura más clara del balance.",
+      "Entre exchange, deuda rígida y advisory tradicional hay una franja amplia de necesidad práctica que hoy sigue fragmentada y mal servida.",
   },
   {
-    title: "Liquidez con colateral BTC",
+    title: "Una capa más flexible y útil",
     body:
-      "Acceso a crédito respaldado en Bitcoin para quienes necesitan flexibilidad sin desarmar una posición de ahorro o reserva.",
+      "La oportunidad es construir una capa que combine software, acompañamiento y estructura para tomar mejores decisiones de caja y patrimonio.",
+  },
+] as const;
+
+const investmentSteps = [
+  {
+    title: "Acceso privado",
+    body: "La ronda Friends & Family se abre por invitación y conversación directa con el founder.",
+  },
+  {
+    title: "SAFE y términos base",
+    body:
+      "El tramo inicial se estructura vía SAFE, con una lógica simple para una etapa temprana y una valorización inicial de US$1M.",
+  },
+  {
+    title: "Capital para ejecución",
+    body:
+      "El uso del tramo 1 está diseñado para estructura, regulación, despliegue operativo y activación comercial.",
   },
 ] as const;
 
@@ -76,61 +72,42 @@ const segments = [
   {
     title: "Personas",
     body:
-      "Kapa21 propone Bitcoin como tecnología de ahorro para personas, con una experiencia simple de compra y venta, y también con acceso a crédito respaldado en Bitcoin.",
+      "Ahorro sobre Bitcoin con experiencia simple de compra y venta, más acceso a liquidez respaldada en BTC cuando la situación lo pide.",
   },
   {
     title: "Pymes y microempresas",
     body:
-      "Kapa21 ayuda a usar Bitcoin como herramienta de tesorería y colateral, con una capa de asesoría liviana por suscripción.",
+      "Tesorería y colateral con una capa de asesoría liviana por suscripción para caja, reservas y acceso a crédito.",
   },
   {
-    title: "Grandes empresas y alto patrimonio",
+    title: "Empresas y alto patrimonio",
     body:
-      "Kapa21 opera como capa de alto contacto: charlas, formación ejecutiva, diagnósticos de balance, acompañamiento estratégico y agente OTC.",
+      "Un frente de alto contacto para formación ejecutiva, diagnósticos estratégicos, acompañamiento y flujo OTC.",
   },
 ] as const;
 
 const revenueStreams = [
   {
     title: "Compra y venta para personas",
-    body: "Margen transaccional sobre una experiencia simple de compra, venta y lectura de posición.",
+    body: "Margen transaccional sobre una experiencia simple y legible para ahorro y toma de posición.",
   },
   {
-    title: "Liquidez respaldada en Bitcoin",
-    body: "Originación, estructuración y administración de crédito con colateral BTC.",
+    title: "Crédito respaldado en Bitcoin",
+    body: "Originación y estructuración de liquidez con colateral BTC para clientes con necesidades reales de caja.",
   },
   {
-    title: "Suscripción de tesorería para pymes",
-    body: "Acompañamiento recurrente para usar Bitcoin como herramienta de caja, reserva y colateral.",
+    title: "Suscripción pyme",
+    body: "Acompañamiento recurrente para tesorería, reservas y uso disciplinado de Bitcoin como herramienta financiera.",
   },
   {
-    title: "Servicios de alto contacto",
-    body:
-      "Charlas, formación ejecutiva, diagnósticos estratégicos y acompañamiento OTC para empresas y patrimonios.",
+    title: "Enterprise, OTC y advisory",
+    body: "Servicios de alto contacto que abren relación, validan demanda y capturan tickets más altos desde etapas tempranas.",
   },
 ] as const;
 
-const differentiators = [
-  {
-    title: "Producto con criterio financiero",
-    body:
-      "Kapa21 traduce Bitcoin a decisiones de ahorro, tesorería y liquidez que hacen sentido para personas y empresas reales.",
-  },
-  {
-    title: "Tesis del founder convertida en infraestructura",
-    body:
-      "La visión del founder se expresa en producto, procesos, software y conversación comercial con una sola lógica.",
-  },
-  {
-    title: "Modelo multisegmento",
-    body:
-      "La misma infraestructura sirve a personas, pymes y empresas, con niveles distintos de ticket, contacto y profundidad.",
-  },
-  {
-    title: "Simplicidad, flexibilidad y solidez",
-    body:
-      "La propuesta combina interfaz, acompañamiento y estructura para que Bitcoin funcione como herramienta financiera útil.",
-  },
+const revenueSequence = [
+  "Primero ingresos de alto contacto, formación y validación comercial con clientes que ya tienen problemas reales de caja y financiamiento.",
+  "Luego más recurrencia y volumen vía crédito respaldado en Bitcoin, suscripción pyme y mayor profundidad transaccional.",
 ] as const;
 
 const fundUse = [
@@ -167,9 +144,9 @@ const fundUse = [
 ] as const;
 
 const founderLoop = [
-  "La tesis, el producto y la conversación comercial avanzan en una misma línea de decisión.",
-  "El founder participa directamente en fundraising, alianzas, ventas y articulación de marca.",
-  "El aprendizaje de mercado vuelve rápido a oferta, software, pricing y posicionamiento.",
+  "La tesis, el producto y la conversación comercial avanzan en una sola línea de decisión.",
+  "El founder participa directamente en fundraising, alianzas, ventas y definición de oferta.",
+  "El aprendizaje de mercado vuelve rápido a pricing, software, posicionamiento y ejecución comercial.",
 ] as const;
 
 const validationCases = [
@@ -189,37 +166,49 @@ const validationCases = [
   },
 ] as const;
 
-// Wire final round materials here when document links or attachments are ready to share.
 const documents = [
   {
     title: "SAFE",
-    body: "Instrumento de la ronda Friends & Family con valorización por tramo y lógica de acceso.",
-    status: "Acceso privado",
     availability: "Se comparte en conversación.",
+    status: "Acceso privado",
   },
   {
     title: "Resumen de la ronda",
-    body: "Síntesis de tesis, estructura del levantamiento, uso previsto del capital y secuencia de ejecución.",
-    status: "Disponible por solicitud",
-    availability: "Se comparte en conversación.",
+    availability: "Disponible por solicitud.",
+    status: "Por solicitud",
   },
   {
     title: "Uso de fondos",
-    body: "Desglose del tramo 1, prioridades operativas y foco de despliegue en producto, estructura y demanda.",
-    status: "Disponible para revisión",
-    availability: "Acceso por solicitud.",
+    availability: "Disponible para revisión.",
+    status: "Disponible",
   },
   {
     title: "Preguntas frecuentes",
-    body: "Respuestas breves sobre estructura, timing, foco comercial, validación inicial y siguientes hitos.",
-    status: "Disponible por solicitud",
     availability: "Se comparte en conversación.",
+    status: "Por solicitud",
+  },
+] as const;
+
+const faqItems = [
+  {
+    question: "¿Cómo se accede a la ronda?",
+    answer:
+      "El acceso es privado y por invitación. La secuencia es conversación inicial, revisión de tesis y materiales, y luego acceso a la documentación que corresponda.",
   },
   {
-    title: "Conversación directa con founder",
-    body: "Espacio para revisar tesis, oportunidad, clientes tempranos, ejecución y encaje de la ronda.",
-    status: "Agenda abierta",
-    availability: "Coordinación directa.",
+    question: "¿Qué instrumento se está usando?",
+    answer:
+      "La ronda está estructurada vía SAFE, con un tramo inicial de US$50.000 a US$1M de valorización y un segundo tramo opcional que eleva el total hasta US$100.000.",
+  },
+  {
+    question: "¿Qué debe validar el tramo 1?",
+    answer:
+      "El objetivo es instalar base societaria y regulatoria, dejar operativo el software, activar demanda y ordenar la primera capa comercial de Kapa21.",
+  },
+  {
+    question: "¿De dónde esperamos los primeros ingresos?",
+    answer:
+      "Primero desde servicios de alto contacto, advisory y validación comercial. Luego con más recurrencia vía crédito respaldado en Bitcoin, suscripción pyme y volumen transaccional.",
   },
 ] as const;
 
@@ -241,7 +230,7 @@ export const metadata: Metadata = {
   },
 };
 
-function SectionHeader({
+function SectionIntro({
   eyebrow,
   title,
   description,
@@ -251,37 +240,90 @@ function SectionHeader({
   description?: string;
 }) {
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-2xl">
       <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">{eyebrow}</div>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
+      <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
         {title}
       </h2>
-      {description && <p className="mt-3 text-sm leading-7 text-neutral-200">{description}</p>}
+      {description && <p className="mt-4 text-sm leading-7 text-neutral-200">{description}</p>}
     </div>
   );
 }
 
-function SummaryStat({
-  label,
-  value,
-  hint,
-  className = "",
+function InvestorHeader() {
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(8,10,14,0.72)] backdrop-blur-xl">
+      <div className="mx-auto max-w-6xl px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/brand/k21-lockup-white.svg"
+              alt="Kapa21"
+              width={420}
+              height={120}
+              priority
+              className="h-12 w-auto sm:h-14"
+            />
+          </Link>
+
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="k21-btn-secondary border-white/12 bg-white/[0.04] px-4 py-2.5 text-neutral-100 hover:bg-white/[0.08]"
+          >
+            WhatsApp
+          </a>
+        </div>
+
+        <nav className="mt-4 overflow-x-auto" aria-label="Navegación de investor page">
+          <div className="flex min-w-max gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1.5">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="rounded-full px-4 py-2 text-sm text-neutral-200 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function HeroStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-4 py-3 backdrop-blur-sm">
+      <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">{label}</div>
+      <div className="mt-2 text-base font-semibold tracking-tight text-white">{value}</div>
+    </div>
+  );
+}
+
+function StepItem({
+  step,
+  title,
+  body,
 }: {
-  label: string;
-  value: string;
-  hint?: string;
-  className?: string;
+  step: string;
+  title: string;
+  body: string;
 }) {
   return (
-    <div className={`border-t border-white/12 pt-3 ${className}`}>
-      <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">{label}</div>
-      <div className="mt-2 text-lg font-semibold tracking-tight text-white">{value}</div>
-      {hint && <p className="mt-2 text-sm leading-6 text-neutral-300">{hint}</p>}
-    </div>
+    <li className="border-t border-white/12 pt-5">
+      <div className="inline-flex rounded-full border border-[#F7931A]/25 bg-[#F7931A]/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[#F9B662]">
+        {step}
+      </div>
+      <h3 className="mt-4 text-lg font-semibold tracking-tight text-white">{title}</h3>
+      <p className="mt-3 text-sm leading-7 text-neutral-200">{body}</p>
+    </li>
   );
 }
 
-function ValidationCaseCard({
+function ValidationQuote({
   quote,
   name,
   company,
@@ -293,20 +335,20 @@ function ValidationCaseCard({
   sector: string;
 }) {
   return (
-    <article className="rounded-2xl border border-white/12 bg-white/[0.04] p-5 shadow-[0_16px_42px_rgba(0,0,0,0.18)]">
-      <div className="text-2xl leading-none text-[#F7931A]">“</div>
-      <p className="mt-3 text-sm leading-7 text-neutral-100">{quote}</p>
-      <div className="mt-5 border-t border-white/12 pt-4">
-        <div className="text-sm font-semibold text-white">{name}</div>
-        <div className="mt-1 text-sm text-neutral-300">
-          {company} · {sector}
-        </div>
-      </div>
-    </article>
+    <blockquote className="border-l border-white/12 pl-5">
+      <p className="text-sm leading-7 text-neutral-100">{quote}</p>
+      <footer className="mt-4 text-sm text-neutral-300">
+        <span className="font-semibold text-white">{name}</span>
+        <span> · </span>
+        <span>{company}</span>
+        <span> · </span>
+        <span>{sector}</span>
+      </footer>
+    </blockquote>
   );
 }
 
-function FundUseRow({
+function FundUseLine({
   amount,
   label,
   share,
@@ -316,283 +358,141 @@ function FundUseRow({
   share: number;
 }) {
   return (
-    <div className="rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-base font-semibold text-white">{amount}</div>
-        <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">{share}%</div>
+    <div className="grid gap-2 border-b border-white/12 px-5 py-4 last:border-b-0 md:grid-cols-[140px_1fr_56px] md:items-start md:gap-4">
+      <div className="text-base font-semibold text-white">{amount}</div>
+      <div className="text-sm leading-6 text-neutral-200">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400 md:text-right">
+        {share}%
       </div>
-      <p className="mt-2 text-sm leading-6 text-neutral-200">{label}</p>
     </div>
   );
 }
 
-function DocumentRow({
+function FaqItem({
+  question,
+  answer,
+}: {
+  question: string;
+  answer: string;
+}) {
+  return (
+    <details className="group border-b border-white/12 last:border-b-0">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium text-white">
+        <span>{question}</span>
+        <span className="text-neutral-500 transition group-open:rotate-45">+</span>
+      </summary>
+      <div className="px-5 pb-5 text-sm leading-7 text-neutral-200">{answer}</div>
+    </details>
+  );
+}
+
+function DocumentLine({
   title,
-  body,
-  status,
   availability,
+  status,
 }: {
   title: string;
-  body: string;
-  status: string;
   availability: string;
+  status: string;
 }) {
-  const statusClassName =
-    status === "Agenda abierta"
-      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-100"
-      : status === "Acceso privado"
-        ? "border-[#F7931A]/25 bg-[#F7931A]/10 text-[#FFD29E]"
-        : "border-white/12 bg-white/[0.04] text-neutral-200";
-
   return (
-    <div className="flex flex-col gap-3 border-b border-white/12 px-4 py-4 last:border-b-0 sm:flex-row sm:items-start sm:justify-between">
+    <div className="flex items-start justify-between gap-4 border-b border-white/12 px-5 py-4 last:border-b-0">
       <div className="min-w-0">
         <div className="text-sm font-semibold text-white">{title}</div>
-        <p className="mt-1 text-sm leading-6 text-neutral-200">{body}</p>
-        <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-neutral-400">
-          {availability}
-        </div>
+        <div className="mt-1 text-sm text-neutral-300">{availability}</div>
       </div>
-      <div
-        className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] ${statusClassName}`}
-      >
+      <div className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-neutral-400">
         {status}
       </div>
     </div>
   );
 }
 
-function AssetImageCard({
-  label,
-  src,
-  alt,
-  imageClassName,
-  className,
-}: {
-  label: string;
-  src: string;
-  alt: string;
-  imageClassName?: string;
-  className: string;
-}) {
+function InvestorFooter() {
   return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border border-white/12 bg-white/[0.035] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ${className}`}
-    >
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="(min-width: 1024px) 18vw, (min-width: 640px) 40vw, 100vw"
-        className={imageClassName || "object-cover"}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" />
-      <div className="absolute bottom-3 left-3 text-[10px] uppercase tracking-[0.24em] text-white/70">
-        {label}
+    <footer className="mt-16 border-t border-white/10 py-6 text-xs text-neutral-500">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>© {new Date().getFullYear()} Kapa21</div>
+        <div>Contacto: {CONTACT_EMAIL}</div>
       </div>
-    </div>
+    </footer>
   );
 }
 
 export default function FriendsAndFamilyPage() {
   return (
-    <main className={PAGE_BACKGROUND}>
-      <LandingHeader />
+    <main className={`${PAGE_BACKGROUND} relative`}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_15%_15%,rgba(247,147,26,0.18),transparent_30%),radial-gradient(circle_at_85%_10%,rgba(255,255,255,0.12),transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-[40rem] h-[70rem] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04),transparent_34%)]" />
 
-      <div className="mx-auto max-w-6xl px-6 pb-14">
-        <section className="scroll-mt-28 pb-8 pt-4" id="oportunidad">
-          <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="inline-flex rounded-full border border-[#F7931A]/25 bg-[#F7931A]/12 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-[#F9B662]">
-                  Friends &amp; Family
-                </div>
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+      <InvestorHeader />
+
+      <div className="relative mx-auto max-w-6xl px-6 pb-20">
+        <section className="pt-6">
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/12 bg-[#0b0d11] shadow-[0_28px_90px_rgba(0,0,0,0.28)]">
+            <div className="absolute inset-0">
+              <Image
+                src="/friends-and-family/founder.png"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-[72%_18%] opacity-40 grayscale"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,10,13,0.96)_0%,rgba(9,10,13,0.9)_34%,rgba(9,10,13,0.62)_62%,rgba(9,10,13,0.84)_100%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(247,147,26,0.22),transparent_26%),linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_28%,rgba(0,0,0,0.28)_100%)]" />
+            </div>
+
+            <div className="relative px-6 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14">
+              <div className="max-w-2xl">
+                <div className="inline-flex rounded-full border border-[#F7931A]/25 bg-[#F7931A]/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[#F9B662]">
                   Ronda privada Kapa21
                 </div>
-              </div>
 
-              <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-[2.9rem]">
-                La ronda privada para construir Kapa21.
-              </h1>
+                <h1 className="mt-5 max-w-2xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.7rem]">
+                  Invertir en la base financiera de Kapa21.
+                </h1>
 
-              <p className="mt-4 max-w-2xl text-base leading-7 text-neutral-200">
-                Infraestructura financiera sobre Bitcoin para ahorro, tesorería y liquidez.
-              </p>
+                <p className="mt-5 max-w-xl text-base leading-7 text-neutral-200 sm:text-lg">
+                  Infraestructura sobre Bitcoin para ahorro, tesorería y liquidez, con una lógica
+                  más simple, más flexible y más alineada con el largo plazo.
+                </p>
 
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <a
-                  href={MAILTO_URL}
-                  className="k21-btn-primary px-5 py-3 shadow-[0_14px_34px_rgba(247,147,26,0.22)]"
-                >
-                  Solicitar acceso
-                </a>
-                <a
-                  href={CALENDLY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="k21-btn-secondary px-5 py-3"
-                >
-                  Agendar conversación
-                </a>
-                <a
-                  href={WHATSAPP_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="k21-btn-secondary border-white/12 bg-white/[0.04] px-5 py-3 text-neutral-100 hover:bg-white/[0.08]"
-                >
-                  WhatsApp
-                </a>
-              </div>
-
-              <p className="mt-4 text-sm leading-6 text-neutral-300">
-                SAFE · Desde US$3.000 · Por invitación
-              </p>
-            </div>
-
-            <aside className="k21-card border-white/12 bg-white/[0.04] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.24)] sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
-                    Resumen de ronda
-                  </div>
-                  <div className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                    US$50.000
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-neutral-200">
-                    Tramo inicial para instalar la base operativa, comercial y societaria.
-                  </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <a
+                    href={MAILTO_URL}
+                    className="k21-btn-primary px-5 py-3 shadow-[0_16px_38px_rgba(247,147,26,0.25)]"
+                  >
+                    Solicitar acceso
+                  </a>
+                  <a
+                    href={CALENDLY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="k21-btn-secondary border-white/12 bg-white/[0.04] px-5 py-3 text-neutral-100 hover:bg-white/[0.08]"
+                  >
+                    Agendar conversación
+                  </a>
                 </div>
-                <div className="rounded-2xl border border-white/12 bg-white/[0.05] p-3">
-                  <Image
-                    src="/logo/kapa21-symbol.svg"
-                    alt="Símbolo Kapa21"
-                    width={36}
-                    height={36}
-                    className="h-9 w-9"
-                  />
-                </div>
-              </div>
 
-              <div className="mt-5 grid gap-x-5 gap-y-1 sm:grid-cols-2">
-                <SummaryStat label={roundSummary[1].label} value={roundSummary[1].value} />
-                <SummaryStat label={roundSummary[2].label} value={roundSummary[2].value} />
-                <SummaryStat label={roundSummary[3].label} value={roundSummary[3].value} />
-                <SummaryStat label={roundSummary[4].label} value={roundSummary[4].value} />
-              </div>
-
-              <div className="mt-4 border-t border-white/12 pt-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">
-                      Instrumento
-                    </div>
-                    <div className="mt-1 text-lg font-semibold text-white">SAFE</div>
-                  </div>
-                  <div className="text-sm text-neutral-300">Ronda privada, por invitación.</div>
-                </div>
-              </div>
-            </aside>
-          </div>
-        </section>
-
-        <nav className="sticky top-3 z-20 -mx-6 mb-10 px-6" aria-label="Secciones de la página">
-          <div className="mx-auto max-w-6xl overflow-x-auto rounded-2xl border border-white/12 bg-neutral-950/85 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-            <div className="flex min-w-max items-center gap-2 px-3 py-3">
-              <div className="pr-2 text-[11px] uppercase tracking-[0.22em] text-neutral-400">
-                Navegación
-              </div>
-              {[
-                { href: "#oportunidad", label: "Oportunidad" },
-                { href: "#modelo", label: "Modelo" },
-                { href: "#casos", label: "Casos" },
-                { href: "#fondos", label: "Fondos" },
-                { href: "#founder", label: "Founder" },
-                { href: "#documentos", label: "Documentos" },
-              ].map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-xl border border-transparent bg-white/[0.03] px-3 py-2 text-sm text-neutral-200 transition hover:border-white/12 hover:bg-white/[0.09] hover:text-white active:bg-white/[0.13] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
-          </div>
-        </nav>
-
-        <section className="mt-12 scroll-mt-28" id="modelo">
-          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
-            <SectionHeader
-              eyebrow="Modelo"
-              title="Qué es Kapa21."
-              description="Infraestructura financiera sobre Bitcoin para personas, pymes y empresas."
-            />
-
-            <div className="mt-5 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-              <div>
-                <p className="text-sm leading-7 text-neutral-200 sm:text-base">
-                  {KAPA21_CORE_STATEMENT}
+                <p className="mt-4 text-sm leading-6 text-neutral-300">
+                  Ronda privada por invitación vía SAFE. También disponible por{" "}
+                  <a
+                    href={WHATSAPP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#F9B662] underline decoration-[#F7931A]/40 underline-offset-4 hover:text-[#FFD29E]"
+                  >
+                    WhatsApp
+                  </a>
+                  .
                 </p>
               </div>
-              <div className="text-sm leading-7 text-neutral-200">
-                Bitcoin ya entró en la conversación financiera seria. Kapa21 se está construyendo
-                para resolver el tramo entre ahorro, tesorería y liquidez con una arquitectura más
-                simple y de más alto contexto.
-              </div>
-            </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {valuePillars.map((item, index) => (
-                <div
-                  key={item.title}
-                  className={`border-t pt-4 ${
-                    index === 0 ? "border-[#F7931A]/40" : "border-white/12"
-                  }`}
-                >
-                  <h3 className="text-lg font-semibold tracking-tight text-white">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 border-t border-white/12 pt-8">
-              <SectionHeader
-                eyebrow="Mercado y monetización"
-                title="Para quién y cómo captura valor."
-                description="La misma infraestructura se despliega con distinta profundidad según segmento y necesidad."
-              />
-
-              <div className="mt-5">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
-                  Segmentos
-                </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  {segments.map((item, index) => (
-                    <div
-                      key={item.title}
-                      className={`border-t pt-4 ${
-                        index === 0 ? "border-[#F7931A]/40" : "border-white/12"
-                      }`}
-                    >
-                      <div className="text-base font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-8 border-t border-white/12 pt-8">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
-                  Ingresos
-                </div>
-                <div className="mt-4 grid gap-x-6 gap-y-4 md:grid-cols-2">
-                  {revenueStreams.map((item) => (
-                    <div key={item.title} className="border-t border-white/12 pt-4">
-                      <div className="text-base font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
-                    </div>
+              <div className="mt-12 rounded-[1.75rem] border border-white/12 bg-black/25 p-4 backdrop-blur-md sm:p-5">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                  {roundHighlights.map((item) => (
+                    <HeroStat key={item.label} label={item.label} value={item.value} />
                   ))}
                 </div>
               </div>
@@ -600,62 +500,153 @@ export default function FriendsAndFamilyPage() {
           </div>
         </section>
 
-        <section className="mt-12 scroll-mt-28" id="casos">
-          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
-            <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-              <div>
-                <SectionHeader
-                  eyebrow="Casos"
-                  title="Diferenciación y validación."
-                  description="Producto, criterio financiero y clientes tempranos con problemas reales de caja y financiamiento."
-                />
+        <section className="scroll-mt-40 pt-20" id="oportunidad">
+          <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+            <div>
+              <SectionIntro
+                eyebrow="La oportunidad"
+                title="Una capa financiera útil sobre Bitcoin."
+                description={KAPA21_CORE_STATEMENT}
+              />
 
-                <div className="mt-5 space-y-4">
-                  {differentiators.map((item) => (
-                    <div key={item.title} className="border-l border-white/12 pl-4">
-                      <div className="text-base font-semibold text-white">{item.title}</div>
-                      <p className="mt-2 text-sm leading-6 text-neutral-200">{item.body}</p>
-                    </div>
+              <p className="mt-6 max-w-2xl text-sm leading-7 text-neutral-200 sm:text-base">
+                Bitcoin ya entró en la conversación financiera seria. La oportunidad no está solo
+                en comprar y vender, sino en ordenar mejor el tramo donde ahorro, tesorería y
+                liquidez todavía siguen desconectados entre sí.
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              {opportunityThemes.map((item) => (
+                <div key={item.title} className="border-t border-white/12 pt-5">
+                  <h3 className="text-lg font-semibold tracking-tight text-white">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-neutral-200">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="scroll-mt-40 pt-20" id="inversion">
+          <div className="rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.22)] sm:p-8 lg:p-10">
+            <SectionIntro
+              eyebrow="Cómo funciona"
+              title="Cómo funciona la inversión."
+              description="Una estructura simple para una ronda privada temprana, con secuencia clara entre acceso, instrumento y uso del capital."
+            />
+
+            <ol className="mt-10 grid gap-8 lg:grid-cols-3 lg:gap-10">
+              {investmentSteps.map((item, index) => (
+                <StepItem
+                  key={item.title}
+                  step={`Paso ${index + 1}`}
+                  title={item.title}
+                  body={item.body}
+                />
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="scroll-mt-40 pt-20" id="mercado">
+          <div className="grid gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
+            <div>
+              <SectionIntro
+                eyebrow="Mercado"
+                title="Tres capas de oportunidad."
+                description="La tesis de mercado de Kapa21 no depende de una sola audiencia. Hay personas, pymes y empresas con dolores distintos, pero relacionados entre ahorro, caja y acceso a liquidez."
+              />
+
+              <div className="mt-8 space-y-8">
+                {segments.map((item) => (
+                  <div key={item.title} className="border-t border-white/12 pt-5">
+                    <h3 className="text-lg font-semibold tracking-tight text-white">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-7 text-neutral-200">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.18)] sm:p-7">
+              <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                Revenue model
+              </div>
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                Un modelo que parte por alto contacto y luego gana recurrencia.
+              </h3>
+
+              <div className="mt-7 space-y-6">
+                {revenueStreams.map((item) => (
+                  <div key={item.title} className="border-t border-white/12 pt-5">
+                    <div className="text-base font-semibold text-white">{item.title}</div>
+                    <p className="mt-2 text-sm leading-7 text-neutral-200">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 border-t border-white/12 pt-6">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                  Secuencia esperada
+                </div>
+                <div className="mt-4 space-y-3">
+                  {revenueSequence.map((item) => (
+                    <p key={item} className="text-sm leading-7 text-neutral-200">
+                      {item}
+                    </p>
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
 
+          <div className="mt-10 rounded-[2rem] border border-white/12 bg-white/[0.03] p-6 sm:p-7">
+            <div className="grid gap-8 lg:grid-cols-[0.42fr_0.58fr] lg:items-start">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                   Validación temprana
                 </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {validationCases.map((item) => (
-                    <ValidationCaseCard
-                      key={`${item.name}-${item.company}`}
-                      quote={item.quote}
-                      name={item.name}
-                      company={item.company}
-                      sector={item.sector}
-                    />
-                  ))}
-                </div>
+                <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                  Señales iniciales en clientes reales.
+                </h3>
+                <p className="mt-4 text-sm leading-7 text-neutral-200">
+                  Los primeros casos muestran un patrón concreto: ahorro disciplinado, uso de
+                  Bitcoin como colateral y búsqueda de financiamiento más flexible que el sistema
+                  tradicional.
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {validationCases.map((item) => (
+                  <ValidationQuote
+                    key={`${item.name}-${item.company}`}
+                    quote={item.quote}
+                    name={item.name}
+                    company={item.company}
+                    sector={item.sector}
+                  />
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-12 scroll-mt-28" id="fondos">
-          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <SectionHeader
-                eyebrow="Fondos"
+        <section className="pt-20">
+          <div className="grid gap-10 lg:grid-cols-[0.74fr_1.26fr] lg:gap-14">
+            <div>
+              <SectionIntro
+                eyebrow="Uso de fondos"
                 title="Uso del tramo 1."
-                description="Distribución sobria para estructura, software, validación comercial y ejecución del founder."
+                description="Una asignación pensada para instalar base societaria y regulatoria, dejar operativo el software y abrir la primera capa comercial."
               />
-              <div className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-sm text-neutral-200">
+
+              <div className="mt-6 inline-flex rounded-full border border-white/12 bg-white/[0.04] px-4 py-2 text-sm text-neutral-200">
                 US$50.000 total
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
+            <div className="overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.035] shadow-[0_24px_72px_rgba(0,0,0,0.18)]">
               {fundUse.map((item) => (
-                <FundUseRow
+                <FundUseLine
                   key={item.label}
                   amount={item.amount}
                   label={item.label}
@@ -666,111 +657,136 @@ export default function FriendsAndFamilyPage() {
           </div>
         </section>
 
-        <section className="mt-12 scroll-mt-28" id="founder">
-          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
-            <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-              <div>
-                <SectionHeader
-                  eyebrow="Founder"
-                  title="Founder y visión."
-                  description="Bitcoin como infraestructura financiera cotidiana."
-                />
-                <p className="mt-4 text-sm leading-7 text-neutral-200">
-                  La tesis del founder es que Bitcoin puede reordenar cómo personas y empresas
-                  ahorran, protegen caja y toman decisiones con más libertad.
-                </p>
-                <div className="mt-5 space-y-3">
+        <section className="scroll-mt-40 pt-20" id="founder">
+          <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-14">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.03] shadow-[0_24px_72px_rgba(0,0,0,0.18)]">
+              <Image
+                src="/friends-and-family/founder.png"
+                alt="Founder de Kapa21"
+                fill
+                sizes="(min-width: 1024px) 28vw, 100vw"
+                className="object-cover object-[center_18%]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10" />
+              <div className="absolute bottom-4 left-4 text-[11px] uppercase tracking-[0.22em] text-white/75">
+                Founder portrait
+              </div>
+            </div>
+
+            <div>
+              <SectionIntro
+                eyebrow="Founder y visión"
+                title="Founder-led, Bitcoin-first."
+                description="La visión es construir una infraestructura financiera que use Bitcoin de forma práctica para ahorro, tesorería y liquidez."
+              />
+
+              <p className="mt-6 max-w-2xl text-sm leading-7 text-neutral-200 sm:text-base">
+                La tesis del founder es que Bitcoin puede reordenar cómo personas y empresas
+                ahorran, protegen caja y acceden a liquidez sin quedar atrapadas entre productos
+                genéricos, deuda rígida o asesoría desconectada de la operación diaria.
+              </p>
+
+              <div className="mt-8 grid gap-8 md:grid-cols-[1fr_220px] md:items-start">
+                <div className="space-y-4">
                   {founderLoop.map((item) => (
-                    <div key={item} className="text-sm leading-6 text-neutral-300">
+                    <div key={item} className="border-l border-white/12 pl-4 text-sm leading-7 text-neutral-200">
                       {item}
                     </div>
                   ))}
                 </div>
-              </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <AssetImageCard
-                  label="Founder portrait"
-                  src="/friends-and-family/founder.png"
-                  alt="Founder de Kapa21"
-                  imageClassName="object-cover object-[center_18%]"
-                  className="aspect-[4/5] w-full sm:aspect-[3/4]"
-                />
-                <AssetImageCard
-                  label="Book cover"
-                  src="/friends-and-family/book-cover.png"
-                  alt="Portada del libro del founder"
-                  imageClassName="object-contain p-3"
-                  className="aspect-[4/5] w-full sm:aspect-[3/4]"
-                />
+                <div className="rounded-[1.75rem] border border-white/12 bg-white/[0.035] p-3">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-[1.3rem] bg-black/20">
+                    <Image
+                      src="/friends-and-family/book-cover.png"
+                      alt="Portada del libro del founder"
+                      fill
+                      sizes="220px"
+                      className="object-contain p-3"
+                    />
+                  </div>
+                  <div className="mt-3 text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                    Book cover
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-12 scroll-mt-28" id="documentos">
-          <div className="k21-card border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.2)] sm:p-7">
-            <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+        <section className="scroll-mt-40 pt-20" id="faq">
+          <div className="rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.22)] sm:p-8 lg:p-10">
+            <div className="grid gap-10 lg:grid-cols-[1fr_0.92fr] lg:gap-14">
               <div>
-                <SectionHeader
-                  eyebrow="Documentos"
-                  title="Documentos y siguiente paso."
-                  description="Material compartido de forma gradual y con contexto, según avance la conversación."
+                <SectionIntro
+                  eyebrow="FAQ"
+                  title="Preguntas, documentos y contacto."
+                  description="Una salida clara para entender la ronda, revisar materiales y abrir conversación directa."
                 />
 
-                {/* Replace each row with final links or attachments when documents are ready to share. */}
-                <div className="mt-5 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.04]">
-                  {documents.map((item) => (
-                    <DocumentRow
-                      key={item.title}
-                      title={item.title}
-                      body={item.body}
-                      status={item.status}
-                      availability={item.availability}
+                <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/12 bg-black/20">
+                  {faqItems.map((item) => (
+                    <FaqItem
+                      key={item.question}
+                      question={item.question}
+                      answer={item.answer}
                     />
                   ))}
                 </div>
               </div>
 
-              <div>
-                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
-                  Siguiente paso
+              <div className="space-y-6">
+                <div className="overflow-hidden rounded-[1.75rem] border border-white/12 bg-black/20">
+                  {documents.map((item) => (
+                    <DocumentLine
+                      key={item.title}
+                      title={item.title}
+                      availability={item.availability}
+                      status={item.status}
+                    />
+                  ))}
                 </div>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
-                  Solicitar acceso o agendar una conversación.
-                </h2>
-                <p className="mt-3 max-w-xl text-sm leading-7 text-neutral-200">
-                  Email, agenda o WhatsApp. Después compartimos el material que haga sentido para
-                  avanzar.
-                </p>
 
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <a href={MAILTO_URL} className="k21-btn-primary px-5 py-3">
-                    Solicitar acceso
-                  </a>
-                  <a
-                    href={CALENDLY_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="k21-btn-secondary px-5 py-3"
-                  >
-                    Agendar conversación
-                  </a>
-                  <a
-                    href={WHATSAPP_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="k21-btn-secondary px-5 py-3"
-                  >
-                    WhatsApp
-                  </a>
+                <div className="rounded-[1.75rem] border border-white/12 bg-white/[0.04] p-6">
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                    Contacto
+                  </div>
+                  <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">
+                    Solicitar acceso, revisar materiales o conversar directo.
+                  </h3>
+                  <p className="mt-4 text-sm leading-7 text-neutral-200">
+                    El flujo es simple: conversación inicial, acceso al material relevante y una
+                    segunda instancia para profundizar tesis, estructura y plan de ejecución.
+                  </p>
+
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <a href={MAILTO_URL} className="k21-btn-primary px-5 py-3">
+                      Solicitar acceso
+                    </a>
+                    <a
+                      href={CALENDLY_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="k21-btn-secondary border-white/12 bg-white/[0.04] px-5 py-3 text-neutral-100 hover:bg-white/[0.08]"
+                    >
+                      Agendar conversación
+                    </a>
+                    <a
+                      href={WHATSAPP_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="k21-btn-secondary border-white/12 bg-white/[0.04] px-5 py-3 text-neutral-100 hover:bg-white/[0.08]"
+                    >
+                      WhatsApp
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <LandingFooter />
+        <InvestorFooter />
       </div>
     </main>
   );
