@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { ParticipationSimulator } from "./_components/ParticipationSimulator";
+import { InvestorHeader } from "./_components/InvestorHeader";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.kapa21.cl";
 const CONTACT_EMAIL =
@@ -250,50 +251,6 @@ function SectionIntro({
   );
 }
 
-function InvestorHeader() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[rgba(8,10,14,0.72)] backdrop-blur-xl">
-      <div className="mx-auto max-w-6xl px-6 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/brand/k21-lockup-white.svg"
-              alt="Kapa21"
-              width={420}
-              height={120}
-              priority
-              className="h-12 w-auto sm:h-14"
-            />
-          </Link>
-
-          <a
-            href={WHATSAPP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="k21-btn-secondary border-white/12 bg-white/[0.04] px-4 py-2.5 text-neutral-100 hover:bg-white/[0.08]"
-          >
-            WhatsApp
-          </a>
-        </div>
-
-        <nav className="mt-4 overflow-x-auto" aria-label="Navegación de investor page">
-          <div className="flex min-w-max gap-2 rounded-full border border-white/10 bg-white/[0.03] p-1.5">
-            {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="rounded-full px-4 py-2 text-sm text-neutral-200 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
-        </nav>
-      </div>
-    </header>
-  );
-}
-
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-4 py-3 backdrop-blur-sm">
@@ -425,7 +382,7 @@ export default function FriendsAndFamilyPage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[38rem] bg-[radial-gradient(circle_at_15%_15%,rgba(247,147,26,0.18),transparent_30%),radial-gradient(circle_at_85%_10%,rgba(255,255,255,0.12),transparent_24%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-[40rem] h-[70rem] bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04),transparent_34%)]" />
 
-      <InvestorHeader />
+      <InvestorHeader navItems={navItems} whatsappUrl={WHATSAPP_URL} />
 
       <div className="relative mx-auto max-w-6xl px-6 pb-20">
         <section className="pt-6">
@@ -527,7 +484,7 @@ export default function FriendsAndFamilyPage() {
           </div>
         </section>
 
-        <section className="scroll-mt-40 pt-20" id="inversion">
+        <section className="scroll-mt-40 pt-18 sm:pt-20" id="inversion">
           <div className="rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.22)] sm:p-8 lg:p-10">
             <SectionIntro
               eyebrow="Cómo funciona"
@@ -548,7 +505,32 @@ export default function FriendsAndFamilyPage() {
           </div>
         </section>
 
-        <section className="scroll-mt-40 pt-20" id="mercado">
+        <section className="scroll-mt-40 pt-16 sm:pt-18 lg:pt-20" id="simulador">
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.22)] sm:p-8 lg:p-10">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(247,147,26,0.08),transparent_24%),radial-gradient(circle_at_82%_72%,rgba(255,255,255,0.05),transparent_28%)]" />
+            <div className="grid gap-10 lg:grid-cols-[0.86fr_1.14fr] lg:gap-14">
+              <div>
+                <SectionIntro
+                  eyebrow="Simulador"
+                  title="Escenario simple de participación."
+                  description="Una referencia rápida para entender qué significa entrar en esta etapa, sin convertirlo en una calculadora compleja ni en una promesa de retorno."
+                />
+
+                <p className="mt-6 max-w-xl text-sm leading-7 text-neutral-200">
+                  Esta lectura usa el cap base de referencia del tramo 1 para dar una intuición
+                  simple sobre monto, etapa y exposición inicial. El objetivo es hacer legible la
+                  ronda, no modelar el instrumento completo.
+                </p>
+              </div>
+
+              <div className="relative">
+                <ParticipationSimulator />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="scroll-mt-40 pt-16 sm:pt-18 lg:pt-20" id="mercado">
           <div className="grid gap-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
             <div>
               <SectionIntro
