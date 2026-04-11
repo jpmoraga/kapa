@@ -253,9 +253,9 @@ function SectionIntro({
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/12 bg-white/[0.06] px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-[1.4rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.075),rgba(255,255,255,0.03))] px-4 py-4 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
       <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400">{label}</div>
-      <div className="mt-2 text-base font-semibold tracking-tight text-white">{value}</div>
+      <div className="mt-2 text-[1.02rem] font-semibold tracking-tight text-white">{value}</div>
     </div>
   );
 }
@@ -315,10 +315,10 @@ function FundUseLine({
   share: number;
 }) {
   return (
-    <div className="grid gap-2 border-b border-white/12 px-5 py-4 last:border-b-0 md:grid-cols-[140px_1fr_56px] md:items-start md:gap-4">
-      <div className="text-base font-semibold text-white">{amount}</div>
+    <div className="grid gap-3 border-b border-white/12 px-5 py-4 last:border-b-0 md:grid-cols-[150px_1fr_auto] md:items-center md:gap-5 md:px-6 md:py-5">
+      <div className="text-lg font-semibold tracking-tight text-white">{amount}</div>
       <div className="text-sm leading-6 text-neutral-200">{label}</div>
-      <div className="text-[11px] uppercase tracking-[0.2em] text-neutral-400 md:text-right">
+      <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-neutral-300 md:justify-self-end">
         {share}%
       </div>
     </div>
@@ -334,11 +334,13 @@ function FaqItem({
 }) {
   return (
     <details className="group border-b border-white/12 last:border-b-0">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium text-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 text-sm font-medium text-white sm:px-6">
         <span>{question}</span>
-        <span className="text-neutral-500 transition group-open:rotate-45">+</span>
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-neutral-400 transition group-open:rotate-45 group-open:text-white">
+          +
+        </span>
       </summary>
-      <div className="px-5 pb-5 text-sm leading-7 text-neutral-200">{answer}</div>
+      <div className="px-5 pb-5 text-sm leading-7 text-neutral-200 sm:px-6">{answer}</div>
     </details>
   );
 }
@@ -353,12 +355,12 @@ function DocumentLine({
   status: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-white/12 px-5 py-4 last:border-b-0">
+    <div className="flex items-start justify-between gap-4 border-b border-white/12 px-5 py-4 last:border-b-0 sm:px-6">
       <div className="min-w-0">
         <div className="text-sm font-semibold text-white">{title}</div>
         <div className="mt-1 text-sm text-neutral-300">{availability}</div>
       </div>
-      <div className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-neutral-400">
+      <div className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] uppercase tracking-[0.18em] text-neutral-300">
         {status}
       </div>
     </div>
@@ -386,7 +388,7 @@ export default function FriendsAndFamilyPage() {
 
       <div className="relative mx-auto max-w-6xl px-6 pb-20">
         <section className="pt-6">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/12 bg-[#0b0d11] shadow-[0_28px_90px_rgba(0,0,0,0.28)]">
+          <div className="relative overflow-hidden rounded-[2.2rem] border border-white/12 bg-[#0b0d11] shadow-[0_32px_100px_rgba(0,0,0,0.3)]">
             <div className="absolute inset-0">
               <Image
                 src="/friends-and-family/founder.png"
@@ -394,14 +396,14 @@ export default function FriendsAndFamilyPage() {
                 fill
                 priority
                 sizes="100vw"
-                className="object-cover object-[72%_18%] opacity-40 grayscale"
+                className="object-cover object-[72%_18%] opacity-38 grayscale"
               />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,10,13,0.96)_0%,rgba(9,10,13,0.9)_34%,rgba(9,10,13,0.62)_62%,rgba(9,10,13,0.84)_100%)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(247,147,26,0.22),transparent_26%),linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_28%,rgba(0,0,0,0.28)_100%)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,10,13,0.95)_0%,rgba(9,10,13,0.88)_36%,rgba(9,10,13,0.58)_62%,rgba(9,10,13,0.82)_100%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(247,147,26,0.24),transparent_28%),linear-gradient(to_bottom,rgba(255,255,255,0.03),transparent_30%,rgba(0,0,0,0.3)_100%)]" />
             </div>
 
-            <div className="relative px-6 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14">
-              <div className="max-w-2xl">
+            <div className="relative px-6 py-12 sm:px-10 sm:py-14 lg:px-14 lg:py-16">
+              <div className="max-w-[40rem]">
                 <div className="inline-flex rounded-full border border-[#F7931A]/25 bg-[#F7931A]/10 px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[#F9B662]">
                   Ronda privada Kapa21
                 </div>
@@ -446,7 +448,7 @@ export default function FriendsAndFamilyPage() {
                 </p>
               </div>
 
-              <div className="mt-12 rounded-[1.75rem] border border-white/12 bg-black/25 p-4 backdrop-blur-md sm:p-5">
+              <div className="mt-14 rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(9,12,16,0.62),rgba(9,12,16,0.34))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-md sm:p-4">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                   {roundHighlights.map((item) => (
                     <HeroStat key={item.label} label={item.label} value={item.value} />
@@ -539,9 +541,15 @@ export default function FriendsAndFamilyPage() {
                 description="La tesis de mercado de Kapa21 no depende de una sola audiencia. Hay personas, pymes y empresas con dolores distintos, pero relacionados entre ahorro, caja y acceso a liquidez."
               />
 
-              <div className="mt-8 space-y-8">
+              <div className="mt-8">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                  Capas de oportunidad
+                </div>
+              </div>
+
+              <div className="mt-4 divide-y divide-white/12 border-y border-white/12">
                 {segments.map((item) => (
-                  <div key={item.title} className="border-t border-white/12 pt-5">
+                  <div key={item.title} className="py-5 first:pt-5 last:pb-5">
                     <h3 className="text-lg font-semibold tracking-tight text-white">{item.title}</h3>
                     <p className="mt-3 text-sm leading-7 text-neutral-200">{item.body}</p>
                   </div>
@@ -549,24 +557,28 @@ export default function FriendsAndFamilyPage() {
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-white/12 bg-white/[0.035] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.18)] sm:p-7">
+            <div className="rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.025))] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.18)] sm:p-7">
               <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                 Revenue model
               </div>
               <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">
                 Un modelo que parte por alto contacto y luego gana recurrencia.
               </h3>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-neutral-200">
+                La captura de valor empieza por relaciones de alto contexto y luego gana volumen,
+                frecuencia y profundidad de producto.
+              </p>
 
-              <div className="mt-7 space-y-6">
+              <div className="mt-7 divide-y divide-white/12 border-y border-white/12">
                 {revenueStreams.map((item) => (
-                  <div key={item.title} className="border-t border-white/12 pt-5">
+                  <div key={item.title} className="py-5 first:pt-5 last:pb-5">
                     <div className="text-base font-semibold text-white">{item.title}</div>
                     <p className="mt-2 text-sm leading-7 text-neutral-200">{item.body}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-8 border-t border-white/12 pt-6">
+              <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-black/20 p-5">
                 <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                   Secuencia esperada
                 </div>
@@ -581,7 +593,7 @@ export default function FriendsAndFamilyPage() {
             </div>
           </div>
 
-          <div className="mt-10 rounded-[2rem] border border-white/12 bg-white/[0.03] p-6 sm:p-7">
+          <div className="mt-10 rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 sm:p-7">
             <div className="grid gap-8 lg:grid-cols-[0.42fr_0.58fr] lg:items-start">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
@@ -621,12 +633,12 @@ export default function FriendsAndFamilyPage() {
                 description="Una asignación pensada para instalar base societaria y regulatoria, dejar operativo el software y abrir la primera capa comercial."
               />
 
-              <div className="mt-6 inline-flex rounded-full border border-white/12 bg-white/[0.04] px-4 py-2 text-sm text-neutral-200">
+              <div className="mt-6 inline-flex rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-sm text-neutral-200">
                 US$50.000 total
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.035] shadow-[0_24px_72px_rgba(0,0,0,0.18)]">
+            <div className="overflow-hidden rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] shadow-[0_24px_72px_rgba(0,0,0,0.18)]">
               {fundUse.map((item) => (
                 <FundUseLine
                   key={item.label}
@@ -698,7 +710,7 @@ export default function FriendsAndFamilyPage() {
 
         <section className="scroll-mt-40 pt-20" id="faq">
           <div className="rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-6 shadow-[0_24px_72px_rgba(0,0,0,0.22)] sm:p-8 lg:p-10">
-            <div className="grid gap-10 lg:grid-cols-[1fr_0.92fr] lg:gap-14">
+            <div className="grid gap-8 lg:grid-cols-[1fr_0.92fr] lg:gap-12">
               <div>
                 <SectionIntro
                   eyebrow="FAQ"
@@ -706,7 +718,7 @@ export default function FriendsAndFamilyPage() {
                   description="Una salida clara para entender la ronda, revisar materiales y abrir conversación directa."
                 />
 
-                <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/12 bg-black/20">
+                <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.14))]">
                   {faqItems.map((item) => (
                     <FaqItem
                       key={item.question}
@@ -717,8 +729,13 @@ export default function FriendsAndFamilyPage() {
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="overflow-hidden rounded-[1.75rem] border border-white/12 bg-black/20">
+              <div className="space-y-4">
+                <div className="overflow-hidden rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.14))]">
+                  <div className="border-b border-white/12 px-5 py-4 sm:px-6">
+                    <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
+                      Documentos
+                    </div>
+                  </div>
                   {documents.map((item) => (
                     <DocumentLine
                       key={item.title}
@@ -729,7 +746,7 @@ export default function FriendsAndFamilyPage() {
                   ))}
                 </div>
 
-                <div className="rounded-[1.75rem] border border-white/12 bg-white/[0.04] p-6">
+                <div className="rounded-[1.75rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.03))] p-6">
                   <div className="text-[11px] uppercase tracking-[0.22em] text-neutral-400">
                     Contacto
                   </div>
@@ -757,7 +774,7 @@ export default function FriendsAndFamilyPage() {
                       href={WHATSAPP_URL}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="k21-btn-secondary border-white/12 bg-white/[0.04] px-5 py-3 text-neutral-100 hover:bg-white/[0.08]"
+                      className="k21-btn-secondary border-[#F7931A]/20 bg-[#F7931A]/10 px-5 py-3 text-[#FFD29E] hover:bg-[#F7931A]/14"
                     >
                       WhatsApp
                     </a>
