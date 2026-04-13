@@ -489,7 +489,7 @@ function FriendsAndFamilyInvestorPageContent() {
                     href={MAILTO_URL}
                     className="k21-btn-primary px-5 py-3 shadow-[0_16px_38px_rgba(247,147,26,0.25)]"
                   >
-                    Solicitar acceso
+                    Enviar correo
                   </a>
                   <a
                     href={CALENDLY_URL}
@@ -722,15 +722,17 @@ function FriendsAndFamilyInvestorPageContent() {
 
         <section className="scroll-mt-40 pt-20" id="founder">
           <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-14">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/12 bg-white/[0.03] shadow-[0_24px_72px_rgba(0,0,0,0.18)]">
-              <Image
-                src="/friends-and-family/founder.png"
-                alt="Founder de Kapa21"
-                fill
-                sizes="(min-width: 1024px) 28vw, 100vw"
-                className="object-cover object-[center_18%]"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/10" />
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-3 shadow-[0_24px_72px_rgba(0,0,0,0.18)] sm:p-4">
+              <div className="relative h-full overflow-hidden rounded-[1.55rem] bg-black/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <Image
+                  src="/friends-and-family/founder.png"
+                  alt="Founder de Kapa21"
+                  fill
+                  sizes="(min-width: 1024px) 28vw, 100vw"
+                  className="scale-[1.08] object-cover object-[center_10%]"
+                />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(255,255,255,0.08),transparent_32%),linear-gradient(to_top,rgba(0,0,0,0.58),rgba(0,0,0,0.08)_48%,rgba(0,0,0,0.16))]" />
+              </div>
             </div>
 
             <div>
@@ -829,16 +831,16 @@ function FriendsAndFamilyInvestorPageContent() {
                     Contacto
                   </div>
                   <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-                    Solicitar acceso, revisar materiales o conversar directo.
+                    Enviar correo, revisar materiales o conversar directo.
                   </h3>
                   <p className="mt-4 text-sm leading-7 text-neutral-200">
-                    El flujo es simple: conversación inicial, acceso al material relevante y una
+                    El flujo es simple: contacto inicial, revisión del material relevante y una
                     segunda instancia para profundizar tesis, estructura y plan de ejecución.
                   </p>
 
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                     <a href={MAILTO_URL} className="k21-btn-primary px-5 py-3">
-                      Solicitar acceso
+                      Enviar correo
                     </a>
                     <a
                       href={CALENDLY_URL}
