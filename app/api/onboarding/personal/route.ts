@@ -1,41 +1,21 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { prisma } from "@/lib/prisma";
+import {
+  getAuthenticatedOnboardingUser,
+  saveOnboardingProfile,
+} from "@/lib/onboardingProfile";
 
 export async function POST(req: Request) {
-  const session = await getServerSession();
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const body = await req.json();
-  const { fullName, rut, phone } = body;
-
-  if (!fullName || !rut || !phone) {
-    return NextResponse.json(
-      { error: "Missing fields" },
-      { status: 400 }
-    );
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true },
-  });
-
+  const user = await getAuthenticatedOnboardingUser();
   if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  await prisma.personProfile.create({
-    data: {
-      userId: user.id,
-      fullName,
-      rut,
-      phone,
-    },
-  });
+  const body = await req.json().catch(() => ({}));
+  const result = await saveOnboardingProfile(user.id, body, { requirePhone: true });
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
+  }
 
   return NextResponse.json({ ok: true });
 }

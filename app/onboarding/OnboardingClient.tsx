@@ -3,14 +3,14 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-import PersonalPage from "./personal/page";
-import AcceptTermsPage from "./accept-terms/page";
-import OcrPage from "./ocr/page"; // ✅ ESTE ES EL OCR REAL (carpeta /ocr)
-import BankPage from "./bank/page";
+import DocumentStep from "./_steps/DocumentStep";
+import PersonalStep from "./_steps/PersonalStep";
+import AcceptTermsStep from "./_steps/AcceptTermsStep";
+import BankStep from "./_steps/BankStep";
 
-type Step = "ocr" | "personal" | "bank" | "terms";
+type Step = "document" | "personal" | "bank" | "terms";
 
-const STEP_SET = new Set<Step>(["ocr", "personal", "bank", "terms"]);
+const STEP_SET = new Set<Step>(["document", "personal", "bank", "terms"]);
 type PerfStore = { navStart?: number; from?: string };
 
 export default function OnboardingClient() {
@@ -19,7 +19,8 @@ export default function OnboardingClient() {
   const showDebug = process.env.NEXT_PUBLIC_SHOW_ONBOARDING_DEBUG === "1";
 
   const urlStep = sp.get("step");
-  const step = STEP_SET.has(urlStep as Step) ? (urlStep as Step) : "ocr";
+  const normalizedStep = urlStep === "ocr" ? "document" : urlStep;
+  const step = STEP_SET.has(normalizedStep as Step) ? (normalizedStep as Step) : "document";
 
   useEffect(() => {
     if (!perfEnabled) return;
@@ -42,7 +43,7 @@ export default function OnboardingClient() {
         disabled
         className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white border border-white/15 opacity-60 cursor-not-allowed"
       >
-        OCR
+        Documento
       </button>
       <button
         type="button"
@@ -56,27 +57,27 @@ export default function OnboardingClient() {
         disabled
         className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white border border-white/15 opacity-60 cursor-not-allowed"
       >
-        Bank
+        Banco
       </button>
       <button
         type="button"
         disabled
         className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white border border-white/15 opacity-60 cursor-not-allowed"
       >
-        Terms
+        Términos
       </button>
     </div>
   ) : null;
 
   return (
     <>
-      {step === "ocr" && <OcrPage />}
+      {step === "document" && <DocumentStep />}
 
-      {step === "personal" && <PersonalPage />}
+      {step === "personal" && <PersonalStep />}
 
-      {step === "bank" && <BankPage />}
+      {step === "bank" && <BankStep />}
 
-      {step === "terms" && <AcceptTermsPage />}
+      {step === "terms" && <AcceptTermsStep />}
 
       {DevNav}
     </>

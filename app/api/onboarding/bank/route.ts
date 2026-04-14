@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { validateOnboardingBankInput } from "@/lib/onboardingBank";
+import { getOnboardingStatus } from "@/lib/onboardingStatus";
 
 export async function GET() {
   const perfEnabled = process.env.DEBUG_PERF === "1";
@@ -57,17 +59,26 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
 
   try {
+    const onboarding = await getOnboardingStatus(user.id);
+    if (!onboarding.hasIdDocument) {
+      return NextResponse.json(
+        { error: "Debes subir tu documento antes de registrar tu cuenta bancaria." },
+        { status: 409 }
+      );
+    }
+    if (!onboarding.hasProfile) {
+      return NextResponse.json(
+        { error: "Completa tu perfil antes de registrar tu cuenta bancaria." },
+        { status: 409 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
-
-    const bankName = String(body.bankName ?? "").trim();
-    const accountType = String(body.accountType ?? "").trim();
-    const accountNumber = String(body.accountNumber ?? "").trim();
-    const holderRut = String(body.holderRut ?? user.personProfile?.rut ?? "").trim();
-
-    if (!bankName) return NextResponse.json({ error: "Banco requerido" }, { status: 400 });
-    if (!accountType) return NextResponse.json({ error: "Tipo de cuenta requerido" }, { status: 400 });
-    if (!accountNumber) return NextResponse.json({ error: "Número de cuenta requerido" }, { status: 400 });
-    const finalRut = holderRut || "PENDIENTE";
+    const parsed = validateOnboardingBankInput(body, user.personProfile?.rut ?? null);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    }
+    const { bankName, accountType, accountNumber, holderRut } = parsed.value;
 
     console.info("auth:bank", {
       userId: user.id,
@@ -75,7 +86,7 @@ export async function POST(req: Request) {
         bankName,
         accountType,
         accountNumberLast4: accountNumber.slice(-4),
-        holderRut: finalRut ? `${finalRut.slice(0, 4)}***` : null,
+        holderRut: `${holderRut.slice(0, 4)}***`,
       },
     });
 
@@ -85,14 +96,14 @@ export async function POST(req: Request) {
         bankName,
         accountType,
         accountNumber,
-        holderRut: finalRut,
+        holderRut,
       },
       create: {
         userId: user.id,
         bankName,
         accountType,
         accountNumber,
-        holderRut: finalRut,
+        holderRut,
       },
     });
 
@@ -102,7 +113,7 @@ export async function POST(req: Request) {
         action: "ok",
         userId: user.id,
         ms: Date.now() - t0,
-        queries: 2,
+        queries: 5,
       });
     }
 

@@ -1,22 +1,29 @@
 // app/onboarding/_copy.ts
 
 export const onboardingCopy = {
-    ocr: {
-      title: "Verificación de identidad",
+    document: {
+      title: "Documento de identidad",
       subtitle:
-        "Sube una foto del carnet. Guardamos la imagen como respaldo y te mostramos los datos detectados para que los confirmes.",
-      cardUploadTitle: "Foto del carnet",
+        "Sube frente y reverso de tu documento. Guardamos las imágenes como respaldo y, si la lectura local funciona, prellenamos algunos datos para que los confirmes.",
+      cardUploadTitle: "Documento de identidad",
       cardUploadHintEmpty:
         "Selecciona una imagen (JPG/PNG). La imagen se guardará como respaldo.",
-      scanning: "Leyendo… (OCR)",
-      done: "Lectura OK · Revisa y confirma los datos",
-      detectedTitle: "Datos detectados",
+      prefillLoading: "Intentando prellenar…",
+      prefillReady: "Prellenado listo ✅ (reintentar)",
+      prefillAction: "Intentar prellenado opcional",
+      detectedTitle: "Datos para confirmar",
       detectedHint:
-        "En esta etapa la lectura es demo. Después lo conectamos a un proveedor.",
+        "El prellenado es opcional. Si falla, puedes completar o corregir los campos manualmente.",
+      manualHintLocked:
+        "Sube frente y reverso para habilitar la edición manual.",
+      manualHintPrefilled:
+        "Revisa el prellenado automático y corrige cualquier dato antes de continuar.",
+      manualHintOptional:
+        "El prellenado es opcional. Puedes completar o corregir los campos manualmente.",
       btnContinue: "Continuar",
       btnBack: "Volver",
       needFile: "Sube una foto para continuar.",
-      needScan: "Termina la lectura para continuar.",
+      needScan: "El prellenado no es obligatorio para continuar.",
     },
   
     personal: {
@@ -34,17 +41,17 @@ export const onboardingCopy = {
   
     bank: {
       title: "Datos bancarios",
-      subtitle: "Usaremos estos datos para gestionar abonos y retiros.",
+      subtitle: "Usaremos estos datos para gestionar abonos y retiros a una cuenta a tu nombre.",
       bankLabel: "Banco",
       bankPlaceholder: "Selecciona un banco",
       typeLabel: "Tipo de cuenta",
       typePlaceholder: "Selecciona tipo de cuenta",
       numberLabel: "Número de cuenta",
       numberPlaceholder: "Ej: 12345678",
-      note: "",
+      note: "Debe ser una cuenta cuyo titular coincida con el RUT de tu perfil.",
       btnBack: "Volver",
       btnContinue: "Continuar",
-      btnContinueDisabled: "Completa banco, tipo y número",
+      btnContinueDisabled: "Completa banco, tipo y número con datos válidos",
     },
   
     terms: {

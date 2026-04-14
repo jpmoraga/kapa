@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
+import { getOnboardingStatus } from "@/lib/onboardingStatus";
 
 export async function POST() {
   const perfEnabled = process.env.DEBUG_PERF === "1";
@@ -25,7 +26,7 @@ export async function POST() {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, activeCompanyId: true },
+    select: { id: true },
   });
 
   if (!user) {
@@ -39,20 +40,31 @@ export async function POST() {
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 401 });
   }
 
-  // ✅ Marca términos aceptados a nivel usuario (UserOnboarding)
+  const onboarding = await getOnboardingStatus(user.id);
+  if (!onboarding.hasIdDocument) {
+    return NextResponse.json(
+      { error: "Debes subir tu documento antes de aceptar los términos." },
+      { status: 409 }
+    );
+  }
+  if (!onboarding.hasProfile) {
+    return NextResponse.json(
+      { error: "Completa tu perfil antes de aceptar los términos." },
+      { status: 409 }
+    );
+  }
+  if (!onboarding.hasBankAccount) {
+    return NextResponse.json(
+      { error: "Registra tu cuenta bancaria antes de aceptar los términos." },
+      { status: 409 }
+    );
+  }
+
   await prisma.userOnboarding.upsert({
     where: { userId: user.id },
     update: { termsAcceptedAt: new Date() },
     create: { userId: user.id, termsAcceptedAt: new Date() },
   });
-
-  // (Opcional) Si quieres también a nivel empresa:
-  // if (user.activeCompanyId) {
-  //   await prisma.company.update({
-  //     where: { id: user.activeCompanyId },
-  //     data: { termsAcceptedAt: new Date() },
-  //   });
-  // }
 
   if (perfEnabled) {
     console.info("perf:onboarding_terms", {
@@ -60,7 +72,7 @@ export async function POST() {
       action: "ok",
       userId: user.id,
       ms: Date.now() - t0,
-      queries: 2,
+      queries: 5,
     });
   }
 

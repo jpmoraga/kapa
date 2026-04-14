@@ -9,10 +9,10 @@ export type OnboardingStatus = {
   isComplete: boolean;
 };
 
-export type OnboardingStep = "ocr" | "personal" | "bank" | "terms" | "complete";
+export type OnboardingStep = "document" | "personal" | "bank" | "terms" | "complete";
 
 export function getOnboardingStep(status: OnboardingStatus): OnboardingStep {
-  if (!status.hasIdDocument) return "ocr";
+  if (!status.hasIdDocument) return "document";
   if (!status.hasProfile) return "personal";
   if (!status.hasBankAccount) return "bank";
   if (!status.termsAccepted) return "terms";
