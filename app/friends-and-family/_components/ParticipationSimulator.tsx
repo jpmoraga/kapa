@@ -134,6 +134,10 @@ export function ParticipationSimulator() {
             <div className="font-semibold">{formatPercent(tramoTwoBaseShare)} a US$1,5M</div>
             <div className="font-semibold">{formatPercent(tramoTwoEquivalent)} a US$2M</div>
           </div>
+          <p className="mt-3 text-xs leading-6 text-neutral-400">
+            Inversionistas del tramo 1 podrán participar en el tramo 2 con un 10% de
+            descuento sobre la valorización vigente, sujeto a documentación definitiva.
+          </p>
         </div>
       </div>
 
