@@ -276,13 +276,60 @@ export default async function AdminCustomerDetailPage({
         </div>
       </div>
 
+      <section id="ficha-operativa" className="mt-6 k21-card p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Acciones admin</div>
+            <h2 className="mt-2 text-xl font-semibold text-white">Ficha operativa y acceso rápido</h2>
+            <p className="mt-2 max-w-3xl text-sm text-neutral-400">
+              Esta es la vista operativa del cliente. Las acciones admin disponibles en esta fase se
+              ejecutan desde esta misma ficha y quedan auditadas.
+            </p>
+          </div>
+          <Link href={`/admin/audit?companyId=${companyId}`} className="k21-btn-secondary px-3 py-2 text-sm">
+            Ver auditoría
+          </Link>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <a
+            href="#accion-cobrar-suscripcion"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Disponible</div>
+            <div className="mt-2 font-medium text-white">Cobrar suscripción</div>
+          </a>
+          <a
+            href="#accion-comprar-btc"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Disponible</div>
+            <div className="mt-2 font-medium text-white">Comprar BTC</div>
+          </a>
+          <a
+            href="#accion-vender-btc"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Disponible</div>
+            <div className="mt-2 font-medium text-white">Vender BTC</div>
+          </a>
+          <a
+            href="#accion-asignar-btc-externo"
+            className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Excepcional</div>
+            <div className="mt-2 font-medium text-white">Asignar BTC externa</div>
+          </a>
+        </div>
+      </section>
+
       <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
         La valorización total se omite para no mezclar pricing o lógica sensible sobre patrimonio.
         Las acciones admin de esta fase solo se ejecutan desde esta ficha operativa, a través de
         flujos explícitos e idempotentes.
       </div>
 
-      <section className="mt-6 k21-card p-6">
+      <section id="acciones-admin" className="mt-6 k21-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-wide text-neutral-500">Saldos actuales</div>
@@ -686,7 +733,7 @@ export default async function AdminCustomerDetailPage({
         </div>
 
         <div className="mt-5 grid gap-6 xl:grid-cols-2">
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <section id="accion-cobrar-suscripcion" className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Cobrar suscripción</div>
             <div className="mt-2 text-sm font-medium text-white">Acción disponible</div>
             <div className="mt-2 text-sm text-neutral-300">
@@ -738,7 +785,7 @@ export default async function AdminCustomerDetailPage({
             </form>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <section id="accion-comprar-btc" className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Comprar BTC</div>
             <div className="mt-2 text-sm font-medium text-white">Acción disponible</div>
             <div className="mt-2 text-sm text-neutral-300">
@@ -786,7 +833,7 @@ export default async function AdminCustomerDetailPage({
             </form>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <section id="accion-vender-btc" className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Vender BTC</div>
             <div className="mt-2 text-sm font-medium text-white">Acción disponible</div>
             <div className="mt-2 text-sm text-neutral-300">
@@ -834,7 +881,7 @@ export default async function AdminCustomerDetailPage({
             </form>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <section id="accion-asignar-btc-externo" className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Asignación BTC externa</div>
             <div className="mt-2 text-sm font-medium text-white">Acción disponible con uso excepcional</div>
             <div className="mt-2 text-sm text-neutral-300">

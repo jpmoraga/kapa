@@ -46,18 +46,27 @@ export default async function AdminCompanyDetailPage({
       <AdminPageHeader
         eyebrow="Admin / Empresas / Detalle"
         title={company.name}
-        description="Vista de lifecycle comercial y revisión manual. Todo lo mostrado es independiente de treasury y no introduce operaciones patrimoniales."
+        description="Vista de lifecycle/compliance y revisión manual. No es la pantalla operativa para saldos o acciones admin; eso vive en la ficha operativa del cliente."
         actions={
           <>
             <Link href="/admin/companies" className="k21-btn-secondary px-3 py-2 text-sm">
               Volver a Empresas
             </Link>
             <Link href={company.customerDetailHref} className="k21-btn-secondary px-3 py-2 text-sm">
-              Ver cliente
+              Ir a ficha operativa
             </Link>
           </>
         }
       />
+
+      <div className="mt-6 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-100">
+        Esta vista se usa para revisión documental y lifecycle. Para operar saldos, cobrar
+        suscripción o usar acciones admin, entra a{" "}
+        <Link href={company.customerDetailHref} className="font-medium text-white underline underline-offset-4">
+          la ficha operativa del cliente
+        </Link>
+        .
+      </div>
 
       {flash === "reviewed" ? (
         <div className="mt-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">

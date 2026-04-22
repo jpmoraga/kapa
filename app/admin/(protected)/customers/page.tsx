@@ -136,99 +136,103 @@ export default async function AdminCustomersPage({
             })}
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Cliente / empresa</th>
-                  <th className="px-4 py-3 font-medium">Email principal</th>
-                  <th className="px-4 py-3 font-medium">Tipo / estado</th>
-                  <th className="px-4 py-3 font-medium">Suscripción</th>
-                  <th className="px-4 py-3 font-medium">CLP</th>
-                  <th className="px-4 py-3 font-medium">USD</th>
-                  <th className="px-4 py-3 font-medium">BTC</th>
-                  <th className="px-4 py-3 font-medium">Última actividad</th>
-                  <th className="px-4 py-3 font-medium text-right">Ficha operativa</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {data.rows.map((row) => (
-                  <tr key={row.companyId} className="align-top text-neutral-200">
-                    <td className="px-4 py-4">
-                      <div className="font-medium text-white">{row.displayName}</div>
-                      <div className="mt-1 text-xs text-neutral-500">
-                        {row.companyRut ? `RUT: ${row.companyRut}` : "Sin RUT registrado"}
-                      </div>
-                      <div className="mt-1 text-xs text-neutral-500">
-                        Contacto: {row.primaryContact.name ?? "—"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-neutral-300">
-                      {row.primaryContact.email ?? "—"}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`rounded-full border px-2 py-1 text-[11px] ${badgeClasses("neutral")}`}>
-                          {row.kind === "PERSONAL" ? "PERSONAL" : "BUSINESS"}
-                        </span>
+          <div className="mt-5 rounded-2xl border border-white/10">
+            <div className="overflow-x-auto rounded-2xl">
+              <table className="min-w-[1180px] text-left text-sm">
+                <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-neutral-500">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Cliente / empresa</th>
+                    <th className="px-4 py-3 font-medium">Email principal</th>
+                    <th className="px-4 py-3 font-medium">Tipo / estado</th>
+                    <th className="px-4 py-3 font-medium">Suscripción</th>
+                    <th className="px-4 py-3 font-medium">CLP</th>
+                    <th className="px-4 py-3 font-medium">USD</th>
+                    <th className="px-4 py-3 font-medium">BTC</th>
+                    <th className="px-4 py-3 font-medium">Última actividad</th>
+                    <th className="sticky right-0 z-10 bg-[#17191d] px-4 py-3 font-medium text-right shadow-[-1px_0_0_rgba(255,255,255,0.08)]">
+                      Ficha operativa
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/10">
+                  {data.rows.map((row) => (
+                    <tr key={row.companyId} className="align-top text-neutral-200">
+                      <td className="px-4 py-4">
+                        <div className="font-medium text-white">{row.displayName}</div>
+                        <div className="mt-1 text-xs text-neutral-500">
+                          {row.companyRut ? `RUT: ${row.companyRut}` : "Sin RUT registrado"}
+                        </div>
+                        <div className="mt-1 text-xs text-neutral-500">
+                          Contacto: {row.primaryContact.name ?? "—"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-neutral-300">
+                        {row.primaryContact.email ?? "—"}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`rounded-full border px-2 py-1 text-[11px] ${badgeClasses("neutral")}`}>
+                            {row.kind === "PERSONAL" ? "PERSONAL" : "BUSINESS"}
+                          </span>
+                          <span
+                            className={`rounded-full border px-2 py-1 text-[11px] ${
+                              row.onboardingCompleted
+                                ? badgeClasses("success")
+                                : badgeClasses("warning")
+                            }`}
+                          >
+                            {row.statusLabel}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
                         <span
                           className={`rounded-full border px-2 py-1 text-[11px] ${
-                            row.onboardingCompleted
+                            row.subscription.hasSubscriberMember
                               ? badgeClasses("success")
-                              : badgeClasses("warning")
+                              : badgeClasses("neutral")
                           }`}
                         >
-                          {row.statusLabel}
+                          {row.subscription.hasSubscriberMember
+                            ? `Sí (${row.subscription.subscriberCount})`
+                            : "No"}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`rounded-full border px-2 py-1 text-[11px] ${
-                          row.subscription.hasSubscriberMember
-                            ? badgeClasses("success")
-                            : badgeClasses("neutral")
-                        }`}
-                      >
-                        {row.subscription.hasSubscriberMember
-                          ? `Sí (${row.subscription.subscriberCount})`
-                          : "No"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 font-mono text-xs text-neutral-300">
-                      {formatClp(row.balances.clp)}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-xs text-neutral-300">
-                      {formatUsd(row.balances.usd)}
-                    </td>
-                    <td className="px-4 py-4 font-mono text-xs text-neutral-300">
-                      {formatBtc(row.balances.btc)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div>{formatDateTime(row.lastActivityAt)}</div>
-                      <div className="mt-1 text-xs text-neutral-500">
-                        {sourceLabel(row.lastActivitySource)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <Link
-                        href={`/admin/customers/${row.companyId}`}
-                        className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
-                      >
-                        Abrir ficha
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-                {!data.rows.length && (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-sm text-neutral-500">
-                      No encontré clientes para el filtro actual.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                      </td>
+                      <td className="px-4 py-4 font-mono text-xs text-neutral-300">
+                        {formatClp(row.balances.clp)}
+                      </td>
+                      <td className="px-4 py-4 font-mono text-xs text-neutral-300">
+                        {formatUsd(row.balances.usd)}
+                      </td>
+                      <td className="px-4 py-4 font-mono text-xs text-neutral-300">
+                        {formatBtc(row.balances.btc)}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div>{formatDateTime(row.lastActivityAt)}</div>
+                        <div className="mt-1 text-xs text-neutral-500">
+                          {sourceLabel(row.lastActivitySource)}
+                        </div>
+                      </td>
+                      <td className="sticky right-0 bg-[#17191d] px-4 py-4 text-right shadow-[-1px_0_0_rgba(255,255,255,0.08)]">
+                        <Link
+                          href={`/admin/customers/${row.companyId}`}
+                          className="inline-flex whitespace-nowrap rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
+                        >
+                          Abrir ficha
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                  {!data.rows.length && (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-12 text-center text-sm text-neutral-500">
+                        No encontré clientes para el filtro actual.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
