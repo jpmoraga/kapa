@@ -169,9 +169,9 @@ export default async function AdminCustomerDetailPage({
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
       <AdminPageHeader
-        eyebrow="Admin / Clientes / Detalle"
+        eyebrow="Admin / Clientes / Ficha operativa"
         title={customer.displayName}
-        description="Detalle operativo del cliente/empresa. El contexto comercial sigue siendo visible en modo seguro y las acciones admin nuevas quedan encapsuladas en AdminAction con trazabilidad e idempotencia."
+        description="Ficha operativa del cliente/empresa. Aquí viven los saldos, el contexto comercial visible y las acciones admin auditadas; el lifecycle documental sigue separado en Empresas."
         actions={
           <>
             <Link href="/admin/customers" className="k21-btn-secondary px-3 py-2 text-sm">
@@ -278,8 +278,8 @@ export default async function AdminCustomerDetailPage({
 
       <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
         La valorización total se omite para no mezclar pricing o lógica sensible sobre patrimonio.
-        Las acciones admin de esta fase solo se ejecutan a través de flujos explícitos e
-        idempotentes.
+        Las acciones admin de esta fase solo se ejecutan desde esta ficha operativa, a través de
+        flujos explícitos e idempotentes.
       </div>
 
       <section className="mt-6 k21-card p-6">
@@ -673,7 +673,7 @@ export default async function AdminCustomerDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-wide text-neutral-500">Acciones admin</div>
-            <h2 className="mt-2 text-xl font-semibold text-white">Operación auditada e idempotente</h2>
+            <h2 className="mt-2 text-xl font-semibold text-white">Operación auditada desde la ficha del cliente</h2>
             <p className="mt-2 max-w-3xl text-sm text-neutral-400">
               Cada acción crea primero un <code>AdminAction</code> y solo después ejecuta el flujo
               patrimonial correspondiente. En esta fase, buy/sell y asignación manual operan solo
@@ -688,6 +688,7 @@ export default async function AdminCustomerDetailPage({
         <div className="mt-5 grid gap-6 xl:grid-cols-2">
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Cobrar suscripción</div>
+            <div className="mt-2 text-sm font-medium text-white">Acción disponible</div>
             <div className="mt-2 text-sm text-neutral-300">
               Referencia oficial:
               <span className="pl-2 font-medium text-white">
@@ -739,6 +740,7 @@ export default async function AdminCustomerDetailPage({
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Comprar BTC</div>
+            <div className="mt-2 text-sm font-medium text-white">Acción disponible</div>
             <div className="mt-2 text-sm text-neutral-300">
               Fee comercial efectivo:{" "}
               <span className="font-medium text-white">
@@ -786,6 +788,7 @@ export default async function AdminCustomerDetailPage({
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Vender BTC</div>
+            <div className="mt-2 text-sm font-medium text-white">Acción disponible</div>
             <div className="mt-2 text-sm text-neutral-300">
               Fee comercial efectivo:{" "}
               <span className="font-medium text-white">
@@ -833,6 +836,7 @@ export default async function AdminCustomerDetailPage({
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <div className="text-xs uppercase tracking-wide text-neutral-500">Asignación BTC externa</div>
+            <div className="mt-2 text-sm font-medium text-white">Acción disponible con uso excepcional</div>
             <div className="mt-2 text-sm text-neutral-300">
               Caso formal para compras fuera de Buda. En esta fase exige inventario suficiente en{" "}
               <code>system wallet</code>.
@@ -916,7 +920,7 @@ export default async function AdminCustomerDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-wide text-neutral-500">Historial</div>
-            <h2 className="mt-2 text-xl font-semibold text-white">Admin actions recientes</h2>
+            <h2 className="mt-2 text-xl font-semibold text-white">Historial de acciones admin</h2>
           </div>
           <Link href={`/admin/audit?companyId=${companyId}`} className="k21-btn-secondary px-3 py-2 text-sm">
             Ir a auditoría

@@ -104,7 +104,7 @@ export default async function AdminCompaniesPage({
       <AdminPageHeader
         eyebrow="Admin / Empresas"
         title="Lifecycle de empresas pyme"
-        description="Cola administrativa para alta manual, revisión y aprobación de empresas `BUSINESS`. Todo queda separado de treasury y de las operaciones patrimoniales."
+        description="Cola administrativa para alta manual, revisión y aprobación de empresas `BUSINESS`. Esta vista es de lifecycle/compliance; la operación de saldos y acciones admin vive en Clientes."
         actions={
           <Link href="/admin" className="k21-btn-secondary px-3 py-2 text-sm">
             Volver al dashboard
@@ -168,7 +168,8 @@ export default async function AdminCompaniesPage({
               <h2 className="mt-2 text-lg font-semibold text-white">Empresas business</h2>
               <p className="mt-2 text-sm text-neutral-400">
                 Este listado usa el nuevo modelo de lifecycle. Las empresas personales siguen fuera
-                del approval flow.
+                del approval flow. Para saldos, contexto comercial y acciones admin, entra por{" "}
+                <code>/admin/customers</code>.
               </p>
             </div>
 
@@ -268,7 +269,7 @@ export default async function AdminCompaniesPage({
                           href={`/admin/companies/${row.companyId}`}
                           className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
                         >
-                          Revisar
+                          Revisar lifecycle
                         </Link>
                       </td>
                     </tr>

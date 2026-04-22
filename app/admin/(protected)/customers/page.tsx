@@ -76,7 +76,7 @@ export default async function AdminCustomersPage({
       <AdminPageHeader
         eyebrow="Admin / Clientes"
         title="Clientes"
-        description="Vista read-only de la base actual de clientes. La entidad central es la empresa (`Company`), porque ahí viven los saldos vigentes, los movimientos y los créditos."
+        description="Panel operativo de clientes. Entra desde aquí a la ficha del cliente para ver saldos, contexto comercial y acciones admin; la entidad central sigue siendo `Company`."
         actions={
           <Link href="/admin" className="k21-btn-secondary px-3 py-2 text-sm">
             Volver al dashboard
@@ -91,8 +91,9 @@ export default async function AdminCustomersPage({
               <div className="text-xs uppercase tracking-wide text-neutral-500">Filtros</div>
               <h2 className="mt-2 text-lg font-semibold text-white">Listado consolidado</h2>
               <p className="mt-2 text-sm text-neutral-400">
-                Los saldos se leen directo desde <code>TreasuryAccount</code>. No se recalculan desde
-                movimientos.
+                Los saldos se leen directo desde <code>TreasuryAccount</code>. Usa{" "}
+                <span className="font-medium text-white">Abrir ficha</span> para entrar a la vista
+                operativa del cliente y a sus acciones admin.
               </p>
             </div>
 
@@ -147,7 +148,7 @@ export default async function AdminCustomersPage({
                   <th className="px-4 py-3 font-medium">USD</th>
                   <th className="px-4 py-3 font-medium">BTC</th>
                   <th className="px-4 py-3 font-medium">Última actividad</th>
-                  <th className="px-4 py-3 font-medium text-right">Detalle</th>
+                  <th className="px-4 py-3 font-medium text-right">Ficha operativa</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
@@ -214,7 +215,7 @@ export default async function AdminCustomersPage({
                         href={`/admin/customers/${row.companyId}`}
                         className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-neutral-100 transition hover:border-white/20 hover:bg-white/[0.06]"
                       >
-                        Ver detalle
+                        Abrir ficha
                       </Link>
                     </td>
                   </tr>
@@ -254,10 +255,10 @@ export default async function AdminCustomersPage({
           </section>
 
           <section className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 text-sm text-amber-100">
-            El listado de clientes sigue priorizando lectura segura y no ejecuta acciones. La capa
-            comercial oficial de suscripción y pricing ya vive en <code>/admin/subscriptions</code> y{" "}
-            <code>/admin/pricing</code>; la señal legacy de <code>User.isSubscriber</code> se conserva
-            solo como fallback visual donde todavía aplica.
+            Esta pantalla es la entrada a operación. La revisión documental/lifecycle vive en{" "}
+            <code>/admin/companies</code>; la ficha operativa vive en{" "}
+            <code>/admin/customers/[companyId]</code>, donde están saldos, contexto comercial y
+            acciones admin.
           </section>
         </div>
       </div>
