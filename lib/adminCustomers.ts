@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isHiddenAuditOrTestCompanyName } from "@/lib/adminListVisibility";
 
 export type AdminCustomerFilter =
   | "all"
@@ -744,7 +745,11 @@ export async function listAdminCustomers(input?: {
   });
 
   const rows = sortListRows(companies.map(toListItem)).filter((row) => {
-    return matchesFilter(row, filter) && matchesSearch(row, q);
+    return (
+      !isHiddenAuditOrTestCompanyName(row.companyName) &&
+      matchesFilter(row, filter) &&
+      matchesSearch(row, q)
+    );
   });
 
   return {

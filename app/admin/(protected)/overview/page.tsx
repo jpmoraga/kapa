@@ -179,7 +179,7 @@ export default function AdminOverviewPage() {
       <div className="k21-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-sm text-white/60">Cava Admin / Tesorería</div>
+            <div className="text-sm text-white/60">Kapa21 Admin / Tesorería</div>
             <h1 className="text-2xl font-semibold tracking-tight text-white">Overview de tesorería</h1>
             <p className="mt-2 text-sm text-white/60">Panel general de caja, ingresos y actividad.</p>
           </div>

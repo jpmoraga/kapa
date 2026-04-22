@@ -29,7 +29,7 @@ export default function AdminNavigation({ adminEmail, adminRole }: AdminNavigati
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-xs uppercase tracking-[0.24em] text-neutral-500">Master Admin</div>
-            <div className="mt-1 text-lg font-semibold text-white">Cava /admin</div>
+            <div className="mt-1 text-lg font-semibold text-white">Kapa21 /admin</div>
             <div className="mt-1 text-xs text-neutral-500">
               {adminEmail} · {adminRole}
             </div>
@@ -64,7 +64,7 @@ export default function AdminNavigation({ adminEmail, adminRole }: AdminNavigati
         <div className="flex h-full flex-col px-5 py-6">
           <div>
             <div className="text-xs uppercase tracking-[0.24em] text-neutral-500">Master Admin</div>
-            <div className="mt-2 text-2xl font-semibold tracking-tight text-white">Cava /admin</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-white">Kapa21 /admin</div>
             <p className="mt-3 text-sm text-neutral-400">
               Hub de control para navegación, visibilidad y operaciones administrativas heredadas.
             </p>

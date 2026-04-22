@@ -118,7 +118,11 @@ export default async function AdminSubscriptionsPage({
   const flash = flashMessage(firstString(sp.flash));
   const error = errorMessage(firstString(sp.error));
   const data = await listAdminSubscriptions({ filter, q });
-  const selectedCompanyId = requestedCompanyId ?? data.rows[0]?.companyId ?? null;
+  const visibleCompanyIds = new Set(data.rows.map((row) => row.companyId));
+  const selectedCompanyId =
+    requestedCompanyId && visibleCompanyIds.has(requestedCompanyId)
+      ? requestedCompanyId
+      : data.rows[0]?.companyId ?? null;
   const selectedCompany = selectedCompanyId
     ? await getCompanyCommercialSnapshot(selectedCompanyId)
     : null;
@@ -240,8 +244,9 @@ export default async function AdminSubscriptionsPage({
             })}
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
-            <table className="min-w-full text-left text-sm">
+          <div className="mt-5 rounded-2xl border border-white/10">
+            <div className="overflow-x-auto rounded-2xl">
+              <table className="min-w-[1080px] text-left text-sm">
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-neutral-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Empresa</th>
@@ -348,7 +353,8 @@ export default async function AdminSubscriptionsPage({
                   </tr>
                 )}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         </section>
 

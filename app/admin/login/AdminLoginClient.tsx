@@ -39,7 +39,7 @@ export default function AdminLoginClient() {
     <div className="min-h-screen bg-neutral-900 text-neutral-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md k21-card p-6">
         <div className="mb-6">
-          <div className="text-sm text-white/60">Cava</div>
+          <div className="text-sm text-white/60">Kapa21</div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Acceso admin</h1>
           <p className="mt-1 text-sm text-white/60">Gestiona la tesorería manual.</p>
         </div>
@@ -49,7 +49,7 @@ export default function AdminLoginClient() {
             <label className="text-sm font-medium text-white/80">Email</label>
             <input
               className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white outline-none focus:ring-2 focus:ring-white/20"
-              placeholder="admin@cava.cl"
+              placeholder="admin@kapa21.cl"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

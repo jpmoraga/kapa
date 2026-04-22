@@ -13,6 +13,7 @@ import {
   PRICING_KEYS,
   getCommercialPricingFallbacks,
 } from "@/lib/pricing";
+import { isHiddenAuditOrTestCompanyName } from "@/lib/adminListVisibility";
 
 export const commercialStatusOptions: ReadonlyArray<{
   value: CommercialStatus;
@@ -965,7 +966,13 @@ export async function listAdminSubscriptions(input?: {
 
   const rows = companies
     .map(mapListItem)
-    .filter((row) => matchesSubscriptionFilter(row, filter) && matchesCommercialSearch(row, q))
+    .filter((row) => {
+      return (
+        !isHiddenAuditOrTestCompanyName(row.companyName) &&
+        matchesSubscriptionFilter(row, filter) &&
+        matchesCommercialSearch(row, q)
+      );
+    })
     .sort((a, b) => {
       const updatedA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
       const updatedB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;

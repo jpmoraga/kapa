@@ -568,7 +568,7 @@ export default function AdminOpsClient({
     <div className="mx-auto max-w-6xl px-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-sm text-neutral-400">Cava Admin</div>
+          <div className="text-sm text-neutral-400">Kapa21 Admin</div>
           <h1 className="text-3xl font-semibold tracking-tight text-neutral-50">Operaciones</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -211,8 +211,9 @@ export default async function AdminCompaniesPage({
             })}
           </div>
 
-          <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
-            <table className="min-w-full text-left text-sm">
+          <div className="mt-5 rounded-2xl border border-white/10">
+            <div className="overflow-x-auto rounded-2xl">
+              <table className="min-w-[980px] text-left text-sm">
               <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-neutral-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Empresa</th>
@@ -280,7 +281,8 @@ export default async function AdminCompaniesPage({
                   </tr>
                 )}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
         </section>
 
