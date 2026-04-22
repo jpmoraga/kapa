@@ -28,7 +28,7 @@ export default async function DashboardPage({
   if (!session?.user?.email) redirect("/auth/login");
 
   const email = session.user.email.toLowerCase().trim();
-  const activeCompanyId = (session as any).activeCompanyId as string | undefined;
+  const activeCompanyId = (session as typeof session & { activeCompanyId?: string }).activeCompanyId;
   if (!activeCompanyId) redirect("/select-company");
 
   
@@ -45,11 +45,6 @@ export default async function DashboardPage({
   const userMs = Date.now() - tUser;
   if (!user) redirect("/auth/login");
 
-  const displayName =
-    (user.personProfile?.fullName ?? "").trim() || email.split("@")[0];
-
-  
-
   // 1.5) estado onboarding (server-side)
   const tOnboarding = Date.now();
   const onboarding = await getOnboardingStatus(user.id);
@@ -62,12 +57,20 @@ export default async function DashboardPage({
   const tMembership = Date.now();
   const membership = await prisma.companyUser.findUnique({
     where: { userId_companyId: { userId: user.id, companyId: activeCompanyId } },
-    select: { role: true },
+    select: {
+      role: true,
+      company: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
   const membershipMs = Date.now() - tMembership;
   const role = membership?.role ?? "member";
   const roleLower = String(role).toLowerCase();
   const isAdmin = roleLower === "admin" || roleLower === "owner";
+  const activeCompanyName = membership?.company.name ?? "Cuenta activa";
 
   const tTxn = Date.now();
   const [balances, movements] = await prisma.$transaction(async (tx) => {
@@ -149,7 +152,7 @@ export default async function DashboardPage({
   return (
     <DashboardBonito
       activeCompanyId={activeCompanyId}
-      activeCompanyName={displayName}
+      activeCompanyName={activeCompanyName}
       balances={balances}
       movements={clientMovements}
       isAdmin={isAdmin}

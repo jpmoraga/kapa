@@ -8,7 +8,13 @@
     "build": "prisma generate && next build --webpack",
     "vercel-build": "prisma generate && prisma migrate deploy && next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "validate:admin-hub": "node scripts/validate_admin_hub.mjs",
+    "validate:admin-customers": "node scripts/validate_admin_customers.mjs",
+    "validate:phase4-lifecycle": "node scripts/validate_phase4_lifecycle.mjs",
+    "validate:phase5-commercial": "node scripts/validate_phase5_commercial.mjs",
+    "validate:phase6-admin-actions": "node scripts/validate_phase6_admin_actions.mjs",
+    "validate:phase61-admin-actions-hardening": "node scripts/validate_phase61_admin_actions_hardening.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

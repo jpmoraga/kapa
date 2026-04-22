@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { AssetCode, LoanCurrency, Prisma } from "@prisma/client";
+import { getTradeFeePercent } from "@/lib/fees";
+import { APR_STANDARD, APR_SUBSCRIBER } from "@/lib/loans/rates";
 
 export const PRICING_KEYS = {
+  TRADE_BUY_BTC_FEE_PCT: "TRADE_BUY_BTC_FEE_PCT",
+  TRADE_SELL_BTC_FEE_PCT: "TRADE_SELL_BTC_FEE_PCT",
   LOAN_APR_STANDARD: "LOAN_APR_STANDARD",
   LOAN_APR_SUBSCRIBER: "LOAN_APR_SUBSCRIBER",
   LOAN_MIN_DAYS_STANDARD: "LOAN_MIN_DAYS_STANDARD",
@@ -9,6 +13,70 @@ export const PRICING_KEYS = {
   LOAN_MAX_LTV_PCT_STANDARD: "LOAN_MAX_LTV_PCT_STANDARD",
   LOAN_MAX_LTV_PCT_SUBSCRIBER: "LOAN_MAX_LTV_PCT_SUBSCRIBER",
 } as const;
+
+export const COMMERCIAL_PRICING_FIELD_DEFINITIONS = [
+  {
+    key: PRICING_KEYS.TRADE_BUY_BTC_FEE_PCT,
+    label: "Fee compra BTC",
+    kind: "decimal",
+    description: "Fee comercial visible para compras BTC.",
+  },
+  {
+    key: PRICING_KEYS.TRADE_SELL_BTC_FEE_PCT,
+    label: "Fee venta BTC",
+    kind: "decimal",
+    description: "Fee comercial visible para ventas BTC.",
+  },
+  {
+    key: PRICING_KEYS.LOAN_APR_STANDARD,
+    label: "Tasa crédito no suscrito",
+    kind: "decimal",
+    description: "APR aplicable a clientes sin suscripción comercial.",
+  },
+  {
+    key: PRICING_KEYS.LOAN_APR_SUBSCRIBER,
+    label: "Tasa crédito suscrito",
+    kind: "decimal",
+    description: "APR aplicable a clientes con suscripción comercial activa.",
+  },
+  {
+    key: PRICING_KEYS.LOAN_MIN_DAYS_STANDARD,
+    label: "Días mínimos estándar",
+    kind: "int",
+    description: "Piso de días para cálculo de interés estándar.",
+  },
+  {
+    key: PRICING_KEYS.LOAN_MIN_DAYS_SUBSCRIBER,
+    label: "Días mínimos suscrito",
+    kind: "int",
+    description: "Piso de días para cálculo de interés en clientes suscritos.",
+  },
+  {
+    key: PRICING_KEYS.LOAN_MAX_LTV_PCT_STANDARD,
+    label: "LTV máximo estándar (%)",
+    kind: "int",
+    description: "Tope de LTV visible para clientes estándar.",
+  },
+  {
+    key: PRICING_KEYS.LOAN_MAX_LTV_PCT_SUBSCRIBER,
+    label: "LTV máximo suscrito (%)",
+    kind: "int",
+    description: "Tope de LTV visible para clientes suscritos.",
+  },
+] as const;
+
+export function getCommercialPricingFallbacks() {
+  return {
+    [PRICING_KEYS.TRADE_BUY_BTC_FEE_PCT]: getTradeFeePercent(AssetCode.BTC).toString(),
+    [PRICING_KEYS.TRADE_SELL_BTC_FEE_PCT]: getTradeFeePercent(AssetCode.BTC).toString(),
+    [PRICING_KEYS.LOAN_APR_STANDARD]: String(APR_STANDARD),
+    [PRICING_KEYS.LOAN_APR_SUBSCRIBER]: String(APR_SUBSCRIBER),
+    [PRICING_KEYS.LOAN_MIN_DAYS_STANDARD]: "7",
+    [PRICING_KEYS.LOAN_MIN_DAYS_SUBSCRIBER]: "1",
+    [PRICING_KEYS.LOAN_MAX_LTV_PCT_STANDARD]: "50",
+    [PRICING_KEYS.LOAN_MAX_LTV_PCT_SUBSCRIBER]: "60",
+  } satisfies Record<string, string>;
+}
 
 export type PricingRuleValue = {
   key: string;
@@ -26,7 +94,11 @@ export type PricingContext = {
 };
 
 function isMissingSchemaError(error: unknown) {
-  const err = error as any;
+  const err = error as {
+    code?: string;
+    message?: string;
+    meta?: { cause?: string };
+  };
   const code = String(err?.code ?? "");
   const metaCause = String(err?.meta?.cause ?? "");
   const message = String(err?.message ?? "");
@@ -161,7 +233,10 @@ export async function getPricingContext(params: {
     return { plan: null, rules: {}, source: "none" };
   } catch (error) {
     if (isMissingSchemaError(error)) {
-      const err = error as any;
+      const err = error as {
+        code?: string;
+        meta?: { cause?: string };
+      };
       console.warn("PRICING_FALLBACK", {
         companyId: params.companyId ?? null,
         userId: params.userId ?? null,

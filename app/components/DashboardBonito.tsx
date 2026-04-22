@@ -349,14 +349,20 @@ useEffect(() => {
                     </div>
 
                     <div className="p-2 space-y-1">
-                      {/* Crear empresa (placeholder) */}
                       <button
                         type="button"
-                        disabled
-                        className="w-full text-left rounded-xl px-3 py-2 text-sm text-neutral-500 cursor-not-allowed opacity-70"
-                        title="Próximamente"
+                        className="w-full text-left rounded-xl px-3 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                        onClick={() => go("/companies/new")}
                       >
                         Crear empresa
+                      </button>
+
+                      <button
+                        type="button"
+                        className="w-full text-left rounded-xl px-3 py-2 text-sm text-neutral-200 hover:bg-white/5"
+                        onClick={() => go("/select-company?force=1")}
+                      >
+                        Cambiar cuenta
                       </button>
 
                       {/* Divider */}

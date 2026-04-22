@@ -7,6 +7,10 @@ import { TreasuryMovementStatus } from "@prisma/client";
 import { approveMovementAsSystem } from "@/lib/treasury/approveMovement";
 import { syncSystemWalletAndRetry } from "@/lib/syncSystemWallet";
 
+type CronRetryResult =
+  | { id: string; ok: true; venue: string }
+  | { id: string; ok: false; error: string };
+
 export async function POST(req: Request) {
   // 🔒 protección simple con secret
   const secret = req.headers.get("x-cron-secret");
@@ -24,13 +28,21 @@ export async function POST(req: Request) {
   await syncSystemWalletAndRetry();
 
   const pendings = await prisma.treasuryMovement.findMany({
-    where: { status: TreasuryMovementStatus.PENDING },
+    where: {
+      status: TreasuryMovementStatus.PENDING,
+      NOT: {
+        OR: [
+          { internalNote: { contains: "adminAction=" } },
+          { internalNote: { contains: "execution=system_wallet_only" } },
+        ],
+      },
+    },
     orderBy: { createdAt: "asc" },
     take: batch,
     select: { id: true, companyId: true },
   });
 
-  const results: any[] = [];
+  const results: CronRetryResult[] = [];
 
   for (const m of pendings) {
     try {
@@ -39,10 +51,14 @@ export async function POST(req: Request) {
         companyId: m.companyId,
         actorUserId: actor.id,
       });
-      results.push({ id: m.id, ok: true, venue: (r as any).venue });
-    } catch (e: any) {
+      results.push({ id: m.id, ok: true, venue: r.venue });
+    } catch (error: unknown) {
       // ✅ no exponemos razón al cliente; acá solo dejamos log interno
-      results.push({ id: m.id, ok: false, error: String(e?.message ?? "ERROR") });
+      results.push({
+        id: m.id,
+        ok: false,
+        error: error instanceof Error ? error.message : "ERROR",
+      });
     }
   }
 

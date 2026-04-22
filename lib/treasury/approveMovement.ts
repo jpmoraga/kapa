@@ -18,6 +18,11 @@ function isManualSource(source: string | null | undefined) {
   return String(source ?? "").toLowerCase().startsWith("manual:");
 }
 
+function isAdminSystemWalletOnlyExecution(internalNote: string | null | undefined) {
+  const note = String(internalNote ?? "");
+  return note.includes("adminAction=") && note.includes("execution=system_wallet_only");
+}
+
 async function getBestPriceSnapshot(
   client: Prisma.TransactionClient | PrismaClient,
   assetCode: AssetCode,
@@ -89,8 +94,19 @@ export async function approveMovementAsSystem(opts: {
   skipSync?: boolean;
   correlationId?: string;
   requireSystemWallet?: boolean;
+  feePercentOverride?: Prisma.Decimal | null;
+  successInternalReason?: InternalMovementReason;
 }) {
-  const { movementId, companyId, actorUserId, skipSync, correlationId, requireSystemWallet } = opts;
+  const {
+    movementId,
+    companyId,
+    actorUserId,
+    skipSync,
+    correlationId,
+    requireSystemWallet,
+    feePercentOverride,
+    successInternalReason,
+  } = opts;
   const baseLog = { correlationId, movementId, companyId };
   logEvent("trade:approve_start", baseLog);
   const strictSystemWallet = process.env.STRICT_SYSTEM_WALLET !== "false";
@@ -120,6 +136,7 @@ export async function approveMovementAsSystem(opts: {
   };
 
   try {
+    let adminSystemWalletOnlyExecution = false;
     const movement = await timed("db.movement.find", () =>
       prisma.treasuryMovement.findFirst({
         where: { id: movementId, companyId },
@@ -135,11 +152,13 @@ export async function approveMovementAsSystem(opts: {
           executedQuoteAmount: true,
           executedQuoteCode: true,
           executedSource: true,
+          internalNote: true,
         },
       })
     );
 
     if (!movement) throw new Error("NOT_FOUND");
+    adminSystemWalletOnlyExecution = isAdminSystemWalletOnlyExecution(movement.internalNote);
     if (movement.status === TreasuryMovementStatus.APPROVED) {
       const out = {
         updated: { id: movement.id, status: movement.status },
@@ -224,7 +243,7 @@ export async function approveMovementAsSystem(opts: {
               executedQuoteAmount: amount,
               executedFeeAmount: new Prisma.Decimal(0),
               executedFeeCode: AssetCode.CLP,
-              internalReason: InternalMovementReason.NONE,
+              internalReason: successInternalReason ?? InternalMovementReason.NONE,
               internalState: InternalMovementState.NONE,
             },
             select: { id: true, status: true, internalReason: true, internalState: true },
@@ -244,18 +263,6 @@ export async function approveMovementAsSystem(opts: {
     let execReason: string | null = null;
     let budaCalls = 0;
     let execPathLogged = false;
-    const logExecPath = () => {
-      if (execPathLogged || !execPath) return;
-      execPathLogged = true;
-      logEvent("TRADE_EXEC_PATH", {
-        ...baseLog,
-        side: movement.type,
-        asset: movement.assetCode,
-        path: execPath,
-        budaCalls,
-        reason: execReason,
-      });
-    };
     const bumpBudaCall = (kind: string) => {
       if (execPath === "system_wallet") {
         logEvent("BUDA_CALL_BLOCKED", {
@@ -268,15 +275,25 @@ export async function approveMovementAsSystem(opts: {
         throw new Error("BUDA_CALL_FORBIDDEN_ON_SYSTEM_WALLET_PATH");
       }
       budaCalls += 1;
+      if (execPathLogged || !execPath) return;
+      execPathLogged = true;
+      logEvent("TRADE_EXEC_PATH", {
+        ...baseLog,
+        side: movement.type,
+        asset: movement.assetCode,
+        path: execPath,
+        budaCalls,
+        reason: execReason,
+      });
     };
 
     const presetQuote =
       movement.executedQuoteAmount != null
-        ? new Prisma.Decimal(movement.executedQuoteAmount as any)
+        ? new Prisma.Decimal(movement.executedQuoteAmount)
         : null;
     const presetPrice =
       movement.executedPrice != null
-        ? new Prisma.Decimal(movement.executedPrice as any)
+        ? new Prisma.Decimal(movement.executedPrice)
         : null;
     const presetSource = movement.executedSource ?? null;
     const isManualPresetSource = isManualSource(presetSource);
@@ -343,7 +360,7 @@ export async function approveMovementAsSystem(opts: {
     const isSell = typeValue === "withdraw" || typeValue === "sell";
     if (!isBuy && !isSell) throw new Error("BAD_TYPE");
 
-    const feePct = getTradeFeePercent(movement.assetCode);
+    const feePct = feePercentOverride ?? getTradeFeePercent(movement.assetCode);
     let feeOnQuote = computeTradeFee(estClp, feePct);
     const feeOnBase = computeTradeFee(amount, feePct);
     let totalBuyClp = estClp.plus(feeOnQuote);
@@ -494,7 +511,7 @@ export async function approveMovementAsSystem(opts: {
               executedQuoteAmount: isBuy ? grossBuyClp : estClp,
               executedFeeAmount: isBuy ? feeOnQuote : feeOnBase,
               executedFeeCode: isBuy ? AssetCode.CLP : movement.assetCode,
-              internalReason: InternalMovementReason.NONE,
+              internalReason: successInternalReason ?? InternalMovementReason.NONE,
               internalState: InternalMovementState.NONE,
               externalOrderId: null,
               externalVenue: null,
@@ -585,8 +602,12 @@ export async function approveMovementAsSystem(opts: {
         where: { id: movement.id },
         data: {
           status: TreasuryMovementStatus.PENDING,
-          internalReason: InternalMovementReason.INSUFFICIENT_LIQUIDITY,
-          internalState: InternalMovementState.FAILED_TEMPORARY,
+          internalReason: adminSystemWalletOnlyExecution
+            ? InternalMovementReason.ADMIN_TRADE
+            : InternalMovementReason.INSUFFICIENT_LIQUIDITY,
+          internalState: adminSystemWalletOnlyExecution
+            ? InternalMovementState.MANUAL_REVIEW
+            : InternalMovementState.FAILED_TEMPORARY,
           lastError: "NOT_EXECUTED_INLINE",
         },
         select: { id: true, status: true, internalReason: true, internalState: true },
@@ -636,7 +657,7 @@ export async function approveMovementAsSystem(opts: {
 
           const sumClient = (a: AssetCode) => {
             const row = sums.find((x) => x.assetCode === a);
-            return new Prisma.Decimal((row?._sum?.balance as any) ?? 0);
+            return new Prisma.Decimal(row?._sum?.balance ?? 0);
           };
 
           const clientsClp = sumClient(AssetCode.CLP);
@@ -705,7 +726,9 @@ export async function approveMovementAsSystem(opts: {
 
     let budaOrderId = existingOrderId;
     if (!budaOrderId) {
-      let resp: any;
+      let resp:
+        | { order?: { id?: string | number | null } | null; order_id?: string | number | null; id?: string | number | null }
+        | null = null;
       try {
         bumpBudaCall("order");
         resp = await budaCreateMarketOrder({
@@ -713,8 +736,8 @@ export async function approveMovementAsSystem(opts: {
           type: isBuy ? "Bid" : "Ask",
           amount: baseAmountStr,
         });
-      } catch (e: any) {
-        const msg = String(e?.message ?? "BUDA_ERROR");
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : "BUDA_ERROR";
         const isLiquidity = /insufficient|insuficiente|saldo|balance|funds|liquidity/i.test(msg);
         const updated = await prisma.treasuryMovement.update({
           where: { id: movement.id },
@@ -779,7 +802,7 @@ export async function approveMovementAsSystem(opts: {
             executedQuoteAmount: isBuy ? grossBuyClp : estClp,
             executedFeeAmount: isBuy ? feeOnQuote : feeOnBase,
             executedFeeCode: isBuy ? AssetCode.CLP : movement.assetCode,
-            internalReason: InternalMovementReason.NONE,
+            internalReason: successInternalReason ?? InternalMovementReason.NONE,
             internalState: InternalMovementState.NONE,
             externalOrderId: budaOrderId,
             externalVenue: "buda",
@@ -831,18 +854,27 @@ export async function approveMovementAsSystem(opts: {
 
     logResult(out);
     return out;
-  } catch (e: any) {
-    const lastError = String(e?.message ?? "UNKNOWN_ERROR");
+  } catch (error: unknown) {
+    const lastError = error instanceof Error ? error.message : "UNKNOWN_ERROR";
     logEvent("trade:approve_exception", { ...baseLog, error: lastError });
+    const existing = await prisma.treasuryMovement.findFirst({
+      where: { id: movementId, companyId },
+      select: { internalNote: true },
+    });
+    const adminSystemWalletOnlyExecution = isAdminSystemWalletOnlyExecution(existing?.internalNote);
     await prisma.treasuryMovement.updateMany({
       where: { id: movementId, companyId, status: TreasuryMovementStatus.PROCESSING },
       data: {
         status: TreasuryMovementStatus.PENDING,
-        internalReason: InternalMovementReason.UNKNOWN,
-        internalState: InternalMovementState.FAILED_TEMPORARY,
+        internalReason: adminSystemWalletOnlyExecution
+          ? InternalMovementReason.ADMIN_TRADE
+          : InternalMovementReason.UNKNOWN,
+        internalState: adminSystemWalletOnlyExecution
+          ? InternalMovementState.MANUAL_REVIEW
+          : InternalMovementState.FAILED_TEMPORARY,
         lastError,
       },
     });
-    throw e;
+    throw error;
   }
 }

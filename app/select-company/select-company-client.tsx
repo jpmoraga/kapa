@@ -8,13 +8,35 @@ type Company = {
   name: string;
   role: string;
   kind: "PERSONAL" | "BUSINESS";
+  reviewStatus: "PENDING" | "APPROVED" | "OBSERVED" | "REJECTED" | null;
 };
 
 function kindLabel(kind: Company["kind"]) {
   return kind === "PERSONAL" ? "Cuenta personal" : "Empresa";
 }
 
-export default function SelectCompanyClient({ companies }: { companies: Company[] }) {
+function reviewLabel(status: Company["reviewStatus"]) {
+  switch (status) {
+    case "APPROVED":
+      return "Aprobada";
+    case "OBSERVED":
+      return "Observada";
+    case "REJECTED":
+      return "Rechazada";
+    case "PENDING":
+      return "Pendiente";
+    default:
+      return null;
+  }
+}
+
+export default function SelectCompanyClient({
+  companies,
+  allowAutoPick = true,
+}: {
+  companies: Company[];
+  allowAutoPick?: boolean;
+}) {
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,13 +68,14 @@ export default function SelectCompanyClient({ companies }: { companies: Company[
   // ✅ Auto-seleccionar SOLO si hay 1 cuenta total
   useEffect(() => {
     if (didAutoPick.current) return;
+    if (!allowAutoPick) return;
 
     if (companies.length === 1) {
       didAutoPick.current = true;
       pick(companies[0].companyId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companies.length]);
+  }, [allowAutoPick, companies.length]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-6">
@@ -88,12 +111,24 @@ export default function SelectCompanyClient({ companies }: { companies: Company[
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-medium text-white">{c.name}</div>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-neutral-200">
-                    {kindLabel(c.kind)}
-                  </span>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-neutral-200">
+                      {kindLabel(c.kind)}
+                    </span>
+                    {c.kind === "BUSINESS" && reviewLabel(c.reviewStatus) ? (
+                      <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-100">
+                        {reviewLabel(c.reviewStatus)}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="mt-1 text-sm text-neutral-400">Rol: {c.role}</div>
+                {c.kind === "BUSINESS" && reviewLabel(c.reviewStatus) ? (
+                  <div className="mt-1 text-xs text-neutral-500">
+                    Estado comercial: {reviewLabel(c.reviewStatus)}
+                  </div>
+                ) : null}
 
                 {isLoading && (
                   <div className="mt-1 text-xs text-neutral-500">Seleccionando…</div>

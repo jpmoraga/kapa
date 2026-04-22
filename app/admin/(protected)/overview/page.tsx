@@ -8,6 +8,8 @@ type RangeKey = "7d" | "30d" | "90d" | "all";
 
 type OverviewResponse = {
   ok: boolean;
+  message?: string;
+  error?: string;
   systemWallet: {
     available: boolean;
     balances?: Record<string, string>;
@@ -16,9 +18,9 @@ type OverviewResponse = {
   snapshot?: {
     at?: string;
     systemCompanyId?: string | null;
-    buda?: { clp?: string; btc?: string; usd?: string };
-    clients?: { clp?: string; btc?: string; usd?: string };
-    system?: { clp?: string; btc?: string; usd?: string };
+    buda?: Record<string, string | undefined>;
+    clients?: Record<string, string | undefined>;
+    system?: Record<string, string | undefined>;
   } | null;
   lastSnapshotAt?: string | null;
   lastSnapshotCreatedAt?: string | null;
@@ -45,7 +47,7 @@ type OverviewResponse = {
 
 type ResyncState = {
   loading: boolean;
-  payload?: any;
+  payload?: Record<string, unknown> | null;
   ok?: boolean;
   at?: string | null;
   error?: string | null;
@@ -109,7 +111,7 @@ export default function AdminOverviewPage() {
   );
 
   function readSnapshotValue(section: "buda" | "clients" | "system", key: string) {
-    const snapshot = data?.snapshot as any;
+    const snapshot = data?.snapshot;
     const raw = snapshot?.[section]?.[key];
     if (raw === null || raw === undefined) return null;
     return String(raw);
@@ -127,13 +129,13 @@ export default function AdminOverviewPage() {
       const res = await fetch(`/api/admin/overview?range=${selectedRange}`, { cache: "no-store" });
       const json = (await res.json().catch(() => ({}))) as OverviewResponse;
       if (!res.ok || !json?.ok) {
-        setError((json as any)?.message ?? (json as any)?.error ?? "Error cargando overview");
+        setError(json.message ?? json.error ?? "Error cargando overview");
         setData(null);
         return;
       }
       setData(json);
-    } catch (e: any) {
-      setError(e?.message ?? "Error cargando overview");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error cargando overview");
       setData(null);
     } finally {
       setLoading(false);
@@ -144,7 +146,12 @@ export default function AdminOverviewPage() {
     setResync({ loading: true });
     try {
       const res = await fetch("/api/admin/system-wallet/resync", { method: "POST" });
-      const json = await res.json().catch(() => ({}));
+      const json = (await res.json().catch(() => ({}))) as Record<string, unknown> & {
+        ok?: boolean;
+        at?: string | null;
+        error?: string;
+        message?: string;
+      };
       const ok = res.ok && Boolean(json?.ok);
       setResync({
         loading: false,
@@ -154,8 +161,12 @@ export default function AdminOverviewPage() {
         error: ok ? null : json?.error ?? json?.message ?? "Error en resync",
       });
       if (ok) await fetchOverview(range);
-    } catch (e: any) {
-      setResync({ loading: false, ok: false, error: e?.message ?? "Error en resync" });
+    } catch (e: unknown) {
+      setResync({
+        loading: false,
+        ok: false,
+        error: e instanceof Error ? e.message : "Error en resync",
+      });
     }
   }
 
@@ -166,9 +177,16 @@ export default function AdminOverviewPage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
       <div className="k21-card p-6">
-        <div className="text-sm text-white/60">Cava Admin</div>
-        <h1 className="text-2xl font-semibold tracking-tight text-white">Overview</h1>
-        <p className="mt-2 text-sm text-white/60">Panel general de caja, ingresos y actividad.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-sm text-white/60">Cava Admin / Tesorería</div>
+            <h1 className="text-2xl font-semibold tracking-tight text-white">Overview de tesorería</h1>
+            <p className="mt-2 text-sm text-white/60">Panel general de caja, ingresos y actividad.</p>
+          </div>
+          <Link href="/admin/treasury" className="k21-btn-secondary px-3 py-2 text-sm">
+            Volver a Tesorería
+          </Link>
+        </div>
       </div>
 
       {error && (

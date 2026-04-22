@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -15,6 +16,8 @@ export default function LoginClient() {
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [resendError, setResendError] = useState<string | null>(null);
+  const registered = searchParams.get("registered") === "1";
+  const reset = searchParams.get("reset") === "1";
   const callbackUrl = useMemo(() => {
     const raw = searchParams.get("callbackUrl") || "/onboarding";
     return raw.startsWith("/") ? raw : "/onboarding";
@@ -93,6 +96,18 @@ export default function LoginClient() {
           <p className="mt-1 text-sm text-white/60">Accede a tu cuenta.</p>
         </div>
 
+        {registered ? (
+          <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            Cuenta creada. Verifica tu correo antes de ingresar.
+          </div>
+        ) : null}
+
+        {reset ? (
+          <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            Contraseña actualizada. Ya puedes iniciar sesión.
+          </div>
+        ) : null}
+
         <form onSubmit={onSubmit} className="space-y-4" suppressHydrationWarning>
           <div>
             <label className="text-sm font-medium text-white/80">Email</label>
@@ -118,6 +133,11 @@ export default function LoginClient() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
             />
+            <div className="mt-2 text-right text-xs text-white/60">
+              <Link href="/auth/forgot-password" className="underline">
+                Olvidé mi contraseña
+              </Link>
+            </div>
           </div>
 
           {error && (
@@ -155,9 +175,9 @@ export default function LoginClient() {
 
           <div className="text-sm text-white/60">
             ¿Eres nuevo?{" "}
-            <a className="underline" href="/auth/register">
+            <Link className="underline" href="/auth/register">
               Crear cuenta
-            </a>
+            </Link>
           </div>
         </form>
       </div>

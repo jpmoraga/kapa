@@ -5,13 +5,24 @@ import { authOptions } from "@/lib/authOptions";
 import { prisma } from "@/lib/prisma";
 import SelectCompanyClient from "./select-company-client";
 
-export default async function SelectCompanyPage() {
+function firstString(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function SelectCompanyPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect("/auth/login");
 
+  const sp = searchParams ? await searchParams : {};
+  const force = firstString(sp.force) === "1";
+
   // ✅ Si ya hay cuenta activa, no mostrar esta página
-  const activeCompanyId = (session as any).activeCompanyId as string | undefined;
-  if (activeCompanyId) redirect("/dashboard");
+  const activeCompanyId = (session as typeof session & { activeCompanyId?: string }).activeCompanyId;
+  if (activeCompanyId && !force) redirect("/dashboard");
 
   const email = session.user.email.toLowerCase().trim();
 
@@ -25,7 +36,18 @@ export default async function SelectCompanyPage() {
     where: { userId: user.id },
     select: {
       role: true,
-      company: { select: { id: true, name: true, kind: true } },
+      company: {
+        select: {
+          id: true,
+          name: true,
+          kind: true,
+          review: {
+            select: {
+              status: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -35,6 +57,7 @@ export default async function SelectCompanyPage() {
       name: m.company.name,
       role: m.role,
       kind: m.company.kind,
+      reviewStatus: m.company.review?.status ?? null,
     }))
     .sort((a, b) => {
       if (a.kind === b.kind) return a.name.localeCompare(b.name);
@@ -42,7 +65,7 @@ export default async function SelectCompanyPage() {
     });
 
   // ✅ Si solo hay 1 cuenta y no hay activa, setear en DB y redirigir
-  if (!activeCompanyId && companies.length === 1) {
+  if (!activeCompanyId && !force && companies.length === 1) {
     const onlyCompanyId = companies[0].companyId;
     console.log("[select-company] auto-activating company", {
       userId: user.id,
@@ -59,5 +82,5 @@ export default async function SelectCompanyPage() {
     redirect("/dashboard");
   }
 
-  return <SelectCompanyClient companies={companies} />;
+  return <SelectCompanyClient companies={companies} allowAutoPick={!force} />;
 }

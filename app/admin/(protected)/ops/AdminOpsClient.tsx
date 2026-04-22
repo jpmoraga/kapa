@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { displayAsset, formatUsdtAdmin } from "@/lib/formatUsdt";
 
@@ -73,6 +74,13 @@ type ReceiptData = {
   internalReason?: string | null;
   externalOrderId?: string | null;
   externalVenue?: string | null;
+};
+
+type ActionPayload = Record<string, string | number>;
+
+type ActionResponse = {
+  message?: string;
+  error?: string;
 };
 
 function formatAmount(amount: string, assetCode: string) {
@@ -420,7 +428,7 @@ export default function AdminOpsClient({
       const isSlip = row.source === "deposit_slip" || Boolean(row.slipId);
 
       let endpoint = "";
-      let body: Record<string, any> | undefined;
+      let body: ActionPayload | undefined;
       const rawType = normalizeTypeValue(row.type);
 
       if (isSlip && !rawMovementId) {
@@ -474,7 +482,7 @@ export default function AdminOpsClient({
         headers: body ? { "content-type": "application/json" } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
-      const data = await res.json().catch(() => ({}));
+      const data = (await res.json().catch(() => ({}))) as ActionResponse;
       if (!res.ok) {
         setNotice({
           type: "error",
@@ -502,8 +510,8 @@ export default function AdminOpsClient({
         return;
       }
       setReceiptData(data as ReceiptData);
-    } catch (e: any) {
-      setReceiptError(e?.message ?? "No pude cargar el receipt.");
+    } catch (e: unknown) {
+      setReceiptError(e instanceof Error ? e.message : "No pude cargar el receipt.");
     } finally {
       setReceiptLoading(false);
     }
@@ -563,10 +571,18 @@ export default function AdminOpsClient({
           <div className="text-sm text-neutral-400">Cava Admin</div>
           <h1 className="text-3xl font-semibold tracking-tight text-neutral-50">Operaciones</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/admin/treasury" className="k21-btn-secondary px-3 py-2 text-sm">
+            Volver a Tesorería
+          </Link>
           <div className="k21-badge">Pendientes: {pendingCount}</div>
           <div className="k21-badge">Resultados: {resultsCount}</div>
         </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+        Vista heredada reutilizada dentro del nuevo hub admin. Receipt, marcado de pago y manejo de
+        comprobantes siguen dependiendo de endpoints previos y no se ampliaron en esta fase.
       </div>
 
       <div className="mt-6 k21-card p-4">

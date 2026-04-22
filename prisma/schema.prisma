@@ -19,9 +19,12 @@ model User {
   activeCompanyId           String?
   emailVerifiedAt           DateTime?               @db.Timestamp(6)
   emailVerificationToken    EmailVerificationToken?
+  passwordResetTokens       PasswordResetToken[]
   bankAccount               BankAccount?
   personalCompany           Company?                @relation("PersonalCompany")
   companyUsers              CompanyUser[]
+  submittedCompanyReviews   CompanyReview[]         @relation("CompanyReviewSubmittedByUser")
+  uploadedCompanyDocuments  CompanyDocument[]       @relation("CompanyDocumentUploadedByUser")
   personProfile             PersonProfile?
   sessions                  Session[]
   approvedTreasuryMovements TreasuryMovement[]      @relation("TreasuryMovementApprovedBy")
@@ -32,6 +35,7 @@ model User {
   depositSlips              DepositSlip[]
   onboarding                UserOnboarding?
   pricingPlan               UserPricing?
+  targetedAdminActions      AdminAction[]           @relation("AdminActionTargetUser")
 }
 
 model PersonProfile {
@@ -73,12 +77,19 @@ model Session {
 }
 
 model AdminUser {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  passwordHash String
-  role         AdminRole      @default(ADMIN)
-  createdAt    DateTime       @default(now())
-  sessions     AdminSession[]
+  id                             String                     @id @default(cuid())
+  email                          String                     @unique
+  passwordHash                   String
+  role                           AdminRole                  @default(ADMIN)
+  createdAt                      DateTime                   @default(now())
+  sessions                       AdminSession[]
+  reviewedCompanyReviews         CompanyReview[]            @relation("CompanyReviewReviewedByAdmin")
+  uploadedCompanyDocuments       CompanyDocument[]          @relation("CompanyDocumentUploadedByAdmin")
+  updatedCommercialProfiles      CompanyCommercialProfile[] @relation("CompanyCommercialProfileUpdatedByAdmin")
+  updatedCompanySubscriptions    CompanySubscription[]      @relation("CompanySubscriptionUpdatedByAdmin")
+  updatedCompanyPricingOverrides CompanyPricingOverride[]   @relation("CompanyPricingOverrideUpdatedByAdmin")
+  commercialAuditLogs            CommercialAuditLog[]       @relation("CommercialAuditLogActorAdmin")
+  adminActions                   AdminAction[]              @relation("AdminActionActorAdmin")
 }
 
 model AdminSession {
@@ -94,22 +105,31 @@ model AdminSession {
 }
 
 model Company {
-  id                  String             @id @default(cuid())
-  name                String
-  kind                CompanyKind        @default(BUSINESS)
-  personalOwnerId     String?            @unique
-  companyRut          String?
-  fundsDeclAcceptedAt DateTime?
-  onboardingCompleted Boolean            @default(false)
-  privacyAcceptedAt   DateTime?
-  termsAcceptedAt     DateTime?
-  personalOwner       User?              @relation("PersonalCompany", fields: [personalOwnerId], references: [id], onDelete: Cascade)
-  members             CompanyUser[]
-  treasury            TreasuryAccount[]
-  movements           TreasuryMovement[]
-  loans               Loan[]
-  activeUsers         User[]             @relation("ActiveCompany")
-  pricingPlan         CompanyPricing?
+  id                     String                       @id @default(cuid())
+  name                   String
+  kind                   CompanyKind                  @default(BUSINESS)
+  personalOwnerId        String?                      @unique
+  companyRut             String?
+  fundsDeclAcceptedAt    DateTime?
+  onboardingCompleted    Boolean                      @default(false)
+  privacyAcceptedAt      DateTime?
+  termsAcceptedAt        DateTime?
+  personalOwner          User?                        @relation("PersonalCompany", fields: [personalOwnerId], references: [id], onDelete: Cascade)
+  members                CompanyUser[]
+  review                 CompanyReview?
+  commercialProfile      CompanyCommercialProfile?
+  subscription           CompanySubscription?
+  pricingOverride        CompanyPricingOverride?
+  documents              CompanyDocument[]
+  commercialAuditLogs    CommercialAuditLog[]
+  adminActions           AdminAction[]
+  subscriptionCharges    SubscriptionCharge[]
+  externalBtcAssignments AdminExternalBtcAssignment[]
+  treasury               TreasuryAccount[]
+  movements              TreasuryMovement[]
+  loans                  Loan[]
+  activeUsers            User[]                       @relation("ActiveCompany")
+  pricingPlan            CompanyPricing?
 }
 
 model CompanyUser {
@@ -122,20 +142,116 @@ model CompanyUser {
   @@id([userId, companyId])
 }
 
+model CompanyReview {
+  companyId             String              @id
+  status                CompanyReviewStatus @default(PENDING)
+  source                CompanyReviewSource
+  submittedByUserId     String?
+  submittedByEmail      String?
+  submittedByName       String?
+  submissionNote        String?
+  reviewedByAdminUserId String?
+  reviewNote            String?
+  reviewedAt            DateTime?           @db.Timestamptz(6)
+  createdAt             DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime            @updatedAt @db.Timestamptz(6)
+  company               Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  submittedByUser       User?               @relation("CompanyReviewSubmittedByUser", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedByAdmin       AdminUser?          @relation("CompanyReviewReviewedByAdmin", fields: [reviewedByAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+  @@index([source, createdAt])
+  @@index([submittedByUserId])
+  @@index([reviewedByAdminUserId])
+}
+
+model CompanyDocument {
+  id                    String     @id @default(cuid())
+  companyId             String
+  uploadedByUserId      String?
+  uploadedByAdminUserId String?
+  kind                  String     @default("company_support")
+  storageBucket         String?
+  filePath              String?
+  fileName              String?
+  fileMime              String?
+  fileSizeBytes         BigInt?
+  note                  String?
+  createdAt             DateTime   @default(now()) @db.Timestamptz(6)
+  company               Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedByUser        User?      @relation("CompanyDocumentUploadedByUser", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  uploadedByAdmin       AdminUser? @relation("CompanyDocumentUploadedByAdmin", fields: [uploadedByAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([uploadedByUserId])
+  @@index([uploadedByAdminUserId])
+}
+
+model CompanyCommercialProfile {
+  companyId            String           @id
+  status               CommercialStatus @default(DRAFT)
+  notes                String?
+  specialTermsNote     String?
+  updatedByAdminUserId String?
+  createdAt            DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime         @updatedAt @db.Timestamptz(6)
+  company              Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  updatedByAdmin       AdminUser?       @relation("CompanyCommercialProfileUpdatedByAdmin", fields: [updatedByAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+  @@index([updatedByAdminUserId])
+}
+
+model CompanySubscription {
+  companyId            String                    @id
+  status               CompanySubscriptionStatus @default(INACTIVE)
+  plan                 CompanySubscriptionPlan   @default(BASE)
+  baseAmountUsd        Decimal?
+  customAmountUsd      Decimal?
+  startedAt            DateTime?                 @db.Timestamptz(6)
+  endsAt               DateTime?                 @db.Timestamptz(6)
+  note                 String?
+  updatedByAdminUserId String?
+  createdAt            DateTime                  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime                  @updatedAt @db.Timestamptz(6)
+  company              Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  updatedByAdmin       AdminUser?                @relation("CompanySubscriptionUpdatedByAdmin", fields: [updatedByAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
+  @@index([updatedByAdminUserId])
+}
+
+model CompanyPricingOverride {
+  companyId            String     @id
+  buyBtcFeePct         Decimal?
+  sellBtcFeePct        Decimal?
+  loanAprStandard      Decimal?
+  loanAprSubscriber    Decimal?
+  note                 String?
+  updatedByAdminUserId String?
+  createdAt            DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime   @updatedAt @db.Timestamptz(6)
+  company              Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  updatedByAdmin       AdminUser? @relation("CompanyPricingOverrideUpdatedByAdmin", fields: [updatedByAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([updatedByAdminUserId])
+}
+
 model PricingPlan {
-  id        String           @id @default(cuid())
-  name      String
-  isDefault Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  rules     PricingPlanRule[]
-  companies CompanyPricing[]
-  users     UserPricing[]
+  id                  String               @id @default(cuid())
+  name                String
+  isDefault           Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+  rules               PricingPlanRule[]
+  companies           CompanyPricing[]
+  users               UserPricing[]
+  commercialAuditLogs CommercialAuditLog[]
 
   @@index([isDefault])
 }
 
 model PricingPlanRule {
-  id           String       @id @default(cuid())
+  id           String        @id @default(cuid())
   planId       String
   key          String
   valueDecimal Decimal?
@@ -143,27 +259,27 @@ model PricingPlanRule {
   valueJson    Json?
   currency     LoanCurrency?
   assetCode    AssetCode?
-  updatedAt    DateTime     @updatedAt
-  plan         PricingPlan  @relation(fields: [planId], references: [id], onDelete: Cascade)
+  updatedAt    DateTime      @updatedAt
+  plan         PricingPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   @@index([planId, key])
 }
 
 model CompanyPricing {
-  companyId String   @id
+  companyId String      @id
   planId    String
-  createdAt DateTime @default(now())
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   plan      PricingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   @@index([planId])
 }
 
 model UserPricing {
-  userId    String   @id
+  userId    String      @id
   planId    String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan      PricingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   @@index([planId])
@@ -186,41 +302,45 @@ model TreasuryAccount {
 /// *
 ///  * ✅ Movimientos multi-asset + approvals (Fase 2)
 model TreasuryMovement {
-  id                  String                 @id @default(cuid())
-  companyId           String
-  loanId              String?
-  amount              Decimal
-  type                String
-  note                String?
-  createdAt           DateTime               @default(now())
-  assetCode           AssetCode              @default(BTC)
-  approvedAt          DateTime?
-  approvedByUserId    String?
-  attachmentUrl       String?
-  createdByUserId     String?
-  status              TreasuryMovementStatus @default(PENDING)
-  executedAt          DateTime?
-  executedPrice       Decimal?
-  executedQuoteCode   AssetCode?
-  executedSource      String?
-  executedBaseAmount  Decimal?
-  executedFeeAmount   Decimal?
-  executedFeeCode     AssetCode?
-  executedQuoteAmount Decimal?
-  externalOrderId     String?
-  externalVenue       String?
-  internalNote        String?
-  internalReason      InternalMovementReason @default(NONE)
-  internalState       InternalMovementState  @default(NONE)
-  lastError           String?
-  nextRetryAt         DateTime?
-  retryCount          Int                    @default(0)
-  paidOut             Boolean                @default(false)
-  paidOutAt           DateTime?              @db.Timestamptz(6)
-  approvedBy          User?                  @relation("TreasuryMovementApprovedBy", fields: [approvedByUserId], references: [id])
-  company             Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy           User?                  @relation("TreasuryMovementCreatedBy", fields: [createdByUserId], references: [id])
-  loan                Loan?                  @relation(fields: [loanId], references: [id], onDelete: SetNull)
+  id                           String                       @id @default(cuid())
+  companyId                    String
+  loanId                       String?
+  amount                       Decimal
+  type                         String
+  note                         String?
+  createdAt                    DateTime                     @default(now())
+  assetCode                    AssetCode                    @default(BTC)
+  approvedAt                   DateTime?
+  approvedByUserId             String?
+  attachmentUrl                String?
+  createdByUserId              String?
+  status                       TreasuryMovementStatus       @default(PENDING)
+  executedAt                   DateTime?
+  executedPrice                Decimal?
+  executedQuoteCode            AssetCode?
+  executedSource               String?
+  executedBaseAmount           Decimal?
+  executedFeeAmount            Decimal?
+  executedFeeCode              AssetCode?
+  executedQuoteAmount          Decimal?
+  externalOrderId              String?
+  externalVenue                String?
+  internalNote                 String?
+  internalReason               InternalMovementReason       @default(NONE)
+  internalState                InternalMovementState        @default(NONE)
+  lastError                    String?
+  nextRetryAt                  DateTime?
+  retryCount                   Int                          @default(0)
+  paidOut                      Boolean                      @default(false)
+  paidOutAt                    DateTime?                    @db.Timestamptz(6)
+  approvedBy                   User?                        @relation("TreasuryMovementApprovedBy", fields: [approvedByUserId], references: [id])
+  company                      Company                      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy                    User?                        @relation("TreasuryMovementCreatedBy", fields: [createdByUserId], references: [id])
+  loan                         Loan?                        @relation(fields: [loanId], references: [id], onDelete: SetNull)
+  subscriptionChargeClientRefs SubscriptionCharge[]         @relation("SubscriptionChargeClientMovement")
+  subscriptionChargeSystemRefs SubscriptionCharge[]         @relation("SubscriptionChargeSystemMovement")
+  externalAssignmentClientRefs AdminExternalBtcAssignment[] @relation("AdminExternalBtcAssignmentClientMovement")
+  externalAssignmentSystemRefs AdminExternalBtcAssignment[] @relation("AdminExternalBtcAssignmentSystemMovement")
 
   @@index([companyId, createdAt])
   @@index([companyId, assetCode, createdAt])
@@ -228,33 +348,129 @@ model TreasuryMovement {
   @@index([loanId])
 }
 
+model AdminAction {
+  id                    String                      @id @default(cuid())
+  type                  AdminActionType
+  status                AdminActionStatus           @default(PENDING)
+  actorAdminUserId      String
+  targetCompanyId       String
+  targetUserId          String?
+  idempotencyKey        String                      @unique
+  requestHash           String
+  requestPayload        Json
+  validatedContext      Json?
+  reason                String?
+  resultPayload         Json?
+  errorCode             String?
+  errorMessage          String?
+  createdAt             DateTime                    @default(now()) @db.Timestamptz(6)
+  startedAt             DateTime?                   @db.Timestamptz(6)
+  completedAt           DateTime?                   @db.Timestamptz(6)
+  actorAdmin            AdminUser                   @relation("AdminActionActorAdmin", fields: [actorAdminUserId], references: [id], onDelete: Restrict)
+  targetCompany         Company                     @relation(fields: [targetCompanyId], references: [id], onDelete: Restrict)
+  targetUser            User?                       @relation("AdminActionTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+  effects               AdminActionEffect[]
+  subscriptionCharge    SubscriptionCharge?
+  externalBtcAssignment AdminExternalBtcAssignment?
+
+  @@index([targetCompanyId, createdAt])
+  @@index([actorAdminUserId, createdAt])
+  @@index([type, status, createdAt])
+}
+
+model AdminActionEffect {
+  id         String                @id @default(cuid())
+  actionId   String
+  effectType AdminActionEffectType
+  entityId   String
+  label      String?
+  payload    Json?
+  createdAt  DateTime              @default(now()) @db.Timestamptz(6)
+  action     AdminAction           @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([actionId, createdAt])
+  @@index([effectType, entityId])
+}
+
+model SubscriptionCharge {
+  id                 String                   @id @default(cuid())
+  adminActionId      String                   @unique
+  companyId          String
+  status             SubscriptionChargeStatus @default(PENDING)
+  referenceAmountUsd Decimal
+  debitAssetCode     AssetCode
+  debitAmount        Decimal?
+  clpPerUsd          Decimal?
+  btcClpPrice        Decimal?
+  note               String?
+  errorCode          String?
+  errorMessage       String?
+  chargedAt          DateTime?                @db.Timestamptz(6)
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(6)
+  clientMovementId   String?
+  systemMovementId   String?
+  adminAction        AdminAction              @relation(fields: [adminActionId], references: [id], onDelete: Cascade)
+  company            Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  clientMovement     TreasuryMovement?        @relation("SubscriptionChargeClientMovement", fields: [clientMovementId], references: [id], onDelete: SetNull)
+  systemMovement     TreasuryMovement?        @relation("SubscriptionChargeSystemMovement", fields: [systemMovementId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AdminExternalBtcAssignment {
+  id                String                           @id @default(cuid())
+  adminActionId     String                           @unique
+  companyId         String
+  status            AdminExternalBtcAssignmentStatus @default(PENDING)
+  amountBtc         Decimal
+  provider          String?
+  externalReference String?
+  referencePriceClp Decimal?
+  referenceFeeClp   Decimal?
+  note              String?
+  errorCode         String?
+  errorMessage      String?
+  assignedAt        DateTime?                        @db.Timestamptz(6)
+  createdAt         DateTime                         @default(now()) @db.Timestamptz(6)
+  clientMovementId  String?
+  systemMovementId  String?
+  adminAction       AdminAction                      @relation(fields: [adminActionId], references: [id], onDelete: Cascade)
+  company           Company                          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  clientMovement    TreasuryMovement?                @relation("AdminExternalBtcAssignmentClientMovement", fields: [clientMovementId], references: [id], onDelete: SetNull)
+  systemMovement    TreasuryMovement?                @relation("AdminExternalBtcAssignmentSystemMovement", fields: [systemMovementId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([status, createdAt])
+}
+
 model Loan {
-  id             String     @id @default(cuid())
-  companyId      String
-  userId         String
-  currency       LoanCurrency @default(CLP)
-  principalClp   Decimal
-  interestApr    Decimal
-  termMonths     Int        @default(3)
-  repaymentType  LoanRepaymentType @default(BULLET)
-  ltvTarget      Decimal
-  ltvMax         Decimal
-  liquidationLtv Decimal
-  collateralSatsTotal BigInt @default(0)
-  status         LoanStatus @default(CREATED)
-  createdAt      DateTime   @default(now())
-  approvedAt     DateTime?
-  disbursedAt    DateTime?
+  id                     String             @id @default(cuid())
+  companyId              String
+  userId                 String
+  currency               LoanCurrency       @default(CLP)
+  principalClp           Decimal
+  interestApr            Decimal
+  termMonths             Int                @default(3)
+  repaymentType          LoanRepaymentType  @default(BULLET)
+  ltvTarget              Decimal
+  ltvMax                 Decimal
+  liquidationLtv         Decimal
+  collateralSatsTotal    BigInt             @default(0)
+  status                 LoanStatus         @default(CREATED)
+  createdAt              DateTime           @default(now())
+  approvedAt             DateTime?
+  disbursedAt            DateTime?
   disbursementMovementId String?
-  closedAt       DateTime?
-  paidAt         DateTime?
-  interestChargedClp Decimal?
-  chargedDays    Int?
-  borrower       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company        Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  collateral     LoanCollateral[]
-  events         LoanEvent[]
-  treasuryMovements TreasuryMovement[]
+  closedAt               DateTime?
+  paidAt                 DateTime?
+  interestChargedClp     Decimal?
+  chargedDays            Int?
+  borrower               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company                Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  collateral             LoanCollateral[]
+  events                 LoanEvent[]
+  treasuryMovements      TreasuryMovement[]
 
   @@index([companyId, createdAt])
   @@index([companyId, status, createdAt])
@@ -264,12 +480,12 @@ model Loan {
 }
 
 model LoanCollateral {
-  id        String    @id @default(cuid())
-  loanId    String
-  assetCode AssetCode @default(BTC)
+  id         String    @id @default(cuid())
+  loanId     String
+  assetCode  AssetCode @default(BTC)
   amountSats BigInt
-  createdAt DateTime  @default(now())
-  loan      Loan      @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  loan       Loan      @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
   @@index([loanId, createdAt])
 }
@@ -371,9 +587,112 @@ model DepositSlip {
   @@map("deposit_slips")
 }
 
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz(6)
+  usedAt    DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+}
+
+model CommercialAuditLog {
+  id               String              @id @default(cuid())
+  companyId        String?
+  pricingPlanId    String?
+  actorAdminUserId String?
+  type             CommercialAuditType
+  note             String?
+  payload          Json?
+  createdAt        DateTime            @default(now()) @db.Timestamptz(6)
+  company          Company?            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pricingPlan      PricingPlan?        @relation(fields: [pricingPlanId], references: [id], onDelete: Cascade)
+  actorAdmin       AdminUser?          @relation("CommercialAuditLogActorAdmin", fields: [actorAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([pricingPlanId, createdAt])
+  @@index([actorAdminUserId, createdAt])
+  @@index([type, createdAt])
+}
+
 enum CompanyKind {
   PERSONAL
   BUSINESS
+}
+
+enum CompanyReviewStatus {
+  PENDING
+  APPROVED
+  OBSERVED
+  REJECTED
+}
+
+enum CompanyReviewSource {
+  CLIENT
+  ADMIN
+}
+
+enum CommercialStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  RESTRICTED
+  INACTIVE
+}
+
+enum CompanySubscriptionStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CompanySubscriptionPlan {
+  BASE
+  FREE_TEMP
+  CUSTOM_FIXED_USD
+}
+
+enum CommercialAuditType {
+  COMMERCIAL_STATUS_UPDATED
+  SUBSCRIPTION_UPDATED
+  COMPANY_PRICING_UPDATED
+  PRICING_PLAN_UPDATED
+}
+
+enum AdminActionType {
+  SUBSCRIPTION_CHARGE_MANUAL
+  CLIENT_BUY_BTC
+  CLIENT_SELL_BTC
+  CLIENT_ASSIGN_BTC_EXTERNAL
+}
+
+enum AdminActionStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum AdminActionEffectType {
+  TREASURY_MOVEMENT
+  SUBSCRIPTION_CHARGE
+  EXTERNAL_BTC_ASSIGNMENT
+}
+
+enum SubscriptionChargeStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum AdminExternalBtcAssignmentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
 }
 
 /// *
@@ -403,6 +722,9 @@ enum InternalMovementReason {
   BUDA_INSUFFICIENT_FUNDS
   BUDA_API_ERROR
   PRICE_MISSING
+  ADMIN_TRADE
+  ADMIN_SUBSCRIPTION_CHARGE
+  ADMIN_MANUAL_ASSIGNMENT
   UNKNOWN
 }
 
