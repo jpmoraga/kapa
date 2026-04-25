@@ -87,7 +87,7 @@ function flashMessage(code: string | undefined) {
     case "admin-action-failed":
       return {
         tone: "warning" as const,
-        text: "La acción admin quedó registrada, pero no se pudo completar.",
+        text: "La acción admin quedó registrada en auditoría, pero no se pudo completar.",
       };
     default:
       return null;
@@ -98,6 +98,8 @@ function errorMessage(code: string | undefined) {
   switch (code) {
     case "confirmation_text_invalid":
       return "La confirmación escrita no coincide con la acción solicitada.";
+    case "company_not_found":
+      return "No encontré la empresa objetivo para ejecutar la acción admin.";
     case "subscription_not_configured":
       return "La empresa no tiene una suscripción oficial configurada.";
     case "subscription_not_active":
@@ -114,6 +116,10 @@ function errorMessage(code: string | undefined) {
       return "Saldo insuficiente para ejecutar la acción solicitada.";
     case "SYSTEM_WALLET_INSUFFICIENT":
       return "System wallet sin inventario suficiente para ejecutar la acción.";
+    case "INSUFFICIENT_CLP":
+      return "Saldo CLP insuficiente del cliente para completar la compra.";
+    case "INSUFFICIENT_FUNDS":
+      return "Saldo insuficiente del cliente para completar la operación.";
     case "invalid_spend_amount_clp":
       return "El monto CLP para la compra es inválido.";
     case "invalid_amount_btc":
@@ -127,14 +133,41 @@ function errorMessage(code: string | undefined) {
     case "idempotency_conflict":
       return "La idempotency key ya existe para otra acción distinta. Recarga la vista antes de reintentar.";
     case "price_snapshot_missing":
-      return "No hay price snapshot disponible para ejecutar la acción solicitada.";
+      return "No hay un snapshot de precio disponible para ejecutar la acción.";
+    case "price_snapshot_stale":
+      return "El snapshot de precio disponible está vencido. Actualiza pricing antes de operar.";
     case "pricing_field_missing":
-      return "Falta un campo de pricing comercial requerido para esta operación.";
+      return "Falta una condición de pricing comercial requerida para esta operación.";
     case "pricing_field_invalid":
       return "El pricing comercial configurado para esta empresa es inválido.";
+    case "manual_reference_price_disabled":
+      return "La operación no acepta precio manual. Se ejecuta solo con snapshot fresco del sistema.";
     case "trade_not_approved":
     case "NOT_EXECUTED_INLINE":
       return "La operación no pudo ejecutarse inline contra system wallet.";
+    case "trade_manual_review_required":
+      return "La operación quedó en revisión manual y no se ejecutó inline contra system wallet.";
+    case "admin_action_processing_timeout":
+      return "La acción quedó abierta demasiado tiempo y requiere reconciliación manual.";
+    case "provider_required":
+      return "Debes indicar el proveedor para la asignación BTC externa.";
+    case "external_reference_required":
+      return "Debes indicar una referencia externa para la asignación BTC externa.";
+    case "trade_action_orphaned":
+      return "La acción de compra/venta quedó sin movimiento reconciliado y requiere revisión manual.";
+    case "subscription_charge_orphaned":
+      return "El cobro de suscripción quedó sin reconciliación y requiere revisión manual.";
+    case "external_assignment_orphaned":
+      return "La asignación externa quedó sin reconciliación y requiere revisión manual.";
+    case "subscription_charge_failed":
+    case "trade_execution_failed":
+    case "external_assignment_failed":
+    case "admin_buy_btc_failed":
+    case "admin_sell_btc_failed":
+    case "admin_assign_btc_external_failed":
+      return "Ocurrió un error interno inesperado al preparar la acción admin.";
+    case "admin_action_detail_missing":
+      return "La acción terminó sin detalle disponible. Revisa la auditoría antes de reintentar.";
     default:
       return code ? "No se pudo completar la acción admin." : null;
   }
@@ -151,6 +184,8 @@ export default async function AdminCustomerDetailPage({
   const sp = searchParams ? await searchParams : {};
   const flash = flashMessage(Array.isArray(sp.flash) ? sp.flash[0] : sp.flash);
   const error = errorMessage(Array.isArray(sp.error) ? sp.error[0] : sp.error);
+  const errorCode = Array.isArray(sp.error) ? sp.error[0] : sp.error;
+  const auditVisibility = Array.isArray(sp.audit) ? sp.audit[0] : sp.audit;
   const actionId = Array.isArray(sp.actionId) ? sp.actionId[0] : sp.actionId;
   const [customer, commercial, adminActions] = await Promise.all([
     getAdminCustomerDetail(companyId),
@@ -198,12 +233,47 @@ export default async function AdminCustomerDetailPage({
               Action ID: <code>{actionId}</code>
             </span>
           ) : null}
+          {auditVisibility === "recorded" ? (
+            <span className="block pt-2 text-xs text-neutral-200">
+              Esta acción debería aparecer en{" "}
+              <Link href={`/admin/audit?companyId=${companyId}`} className="underline underline-offset-4">
+                /admin/audit
+              </Link>
+              .
+            </span>
+          ) : null}
         </div>
       ) : null}
 
       {error ? (
         <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
-          {error}
+          <div>{error}</div>
+          {auditVisibility === "not-recorded" ? (
+            <div className="pt-2 text-xs text-red-100/90">
+              El fallo ocurrió antes de crear una nueva <code>AdminAction</code>. No debería
+              aparecer una fila nueva en auditoría para este intento.
+            </div>
+          ) : null}
+          {auditVisibility === "recorded" ? (
+            <div className="pt-2 text-xs text-red-100/90">
+              El error corresponde a una acción ya auditada. Revísala en{" "}
+              <Link href={`/admin/audit?companyId=${companyId}`} className="underline underline-offset-4">
+                /admin/audit
+              </Link>
+              {actionId ? (
+                <>
+                  {" "}
+                  con Action ID <code>{actionId}</code>
+                </>
+              ) : null}
+              .
+            </div>
+          ) : null}
+          {errorCode ? (
+            <div className="pt-2 text-xs text-red-100/90">
+              Código: <code>{errorCode}</code>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

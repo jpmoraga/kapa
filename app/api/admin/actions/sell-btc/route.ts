@@ -45,6 +45,10 @@ export async function POST(req: Request) {
     return redirectTo(req, returnTo, {
       flash: detail?.status === "SUCCEEDED" ? "admin-action-success" : "admin-action-failed",
       actionId: detail?.id ?? "",
+      audit: detail?.id ? "recorded" : "not-recorded",
+      ...(detail?.status !== "SUCCEEDED" && (detail?.errorCode || detail?.errorMessage)
+        ? { error: detail.errorCode ?? detail.errorMessage ?? "admin_action_failed" }
+        : {}),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "admin_sell_btc_failed";
@@ -53,6 +57,6 @@ export async function POST(req: Request) {
       companyId,
       error: message,
     });
-    return redirectTo(req, returnTo, { error: message });
+    return redirectTo(req, returnTo, { error: message, audit: "not-recorded" });
   }
 }
