@@ -89,6 +89,16 @@ function flashMessage(code: string | undefined) {
         tone: "warning" as const,
         text: "La acción admin quedó registrada en auditoría, pero no se pudo completar.",
       };
+    case "btc_clp_refreshed":
+      return {
+        tone: "success" as const,
+        text: "Snapshot BTC/CLP actualizado. Ya puedes reintentar la compra o venta BTC.",
+      };
+    case "usd_clp_refreshed":
+      return {
+        tone: "success" as const,
+        text: "Snapshot USD/CLP actualizado. Ya puedes reintentar cobros o conversiones que lo usen.",
+      };
     default:
       return null;
   }
@@ -100,6 +110,8 @@ function errorMessage(code: string | undefined) {
       return "La confirmación escrita no coincide con la acción solicitada.";
     case "company_not_found":
       return "No encontré la empresa objetivo para ejecutar la acción admin.";
+    case "invalid_price_pair":
+      return "El par de pricing solicitado no es válido para refresco manual.";
     case "subscription_not_configured":
       return "La empresa no tiene una suscripción oficial configurada.";
     case "subscription_not_active":
@@ -136,6 +148,10 @@ function errorMessage(code: string | undefined) {
       return "No hay un snapshot de precio disponible para ejecutar la acción.";
     case "price_snapshot_stale":
       return "El snapshot de precio disponible está vencido. Actualiza pricing antes de operar.";
+    case "btc_clp_refresh_failed":
+      return "No pude refrescar BTC/CLP desde mercado. Revisa conectividad con Buda y reintenta.";
+    case "usd_clp_refresh_failed":
+      return "No pude refrescar USD/CLP desde mercado. Revisa conectividad con Buda y reintenta.";
     case "pricing_field_missing":
       return "Falta una condición de pricing comercial requerida para esta operación.";
     case "pricing_field_invalid":
@@ -398,6 +414,40 @@ export default async function AdminCustomerDetailPage({
         Las acciones admin de esta fase solo se ejecutan desde esta ficha operativa, a través de
         flujos explícitos e idempotentes.
       </div>
+
+      <section className="mt-6 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-sky-100">Snapshots de operación</div>
+            <h2 className="mt-2 text-lg font-semibold text-white">Actualizar pricing de mercado</h2>
+            <p className="mt-2 max-w-3xl text-sm text-sky-50/90">
+              <code>Comprar BTC</code> y <code>Vender BTC</code> usan un snapshot fresco de{" "}
+              <code>BTC/CLP</code>. Los cobros de suscripción en CLP/USD usan <code>USD/CLP</code>.
+              Si ves <code>price_snapshot_stale</code>, refresca aquí y vuelve a intentar.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3">
+          <form action="/api/admin/pricing/refresh-market" method="post">
+            <input type="hidden" name="pair" value="BTC_CLP" />
+            <input type="hidden" name="returnTo" value={returnTo} />
+            <button type="submit" className="k21-btn-secondary px-4 py-3 text-sm">
+              Actualizar BTC/CLP
+            </button>
+          </form>
+          <form action="/api/admin/pricing/refresh-market" method="post">
+            <input type="hidden" name="pair" value="USDT_CLP" />
+            <input type="hidden" name="returnTo" value={returnTo} />
+            <button type="submit" className="k21-btn-secondary px-4 py-3 text-sm">
+              Actualizar USD/CLP
+            </button>
+          </form>
+          <Link href="/admin/pricing" className="k21-btn-secondary px-4 py-3 text-sm">
+            Ver pricing comercial
+          </Link>
+        </div>
+      </section>
 
       <section id="acciones-admin" className="mt-6 k21-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
