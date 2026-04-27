@@ -441,6 +441,61 @@ export default async function AdminCustomerDetailPage({
         </div>
       </section>
 
+      <section className="mt-6 k21-card p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Capa comercial editable</div>
+            <h2 className="mt-2 text-xl font-semibold text-white">Edición manual desde admin</h2>
+            <p className="mt-2 max-w-3xl text-sm text-neutral-400">
+              La suscripción, el estado comercial y el pricing por empresa ya se pueden editar desde
+              admin sin tocar patrimonio. Usa estos accesos directos para abrir el formulario exacto
+              de esta empresa.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 xl:grid-cols-3">
+          <Link
+            href={`/admin/subscriptions?companyId=${companyId}#subscription-editor`}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Suscripción</div>
+            <div className="mt-2 text-base font-medium text-white">Editar suscripción oficial</div>
+            <div className="mt-2 text-sm text-neutral-400">
+              Cambia estado, plan, monto base/custom y nota comercial de la empresa.
+            </div>
+          </Link>
+
+          <Link
+            href={`/admin/subscriptions?companyId=${companyId}#commercial-editor`}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Estado comercial</div>
+            <div className="mt-2 text-base font-medium text-white">Editar perfil comercial</div>
+            <div className="mt-2 text-sm text-neutral-400">
+              Ajusta <code>CommercialStatus</code>, notas comerciales y condición especial.
+            </div>
+          </Link>
+
+          <Link
+            href={`/admin/pricing?companyId=${companyId}#company-pricing-editor`}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.06]"
+          >
+            <div className="text-xs uppercase tracking-wide text-neutral-500">Pricing empresa</div>
+            <div className="mt-2 text-base font-medium text-white">Editar pricing comercial</div>
+            <div className="mt-2 text-sm text-neutral-400">
+              Configura fee compra/venta BTC, APR visibles y override directo por empresa.
+            </div>
+          </Link>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-100">
+          Si quieres dejar una empresa con suscripción gratis, hoy la forma soportada en UI es usar
+          el plan <code>Gratis temporal</code>. Si quieres dejar fee de compra en cero, usa el
+          editor de pricing empresa e ingresa <code>0</code> en <code>Fee compra BTC</code>.
+        </div>
+      </section>
+
       <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
         La valorización total se omite para no mezclar pricing o lógica sensible sobre patrimonio.
         Las acciones admin de esta fase solo se ejecutan desde esta ficha operativa, a través de

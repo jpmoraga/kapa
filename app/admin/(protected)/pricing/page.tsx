@@ -401,9 +401,13 @@ export default async function AdminPricingPage({
                 </div>
               </section>
 
-              <section className="k21-card p-6">
+              <section id="company-pricing-editor" className="k21-card scroll-mt-24 p-6">
                 <div className="text-xs uppercase tracking-wide text-neutral-500">Override empresa</div>
                 <h2 className="mt-2 text-xl font-semibold text-white">Editar pricing por empresa</h2>
+                <div className="mt-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-100">
+                  Aquí puedes dejar un fee en <code>0</code> si quieres un trato comercial sin fee
+                  para esta empresa. Vaciar todos los campos elimina el override directo.
+                </div>
                 <form
                   action={`/api/admin/pricing/companies/${selectedCompany.companyId}`}
                   method="post"

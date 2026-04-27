@@ -438,9 +438,14 @@ export default async function AdminSubscriptionsPage({
                 ) : null}
               </section>
 
-              <section className="k21-card p-6">
+              <section id="subscription-editor" className="k21-card scroll-mt-24 p-6">
                 <div className="text-xs uppercase tracking-wide text-neutral-500">Suscripción oficial</div>
                 <h2 className="mt-2 text-xl font-semibold text-white">Configurar CompanySubscription</h2>
+                <div className="mt-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-100">
+                  Si quieres dejar la suscripción en gratis desde la UI, usa el plan{" "}
+                  <code>Gratis temporal</code>. Los montos <code>baseAmountUsd</code> y{" "}
+                  <code>customAmountUsd</code> solo aceptan valores positivos.
+                </div>
                 <form
                   action={`/api/admin/subscriptions/${selectedCompany.companyId}`}
                   method="post"
@@ -541,7 +546,7 @@ export default async function AdminSubscriptionsPage({
                 </form>
               </section>
 
-              <section className="k21-card p-6">
+              <section id="commercial-editor" className="k21-card scroll-mt-24 p-6">
                 <div className="text-xs uppercase tracking-wide text-neutral-500">Estado comercial</div>
                 <h2 className="mt-2 text-xl font-semibold text-white">Configurar CompanyCommercialProfile</h2>
                 <form
