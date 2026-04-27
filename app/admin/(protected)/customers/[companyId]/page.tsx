@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import AdminPageHeader from "../../_components/AdminPageHeader";
 import { getAdminCustomerDetail } from "@/lib/adminCustomers";
 import { getCompanyCommercialSnapshot } from "@/lib/adminCommercial";
-import { listAdminActions } from "@/lib/adminActions";
+import { getAdminActionDetail, listAdminActions } from "@/lib/adminActions";
 
 export const dynamic = "force-dynamic";
 
@@ -203,13 +203,29 @@ export default async function AdminCustomerDetailPage({
   const errorCode = Array.isArray(sp.error) ? sp.error[0] : sp.error;
   const auditVisibility = Array.isArray(sp.audit) ? sp.audit[0] : sp.audit;
   const actionId = Array.isArray(sp.actionId) ? sp.actionId[0] : sp.actionId;
-  const [customer, commercial, adminActions] = await Promise.all([
+  const [customer, commercial, adminActions, actionDetail] = await Promise.all([
     getAdminCustomerDetail(companyId),
     getCompanyCommercialSnapshot(companyId),
     listAdminActions({ companyId, take: 8 }),
+    actionId ? getAdminActionDetail(actionId) : Promise.resolve(null),
   ]);
 
   if (!customer) notFound();
+
+  const actionSucceeded = actionDetail?.status === "SUCCEEDED";
+  const actionFailedAudit =
+    actionDetail != null &&
+    actionDetail.status !== "SUCCEEDED" &&
+    actionDetail.status !== "PENDING" &&
+    actionDetail.status !== "PROCESSING";
+  const actionOpenAudit =
+    actionDetail?.status === "PENDING" || actionDetail?.status === "PROCESSING";
+  const effectiveFlash = actionSucceeded ? flashMessage("admin-action-success") : flash;
+  const showFlash = effectiveFlash && !actionFailedAudit && !actionOpenAudit;
+  const showError =
+    Boolean(error) &&
+    !actionSucceeded &&
+    (!showFlash || auditVisibility === "not-recorded" || actionFailedAudit || actionOpenAudit);
 
   const chargeKey = randomUUID();
   const buyKey = randomUUID();
@@ -235,15 +251,15 @@ export default async function AdminCustomerDetailPage({
         }
       />
 
-      {flash ? (
+      {showFlash ? (
         <div
           className={`mt-6 rounded-2xl border p-4 text-sm ${
-            flash.tone === "success"
+            effectiveFlash.tone === "success"
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
               : "border-amber-500/30 bg-amber-500/10 text-amber-100"
           }`}
         >
-          {flash.text}
+          {effectiveFlash.text}
           {actionId ? (
             <span className="block pt-2 text-xs text-neutral-200">
               Action ID: <code>{actionId}</code>
@@ -261,7 +277,7 @@ export default async function AdminCustomerDetailPage({
         </div>
       ) : null}
 
-      {error ? (
+      {showError ? (
         <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
           <div>{error}</div>
           {auditVisibility === "not-recorded" ? (
@@ -283,6 +299,22 @@ export default async function AdminCustomerDetailPage({
                 </>
               ) : null}
               .
+            </div>
+          ) : null}
+          {actionFailedAudit ? (
+            <div className="pt-2 text-xs text-red-100/90">
+              La acción sí quedó auditada, pero terminó en <code>{actionDetail?.status}</code>. Revisa
+              su detalle en{" "}
+              <Link href={`/admin/audit?companyId=${companyId}`} className="underline underline-offset-4">
+                /admin/audit
+              </Link>
+              .
+            </div>
+          ) : null}
+          {actionOpenAudit ? (
+            <div className="pt-2 text-xs text-red-100/90">
+              La acción quedó auditada pero sigue abierta en estado <code>{actionDetail?.status}</code>.
+              Revisa auditoría o reconcíliala antes de reintentar.
             </div>
           ) : null}
           {errorCode ? (
