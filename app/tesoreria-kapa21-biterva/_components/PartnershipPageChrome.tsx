@@ -39,10 +39,10 @@ export function PartnershipHeader({
         <div className="flex flex-wrap items-center justify-end gap-3">
           {showServicesLink && (
             <Link
-              href="/servicios"
+              href="/consulting"
               className="text-sm text-neutral-300 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
             >
-              Servicios
+              Consulting
             </Link>
           )}
           <ScrollToFormButton className="k21-btn-secondary">{ctaLabel}</ScrollToFormButton>
@@ -110,8 +110,8 @@ export function PartnershipFooter() {
           <Link className="transition hover:text-neutral-300" href="/">
             Inicio
           </Link>
-          <Link className="transition hover:text-neutral-300" href="/servicios">
-            Servicios
+          <Link className="transition hover:text-neutral-300" href="/consulting">
+            Consulting
           </Link>
         </div>
       </div>

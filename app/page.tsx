@@ -113,10 +113,10 @@ export default function LandingPage() {
             </div>
             <div className="mt-3 text-xs text-neutral-400">
               <Link
-                href="/servicios"
+                href="/consulting"
                 className="hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
-                ¿Buscas asesoría y formación? Ver servicios →
+                ¿Buscas asesoría y formación? Ver Kapa21 Consulting →
               </Link>
             </div>
           </header>

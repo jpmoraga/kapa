@@ -12,14 +12,14 @@ export function LandingFooter({ comingSoon = false }: LandingFooterProps) {
       <div className="flex items-center gap-3">
         {comingSoon ? (
           <>
-            <span title="Sitio en construcción" className="opacity-60 cursor-not-allowed">
+            <span title="Sitio en construcción" className="cursor-not-allowed opacity-60">
               Login
             </span>
-            <span title="Sitio en construcción" className="opacity-60 cursor-not-allowed">
+            <span title="Sitio en construcción" className="cursor-not-allowed opacity-60">
               Registro
             </span>
-            <span title="Sitio en construcción" className="opacity-60 cursor-not-allowed">
-              Servicios
+            <span title="Sitio en construcción" className="cursor-not-allowed opacity-60">
+              Consulting
             </span>
           </>
         ) : (
@@ -30,8 +30,8 @@ export function LandingFooter({ comingSoon = false }: LandingFooterProps) {
             <Link className="hover:text-neutral-300" href="/auth/register">
               Registro
             </Link>
-            <Link className="hover:text-neutral-300" href="/servicios">
-              Servicios
+            <Link className="hover:text-neutral-300" href="/consulting">
+              Consulting
             </Link>
           </>
         )}

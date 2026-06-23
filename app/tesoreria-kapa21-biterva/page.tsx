@@ -123,10 +123,10 @@ export default function TesoreriaKapa21BitervaPage() {
                 Postular a una Revisión Estratégica de Tesorería
               </ScrollToFormButton>
               <Link
-                href="/servicios"
+                href="/consulting"
                 className="k21-btn-secondary px-5 py-3"
               >
-                Ver servicios KAPA21
+                Ver KAPA21 Consulting
               </Link>
             </div>
           </div>

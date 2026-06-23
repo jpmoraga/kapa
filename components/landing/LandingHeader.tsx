@@ -10,9 +10,9 @@ type LandingHeaderProps = {
 
 export function LandingHeader({ comingSoon = false }: LandingHeaderProps) {
   const pathname = usePathname();
-  const isServicios = pathname === "/servicios";
-  const navLabel = isServicios ? "Inicio" : "Servicios";
-  const navHref = isServicios ? "/" : "/servicios";
+  const isConsulting = pathname === "/consulting";
+  const navLabel = isConsulting ? "Inicio" : "Consulting";
+  const navHref = isConsulting ? "/" : "/consulting";
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
@@ -24,12 +24,12 @@ export function LandingHeader({ comingSoon = false }: LandingHeaderProps) {
             width={420}
             height={120}
             priority
-            className="h-24 sm:h-28 md:h-32 w-auto"
+            className="h-24 w-auto sm:h-28 md:h-32"
           />
         </Link>
 
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <nav className="flex items-center gap-3 text-xs sm:text-sm text-neutral-300">
+          <nav className="flex items-center gap-3 text-xs text-neutral-300 sm:text-sm">
             <Link
               href={navHref}
               className="hover:text-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"

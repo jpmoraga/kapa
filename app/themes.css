@@ -1,0 +1,172 @@
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-focus-ring: var(--focus-ring);
+}
+
+:root {
+  --kapa-platform-background: #171a1f;
+  --kapa-platform-surface: #1e232b;
+  --kapa-platform-surface-elevated: #262c35;
+  --kapa-platform-foreground: #f2eee8;
+  --kapa-platform-foreground-muted: #c3b9ae;
+  --kapa-platform-border: #3a424d;
+  --kapa-platform-accent: #f7931a;
+  --kapa-platform-accent-foreground: #171a1f;
+
+  --kapa-consulting-background: #f4efe6;
+  --kapa-consulting-surface: #fbf8f1;
+  --kapa-consulting-surface-elevated: #ffffff;
+  --kapa-consulting-foreground: #1d2126;
+  --kapa-consulting-foreground-muted: #665e54;
+  --kapa-consulting-border: #d7d0c6;
+  --kapa-consulting-accent: #f7931a;
+  --kapa-consulting-accent-foreground: #171a1f;
+
+  --kapa-focus-ring: #f9b662;
+  --kapa-shadow-dark: 0 28px 72px rgba(8, 12, 17, 0.34);
+  --kapa-shadow-light: 0 20px 56px rgba(17, 26, 31, 0.12);
+  --kapa-radius-sm: 0.75rem;
+  --kapa-radius-md: 1rem;
+  --kapa-radius-lg: 1.5rem;
+  --kapa-content-width: 72rem;
+  --kapa-content-width-wide: 84rem;
+}
+
+:where([data-theme]) {
+  --radius-sm: var(--kapa-radius-sm);
+  --radius-md: var(--kapa-radius-md);
+  --radius-lg: var(--kapa-radius-lg);
+  --content-width: var(--kapa-content-width);
+  --content-width-wide: var(--kapa-content-width-wide);
+  --focus-ring: var(--kapa-focus-ring);
+  --shadow: var(--theme-shadow);
+  --background: var(--theme-background);
+  --surface: var(--theme-surface);
+  --surface-elevated: var(--theme-surface-elevated);
+  --foreground: var(--theme-foreground);
+  --foreground-muted: var(--theme-foreground-muted);
+  --border: var(--theme-border);
+  --accent: var(--theme-accent);
+  --accent-foreground: var(--theme-accent-foreground);
+}
+
+:where([data-theme="platform"], [data-theme="partnership"]) {
+  --theme-background: var(--kapa-platform-background);
+  --theme-surface: var(--kapa-platform-surface);
+  --theme-surface-elevated: var(--kapa-platform-surface-elevated);
+  --theme-foreground: var(--kapa-platform-foreground);
+  --theme-foreground-muted: var(--kapa-platform-foreground-muted);
+  --theme-border: var(--kapa-platform-border);
+  --theme-accent: var(--kapa-platform-accent);
+  --theme-accent-foreground: var(--kapa-platform-accent-foreground);
+  --theme-shadow: var(--kapa-shadow-dark);
+
+  --theme-inverse-background: var(--kapa-consulting-background);
+  --theme-inverse-surface: var(--kapa-consulting-surface);
+  --theme-inverse-surface-elevated: var(--kapa-consulting-surface-elevated);
+  --theme-inverse-foreground: var(--kapa-consulting-foreground);
+  --theme-inverse-foreground-muted: var(--kapa-consulting-foreground-muted);
+  --theme-inverse-border: var(--kapa-consulting-border);
+  --theme-inverse-accent: var(--kapa-consulting-accent);
+  --theme-inverse-accent-foreground: var(--kapa-consulting-accent-foreground);
+  --theme-inverse-shadow: var(--kapa-shadow-light);
+
+  color-scheme: dark;
+}
+
+:where([data-theme="consulting"]) {
+  --theme-background: var(--kapa-consulting-background);
+  --theme-surface: var(--kapa-consulting-surface);
+  --theme-surface-elevated: var(--kapa-consulting-surface-elevated);
+  --theme-foreground: var(--kapa-consulting-foreground);
+  --theme-foreground-muted: var(--kapa-consulting-foreground-muted);
+  --theme-border: var(--kapa-consulting-border);
+  --theme-accent: var(--kapa-consulting-accent);
+  --theme-accent-foreground: var(--kapa-consulting-accent-foreground);
+  --theme-shadow: var(--kapa-shadow-light);
+
+  --theme-inverse-background: var(--kapa-platform-background);
+  --theme-inverse-surface: var(--kapa-platform-surface);
+  --theme-inverse-surface-elevated: var(--kapa-platform-surface-elevated);
+  --theme-inverse-foreground: var(--kapa-platform-foreground);
+  --theme-inverse-foreground-muted: var(--kapa-platform-foreground-muted);
+  --theme-inverse-border: var(--kapa-platform-border);
+  --theme-inverse-accent: var(--kapa-platform-accent);
+  --theme-inverse-accent-foreground: var(--kapa-platform-accent-foreground);
+  --theme-inverse-shadow: var(--kapa-shadow-dark);
+
+  color-scheme: light;
+}
+
+:where([data-theme][data-tone="default"], [data-theme] [data-tone="default"]) {
+  --shadow: var(--theme-shadow);
+  --background: var(--theme-background);
+  --surface: var(--theme-surface);
+  --surface-elevated: var(--theme-surface-elevated);
+  --foreground: var(--theme-foreground);
+  --foreground-muted: var(--theme-foreground-muted);
+  --border: var(--theme-border);
+  --accent: var(--theme-accent);
+  --accent-foreground: var(--theme-accent-foreground);
+}
+
+:where([data-theme][data-tone="inverse"], [data-theme] [data-tone="inverse"]) {
+  --shadow: var(--theme-inverse-shadow);
+  --background: var(--theme-inverse-background);
+  --surface: var(--theme-inverse-surface);
+  --surface-elevated: var(--theme-inverse-surface-elevated);
+  --foreground: var(--theme-inverse-foreground);
+  --foreground-muted: var(--theme-inverse-foreground-muted);
+  --border: var(--theme-inverse-border);
+  --accent: var(--theme-inverse-accent);
+  --accent-foreground: var(--theme-inverse-accent-foreground);
+}
+
+:where([data-theme][data-tone="muted"], [data-theme] [data-tone="muted"]) {
+  --shadow: var(--theme-shadow);
+  --background: color-mix(in srgb, var(--theme-background) 74%, var(--theme-surface) 26%);
+  --surface: color-mix(in srgb, var(--theme-surface) 82%, var(--theme-surface-elevated) 18%);
+  --surface-elevated: color-mix(in srgb, var(--theme-surface-elevated) 72%, var(--theme-surface) 28%);
+  --foreground: var(--theme-foreground);
+  --foreground-muted: var(--theme-foreground-muted);
+  --border: color-mix(in srgb, var(--theme-border) 80%, var(--theme-foreground) 20%);
+  --accent: var(--theme-accent);
+  --accent-foreground: var(--theme-accent-foreground);
+}
+
+:where([data-theme][data-tone="accent"], [data-theme] [data-tone="accent"]) {
+  --shadow: var(--theme-shadow);
+  --background: color-mix(in srgb, var(--theme-background) 84%, var(--theme-accent) 16%);
+  --surface: color-mix(in srgb, var(--theme-surface) 80%, var(--theme-accent) 20%);
+  --surface-elevated: color-mix(in srgb, var(--theme-surface-elevated) 76%, var(--theme-accent) 24%);
+  --foreground: var(--theme-foreground);
+  --foreground-muted: color-mix(in srgb, var(--theme-foreground-muted) 82%, var(--theme-foreground) 18%);
+  --border: color-mix(in srgb, var(--theme-border) 60%, var(--theme-accent) 40%);
+  --accent: var(--theme-accent);
+  --accent-foreground: var(--theme-accent-foreground);
+}
+
+:where([data-theme="platform"][data-tone="inverse"], [data-theme="partnership"][data-tone="inverse"], [data-theme="platform"] [data-tone="inverse"], [data-theme="partnership"] [data-tone="inverse"]) {
+  color-scheme: light;
+}
+
+:where([data-theme="consulting"][data-tone="inverse"], [data-theme="consulting"] [data-tone="inverse"]) {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where([data-theme]) *,
+  :where([data-theme]) {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
