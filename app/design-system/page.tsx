@@ -14,6 +14,10 @@ export const metadata: Metadata = {
   title: "Design System | Kapa21",
   description:
     "Sandbox de tokens, temas y primitives para la siguiente etapa del sistema visual de Kapa21.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 const approvedThemes = [
