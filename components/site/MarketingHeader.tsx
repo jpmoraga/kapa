@@ -36,8 +36,10 @@ type MarketingHeaderProps = {
   contactHref?: string;
   ctaHref?: string;
   ctaLabel?: string;
+  hideLoginOnMobile?: boolean;
   loginHref?: string;
   loginLabel?: string;
+  mobileNavColumns?: 2 | 3 | 4 | 5;
   mobileNavItems?: NavItem[];
   navItems?: NavItem[];
   primaryAction?: HeaderAction;
@@ -56,6 +58,13 @@ const defaultMobileNavItems: NavItem[] = [
   { active: "consulting", href: "/consulting", label: "Consulting" },
   { active: "platform", href: "/auth/login", label: "Plataforma" },
 ];
+
+const mobileNavColumnClassNames: Record<NonNullable<MarketingHeaderProps["mobileNavColumns"]>, string> = {
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+  5: "grid-cols-5",
+};
 
 function NavLink({
   active,
@@ -146,8 +155,10 @@ export function MarketingHeader({
   contactHref = "#contacto",
   ctaHref,
   ctaLabel = "Agendar reunión",
+  hideLoginOnMobile = false,
   loginHref = "/auth/login",
   loginLabel = "Entrar",
+  mobileNavColumns = 4,
   mobileNavItems,
   navItems,
   primaryAction,
@@ -182,13 +193,18 @@ export function MarketingHeader({
         width="wide"
         className={cn(
           compactMobile
-            ? "px-5 pt-2.5 sm:px-6 sm:pt-4 lg:px-8 lg:pt-8"
+            ? "px-5 pt-2 sm:px-6 sm:pt-4 lg:px-8 lg:pt-8"
             : "px-5 pt-3 sm:px-6 sm:pt-5 lg:px-8 lg:pt-8",
           className,
         )}
       >
-        <div className={cn("grid lg:gap-3", compactMobile ? "gap-1.5 sm:gap-2" : "gap-2 sm:gap-3")}>
-          <div className={cn("flex items-center justify-between lg:gap-5", compactMobile ? "gap-2 sm:gap-2.5" : "gap-2.5 sm:gap-3")}>
+        <div className={cn("grid lg:gap-3", compactMobile ? "gap-1 sm:gap-1.5" : "gap-2 sm:gap-3")}>
+          <div
+            className={cn(
+              "flex items-center justify-between lg:gap-5",
+              compactMobile ? "gap-2 sm:gap-2.5" : "gap-2.5 sm:gap-3",
+            )}
+          >
             <Link
               href="/"
               className="flex items-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus-ring"
@@ -199,16 +215,23 @@ export function MarketingHeader({
                 width={365}
                 height={53}
                 priority
-                className="h-auto w-[6.4rem] object-contain object-left sm:w-[6.85rem] lg:w-[7.75rem]"
+                className={cn(
+                  "h-auto object-contain object-left",
+                  compactMobile
+                    ? "w-[5.85rem] sm:w-[6.6rem] lg:w-[7.75rem]"
+                    : "w-[6.4rem] sm:w-[6.85rem] lg:w-[7.75rem]",
+                )}
                 unoptimized
               />
             </Link>
 
-            <div className="flex items-center gap-2 sm:gap-2.5 lg:gap-4">
-              <nav
-                className="hidden items-center gap-1 lg:flex"
-                aria-label="Navegación principal"
-              >
+            <div
+              className={cn(
+                "flex items-center",
+                compactMobile ? "gap-1.5 sm:gap-2.5 lg:gap-4" : "gap-2 sm:gap-2.5 lg:gap-4",
+              )}
+            >
+              <nav className="hidden items-center gap-1 lg:flex" aria-label="Navegación principal">
                 {resolvedDesktopNavItems.map((item) => (
                   <NavLink key={item.label} current={active} {...item} />
                 ))}
@@ -225,7 +248,10 @@ export function MarketingHeader({
               {showLogin ? (
                 <Link
                   href={loginHref}
-                  className="inline-flex min-h-9 items-center justify-center rounded-full px-2.5 text-[0.84rem] font-medium text-foreground-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring sm:min-h-10 sm:px-3.5 sm:text-sm lg:min-h-11 lg:px-4"
+                  className={cn(
+                    hideLoginOnMobile ? "hidden lg:inline-flex" : "inline-flex",
+                    "min-h-9 items-center justify-center rounded-full px-2.5 text-[0.84rem] font-medium text-foreground-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring sm:min-h-10 sm:px-3 sm:text-sm lg:min-h-11 lg:px-4",
+                  )}
                 >
                   {loginLabel}
                 </Link>
@@ -239,7 +265,7 @@ export function MarketingHeader({
             className={cn(
               "lg:hidden",
               compactMobile
-                ? "grid grid-cols-4 gap-1 pb-px"
+                ? cn("grid gap-1 pb-px", mobileNavColumnClassNames[mobileNavColumns])
                 : "flex items-center gap-0.5 overflow-x-auto pb-px",
             )}
             aria-label="Navegación secundaria"
