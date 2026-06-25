@@ -158,9 +158,20 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              <Button href="/consulting" variant="primary" className="min-h-12 rounded-full px-4 text-[0.95rem] sm:min-h-11 sm:px-4 sm:text-sm">
-                Conocer Kapa21 Consulting
+            <div className="grid max-w-sm gap-2 sm:flex sm:max-w-none sm:flex-wrap sm:gap-3">
+              <Button
+                href="/consulting"
+                variant="primary"
+                className="min-h-12 w-full rounded-full px-4 text-[0.95rem] sm:min-h-11 sm:w-auto sm:px-4 sm:text-sm"
+              >
+                Conocer Consulting
+              </Button>
+              <Button
+                href="/mining"
+                variant="primary"
+                className="min-h-12 w-full rounded-full px-4 text-[0.95rem] sm:min-h-11 sm:w-auto sm:px-4 sm:text-sm"
+              >
+                Conocer Minería
               </Button>
               <Button
                 href={WHATSAPP_URL}
