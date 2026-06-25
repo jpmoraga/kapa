@@ -34,13 +34,17 @@ export function MiningModalities({
             title="Minería fraccionada"
             subtitle="Capacidad minera sin comprar un equipo completo"
             body="Contratas una cantidad determinada de hashrate por un período definido y participas proporcionalmente en la producción asociada. Puede calzar con quienes buscan comenzar con una capacidad acotada y una estructura simple."
+            commercialBadge="Oferta de lanzamiento"
+            commercialValue="Desde USD 15"
+            commercialCaption="1 TH/s de capacidad minera"
+            commercialHighlight="15 meses de contrato por el precio de 12"
             keyPoints={[
               "Participación por TH/s",
               "Plazo definido",
               "Equipo operado por Andes SolarHash",
               "Distribución según condiciones contractuales",
             ]}
-            ctaLabel="Consultar minería fraccionada"
+            ctaLabel="Acceder a la oferta"
             ctaHref={fractionalHref}
           />
 
@@ -48,6 +52,9 @@ export function MiningModalities({
             title="Minería tokenizada"
             subtitle="Capacidad minera representada digitalmente"
             body="Accedes a una fracción de hashrate asociada a infraestructura minera mediante una representación digital verificable. Puede calzar con quienes buscan una participación identificable y transferible durante la vida útil de la capacidad asociada."
+            commercialValue="Desde USD 60"
+            commercialCaption="2,34 TH/s representados mediante NFT"
+            commercialHighlight="Acceso durante la vida útil del equipo asociado"
             keyPoints={[
               "Capacidad expresada en TH/s",
               "Representación digital",
@@ -63,6 +70,7 @@ export function MiningModalities({
             title="ASIC propio con hosting"
             subtitle="Propiedad directa del equipo"
             body="Compras un equipo ASIC y lo mantienes operando en infraestructura especializada, con hosting, energía, conectividad y soporte técnico. Puede calzar con quienes buscan mayor control, escala y exposición directa a la operación."
+            commercialCaption="Desde: según equipo y configuración"
             keyPoints={[
               "Propiedad del hardware",
               "Hosting especializado",

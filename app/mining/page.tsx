@@ -17,6 +17,7 @@ import { MarketingFooter } from "@/components/site/MarketingFooter";
 import { MarketingHeader } from "@/components/site/MarketingHeader";
 import { Section } from "@/components/site/Section";
 import {
+  FRACTIONAL_LAUNCH_OFFER_WHATSAPP_TEXT,
   GENERAL_MINING_WHATSAPP_TEXT,
   MINING_MAIL_SUBJECT,
   getModalityWhatsAppText,
@@ -36,7 +37,7 @@ const PAGE_DESCRIPTION =
 
 const heroPrimaryHref = buildWhatsAppUrl(GENERAL_MINING_WHATSAPP_TEXT);
 const heroSecondaryHref = "#modalidades";
-const fractionalHref = buildWhatsAppUrl(getModalityWhatsAppText("fractional"));
+const fractionalHref = buildWhatsAppUrl(FRACTIONAL_LAUNCH_OFFER_WHATSAPP_TEXT);
 const tokenizedHref = buildWhatsAppUrl(getModalityWhatsAppText("tokenized"));
 const hostingHref = buildWhatsAppUrl(getModalityWhatsAppText("asic-hosting"));
 const mailtoHref = buildMailtoUrl(MINING_MAIL_SUBJECT);

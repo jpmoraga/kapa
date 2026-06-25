@@ -31,6 +31,12 @@ const comparisonRows = [
     hosting: "Mayor",
   },
   {
+    label: "Entrada desde",
+    fractional: "USD 15",
+    tokenized: "USD 60",
+    hosting: "Según equipo",
+  },
+  {
     label: "Nivel de control",
     fractional: "Inicial",
     tokenized: "Intermedio",

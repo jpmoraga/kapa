@@ -4,6 +4,8 @@ export const GENERAL_MINING_WHATSAPP_TEXT =
   "Hola, quiero conocer las alternativas de minería Bitcoin disponibles a través de Kapa21.";
 
 export const MINING_MAIL_SUBJECT = "Minería Bitcoin | Kapa21";
+export const FRACTIONAL_LAUNCH_OFFER_WHATSAPP_TEXT =
+  "Hola, quiero acceder a la oferta de minería fraccionada de 15 meses por USD 15 para 1 TH/s.";
 
 const modalityWhatsAppText: Record<MiningModalityKey, string> = {
   fractional:

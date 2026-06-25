@@ -6,6 +6,10 @@ type MiningModalityCardProps = {
   body: string;
   ctaHref: string;
   ctaLabel: string;
+  commercialBadge?: string;
+  commercialCaption?: string;
+  commercialHighlight?: string;
+  commercialValue?: string;
   highlight?: boolean;
   keyPoints: string[];
   subtitle: string;
@@ -16,6 +20,10 @@ export function MiningModalityCard({
   body,
   ctaHref,
   ctaLabel,
+  commercialBadge,
+  commercialCaption,
+  commercialHighlight,
+  commercialValue,
   highlight = false,
   keyPoints,
   subtitle,
@@ -42,6 +50,52 @@ export function MiningModalityCard({
           </p>
         </div>
       </div>
+
+      {commercialValue || commercialCaption || commercialHighlight ? (
+        <div
+          className={
+            highlight
+              ? "grid gap-2.5 rounded-[1rem] border border-accent/30 bg-background/70 p-3.5 sm:p-4"
+              : "grid gap-2.5 rounded-[1rem] border border-accent/20 bg-accent/[0.08] p-3.5 sm:p-4"
+          }
+        >
+          {commercialBadge ? (
+            <Badge
+              variant={highlight ? "outline" : "accent"}
+              className={
+                highlight
+                  ? "w-fit justify-start border-accent/30 px-2 py-1 text-[0.64rem] tracking-[0.14em] text-accent sm:px-2.25 sm:text-[0.68rem]"
+                  : "w-fit justify-start px-2 py-1 text-[0.64rem] tracking-[0.14em] sm:px-2.25 sm:text-[0.68rem]"
+              }
+            >
+              {commercialBadge}
+            </Badge>
+          ) : null}
+
+          {commercialValue ? (
+            <div className="grid gap-0.5">
+              <p className="text-[1.24rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[1.45rem]">
+                {commercialValue}
+              </p>
+              {commercialCaption ? (
+                <p className="text-[0.92rem] leading-6 text-foreground-muted sm:text-[0.98rem] sm:leading-6">
+                  {commercialCaption}
+                </p>
+              ) : null}
+            </div>
+          ) : commercialCaption ? (
+            <p className="text-[0.92rem] leading-6 text-foreground-muted sm:text-[0.98rem] sm:leading-6">
+              {commercialCaption}
+            </p>
+          ) : null}
+
+          {commercialHighlight ? (
+            <p className="text-[0.95rem] font-medium leading-6 text-foreground sm:text-base sm:leading-6">
+              {commercialHighlight}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground-muted">
