@@ -6,7 +6,7 @@ import { Container } from "@/components/site/Container";
 import { Button } from "@/components/ui/Button";
 
 type HeaderTone = "dark" | "light";
-type ActiveItem = "home" | "consulting" | "platform";
+type ActiveItem = "home" | "consulting" | "mining" | "platform";
 
 type NavItem = {
   active?: ActiveItem;
@@ -51,12 +51,12 @@ type MarketingHeaderProps = {
 const defaultDesktopNavItems: NavItem[] = [
   { active: "home", href: "/", label: "Inicio" },
   { active: "consulting", href: "/consulting", label: "Consulting" },
-  { active: "platform", href: "/auth/login", label: "Plataforma" },
+  { active: "mining", href: "/mining", label: "Minería" },
 ];
 
 const defaultMobileNavItems: NavItem[] = [
   { active: "consulting", href: "/consulting", label: "Consulting" },
-  { active: "platform", href: "/auth/login", label: "Plataforma" },
+  { active: "mining", href: "/mining", label: "Minería" },
 ];
 
 const mobileNavColumnClassNames: Record<NonNullable<MarketingHeaderProps["mobileNavColumns"]>, string> = {

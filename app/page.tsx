@@ -54,6 +54,7 @@ const homeNavItems = [
   { href: "#personas", label: "Personas" },
   { href: "#pymes", label: "Pymes" },
   { href: "/consulting", label: "Consulting" },
+  { href: "/mining", label: "Minería" },
   { href: "#contacto", label: "Contacto" },
 ];
 
@@ -61,7 +62,7 @@ const homeMobileNavItems = [
   { href: "#personas", label: "Personas" },
   { href: "#pymes", label: "Pymes" },
   { href: "/consulting", label: "Consulting" },
-  { href: "#contacto", label: "Contacto" },
+  { href: "/mining", label: "Minería" },
 ];
 
 const valueProps = [
@@ -454,6 +455,7 @@ export default function LandingPage() {
             { href: "#personas", label: "Personas" },
             { href: "#pymes", label: "Pymes" },
             { href: "/consulting", label: "Consulting" },
+            { href: "/mining", label: "Minería" },
             { href: "#contacto", label: "Contacto" },
           ]}
         />

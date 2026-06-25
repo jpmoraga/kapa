@@ -24,7 +24,7 @@ type MarketingFooterProps = {
 const defaultNavLinks: FooterLink[] = [
   { href: "/", label: "Inicio" },
   { href: "/consulting", label: "Consulting" },
-  { href: "/auth/login", label: "Plataforma" },
+  { href: "/mining", label: "Minería" },
   { href: "/auth/login", label: "Entrar" },
 ];
 
