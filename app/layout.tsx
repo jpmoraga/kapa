@@ -29,7 +29,7 @@ export default function RootLayout({
         {/* Google Analytics */}
         <script
           async
-          src="https://www.googletagmanager.com/gtag/js?id=G-EM8JHBDSDD"
+          src="https://www.googletagmanager.com/gtag/js?id=G-R0KLL83LTZ"
         />
         <script
           dangerouslySetInnerHTML={{
@@ -37,7 +37,7 @@ export default function RootLayout({
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', 'G-EM8JHBDSDD', {
+              gtag('config', 'G-R0KLL83LTZ', {
                 anonymize_ip: true,
               });
             `,
