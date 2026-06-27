@@ -51,12 +51,12 @@ export function AsicCard({ ctaHref, model }: AsicCardProps) {
       <div className="grid gap-3.5">
         <div className="overflow-hidden rounded-[0.95rem] border border-border bg-background/72 p-2.5 sm:rounded-[1.05rem] sm:p-3.5">
           {showImage ? (
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[0.85rem] border border-border bg-surface sm:aspect-[4/3] sm:rounded-[0.95rem]">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[0.85rem] border border-border bg-white p-3 sm:aspect-[4/3] sm:rounded-[0.95rem] sm:p-4">
               <Image
                 src={model.image.src as string}
                 alt={model.image.alt ?? `${model.manufacturer} ${model.model}`}
                 fill
-                className="object-cover"
+                className="object-contain p-2 sm:p-3"
                 sizes="(min-width: 1400px) 22rem, (min-width: 768px) 44vw, 100vw"
               />
             </div>

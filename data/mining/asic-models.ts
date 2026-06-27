@@ -109,6 +109,7 @@ function createAsicModel(input: {
   efficiency?: number;
   hashrate: number;
   hostingUsd?: number;
+  imageSrc?: string;
   manufacturer: string;
   model: string;
   power?: number;
@@ -146,7 +147,14 @@ function createAsicModel(input: {
             state: "verified",
           }
         : unknownEfficiency,
-    image: unknownAsset,
+    image:
+      input.imageSrc !== undefined
+        ? {
+            src: input.imageSrc,
+            alt: `${input.manufacturer} ${input.model}`,
+            state: "verified",
+          }
+        : unknownAsset,
     availability:
       input.availability !== undefined
         ? {
@@ -206,6 +214,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 1250,
     warrantyUsd: 18,
     hostingUsd: 9,
+    imageSrc: "/mining/asics/avalon-nano-3s.webp",
     availability: "Minero doméstico disponible",
     displayOrder: 1,
   }),
@@ -221,6 +230,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 3230,
     warrantyUsd: 206,
     hostingUsd: 103,
+    imageSrc: "/mining/asics/btc-t3.webp",
     availability: "Minero doméstico disponible",
     displayOrder: 2,
   }),
@@ -236,6 +246,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 1496,
     warrantyUsd: 330,
     hostingUsd: 165,
+    imageSrc: "/mining/asics/antminer-s19k-pro.webp",
     availability: "Stock disponible",
     displayOrder: 3,
   }),
@@ -251,6 +262,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 3890,
     warrantyUsd: 422,
     hostingUsd: 211,
+    imageSrc: "/mining/asics/whatsminer-m60s-plus.webp",
     availability: "Stock disponible",
     displayOrder: 4,
   }),
@@ -266,6 +278,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 3482,
     warrantyUsd: 462,
     hostingUsd: 231,
+    imageSrc: "/mining/asics/antminer-s21-plus.webp",
     availability: "Stock disponible",
     displayOrder: 5,
   }),
@@ -281,6 +294,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 4425,
     warrantyUsd: 438,
     hostingUsd: 219,
+    imageSrc: "/mining/asics/antminer-s21-pro.webp",
     availability: "Stock disponible",
     displayOrder: 6,
   }),
@@ -296,6 +310,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 6759,
     warrantyUsd: 434,
     hostingUsd: 217,
+    imageSrc: "/mining/asics/antminer-s21-xp.webp",
     availability: "Stock disponible",
     displayOrder: 7,
   }),
@@ -311,6 +326,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 7494,
     warrantyUsd: 962,
     hostingUsd: 481,
+    imageSrc: "/mining/asics/avalon-a1566ha.webp",
     availability: "Stock disponible",
     displayOrder: 8,
   }),
@@ -326,6 +342,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 5250,
     warrantyUsd: 706,
     hostingUsd: 353,
+    imageSrc: "/mining/asics/antminer-s21-plus-hydro.webp",
     availability: "Stock disponible",
     displayOrder: 9,
   }),
@@ -341,6 +358,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 11417,
     warrantyUsd: 676,
     hostingUsd: 338,
+    imageSrc: "/mining/asics/antminer-s21-xp-hydro.webp",
     availability: "Stock disponible",
     displayOrder: 10,
   }),
@@ -356,6 +374,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 6594,
     warrantyUsd: 892,
     hostingUsd: 446,
+    imageSrc: "/mining/asics/whatsminer-m63s-plus.webp",
     availability: "Stock disponible",
     displayOrder: 11,
   }),
@@ -371,6 +390,7 @@ export const asicModels: AsicModel[] = [
     priceUsd: 24055,
     warrantyUsd: 658,
     hostingUsd: 329,
+    imageSrc: "/mining/asics/antminer-s23-hydro.webp",
     availability: "Julio 2026",
     displayOrder: 12,
   }),
