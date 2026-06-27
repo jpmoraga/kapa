@@ -20,16 +20,31 @@ function getCoolingLabel(value: AsicModel["cooling"]["value"]) {
   }
 
   if (value === "hydro") {
-    return "Hydro";
+    return "Hidro";
   }
 
   return null;
+}
+
+function hasAmountValue(field: { amount: number | null; state: string }) {
+  return field.state !== "unknown" && field.amount !== null;
+}
+
+function formatUsd(amount: number) {
+  return `USD ${amount.toLocaleString("es-CL")}`;
 }
 
 export function AsicCard({ ctaHref, model }: AsicCardProps) {
   const showCooling = hasFieldValue(model.cooling);
   const coolingLabel = showCooling ? getCoolingLabel(model.cooling.value) : null;
   const showImage = model.image.state !== "unknown" && model.image.src !== null;
+  const showPrice = hasAmountValue(model.referencePrice);
+  const showHosting = hasAmountValue(model.hosting);
+  const showWarranty = hasAmountValue(model.warranty);
+  const showEfficiency = hasFieldValue(model.efficiency);
+  const showPower = hasFieldValue(model.power);
+  const availabilityLabel =
+    model.availability.state !== "unknown" ? model.availability.label : null;
 
   return (
     <Card variant="elevated" className="grid gap-4 rounded-[1.05rem] p-4 shadow-none sm:gap-5 sm:p-5 sm:shadow-[var(--shadow)]">
@@ -80,12 +95,22 @@ export function AsicCard({ ctaHref, model }: AsicCardProps) {
         </div>
 
         <div className="grid gap-2.5">
-          <Badge
-            variant="outline"
-            className="justify-start border-accent/30 px-2 py-1 text-[0.66rem] tracking-[0.14em] text-accent sm:px-2.25 sm:text-[0.7rem]"
-          >
-            {model.category}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant="outline"
+              className="justify-start border-accent/30 px-2 py-1 text-[0.66rem] tracking-[0.14em] text-accent sm:px-2.25 sm:text-[0.7rem]"
+            >
+              {model.category}
+            </Badge>
+            {availabilityLabel ? (
+              <Badge
+                variant="outline"
+                className="justify-start border-border/80 bg-background/70 px-2 py-1 text-[0.62rem] tracking-[0.14em] text-foreground-muted sm:px-2.25 sm:text-[0.68rem]"
+              >
+                {availabilityLabel}
+              </Badge>
+            ) : null}
+          </div>
 
           <div className="grid gap-1">
             <p className="text-[0.82rem] font-medium leading-5 text-foreground-muted sm:text-sm">
@@ -96,28 +121,72 @@ export function AsicCard({ ctaHref, model }: AsicCardProps) {
             </h3>
           </div>
 
-          <dl className="grid gap-2 rounded-[0.95rem] border border-border bg-background/72 p-3.5 sm:rounded-[1rem] sm:p-4">
-            <div className="flex items-center justify-between gap-4">
-              <dt className="text-[0.88rem] font-medium text-foreground sm:text-sm">Hashrate</dt>
-              <dd className="text-[0.95rem] font-semibold text-foreground sm:text-base">
-                {model.hashrate.value} TH/s
-              </dd>
-            </div>
-            {coolingLabel ? (
-              <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-2.5">
-                <dt className="text-[0.88rem] font-medium text-foreground sm:text-sm">Refrigeración</dt>
-                <dd className="text-[0.95rem] font-medium text-foreground-muted sm:text-base">
-                  {coolingLabel}
-                </dd>
+          <div className="grid gap-2.5 rounded-[0.95rem] border border-border bg-background/72 p-3.5 sm:rounded-[1rem] sm:p-4">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[0.88rem] font-medium text-foreground sm:text-sm">Hashrate</span>
+                <span className="text-[0.95rem] font-semibold text-foreground sm:text-base">
+                  {model.hashrate.value} TH/s
+                </span>
               </div>
-            ) : null}
-          </dl>
+              {showPrice ? (
+                <div className="grid gap-0.5 rounded-[0.9rem] border border-accent/20 bg-accent/[0.08] px-3 py-2.5 sm:px-3.5">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-foreground-muted">
+                    Precio equipo
+                  </p>
+                  <p className="text-[1.18rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[1.34rem]">
+                    {formatUsd(model.referencePrice.amount as number)}
+                  </p>
+                </div>
+              ) : null}
+            </div>
 
-          <div className="grid gap-1 rounded-[0.95rem] border border-border/80 bg-background/72 p-3.5 sm:rounded-[1rem] sm:p-4">
-            <p className="text-[0.88rem] font-medium text-foreground sm:text-sm">Ficha técnica en actualización</p>
-            <p className="text-[0.88rem] leading-5 text-foreground-muted sm:text-sm sm:leading-6">
-              Precio y disponibilidad sujetos a cotización
-            </p>
+            <dl className="grid gap-2">
+              {showHosting ? (
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-[0.86rem] font-medium text-foreground sm:text-sm">Hosting mensual</dt>
+                  <dd className="text-[0.9rem] text-foreground-muted sm:text-sm">
+                    {formatUsd(model.hosting.amount as number)}
+                  </dd>
+                </div>
+              ) : null}
+              {showEfficiency ? (
+                <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-2">
+                  <dt className="text-[0.86rem] font-medium text-foreground sm:text-sm">Eficiencia</dt>
+                  <dd className="text-[0.9rem] text-foreground-muted sm:text-sm">
+                    {String(model.efficiency.value).replace(".", ",")} J/TH
+                  </dd>
+                </div>
+              ) : null}
+              {showPower ? (
+                <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-2">
+                  <dt className="text-[0.86rem] font-medium text-foreground sm:text-sm">Consumo</dt>
+                  <dd className="text-[0.9rem] text-foreground-muted sm:text-sm">
+                    {(model.power.value as number).toLocaleString("es-CL")} W
+                  </dd>
+                </div>
+              ) : null}
+              {coolingLabel ? (
+                <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-2">
+                  <dt className="text-[0.86rem] font-medium text-foreground sm:text-sm">Refrigeración</dt>
+                  <dd className="text-[0.9rem] text-foreground-muted sm:text-sm">
+                    {coolingLabel}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <div className="grid gap-1 rounded-[0.9rem] border border-border/80 bg-background/78 px-3 py-2.5 sm:px-3.5">
+              {showWarranty ? (
+                <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-[0.86rem]">
+                  <span className="font-medium text-foreground">Garantía</span>:{" "}
+                  {formatUsd(model.warranty.amount as number)}
+                </p>
+              ) : null}
+              <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-[0.86rem]">
+                Precio y hosting referenciales según catálogo Andes SolarHash Junio 2026.
+              </p>
+            </div>
           </div>
         </div>
       </div>
