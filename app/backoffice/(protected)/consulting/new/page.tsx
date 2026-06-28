@@ -26,14 +26,14 @@ const initialValues = {
 
 export default function BackofficeConsultingNewPage() {
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="mx-auto max-w-[1500px] px-6 py-6">
       <BackofficePageHeader
         eyebrow="Backoffice / Consulting / Nuevo"
         title="Nuevo prospecto"
-        description="Alta controlada dentro del módulo Consulting, sin reutilizar rutas ni controladores del admin antiguo."
+        description="Crea una ficha comercial nueva con la información mínima necesaria para arrancar el seguimiento."
       />
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+      <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
         <ConsultingProspectForm
           mode="create"
           initialValues={initialValues}
@@ -45,40 +45,38 @@ export default function BackofficeConsultingNewPage() {
 
         <aside className="space-y-6">
           <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Qué se guarda</div>
+            <div className="text-lg font-semibold text-white">Checklist de carga</div>
             <p className="mt-2 text-sm text-white/60">
-              La ficha inicial registra empresa, contacto, línea de negocio y estado comercial.
-              Desde aquí el equipo puede iterar sin tocar{" "}
-              <code className="rounded bg-white/5 px-1 py-0.5 text-white/75">/admin</code> ni{" "}
-              <code className="rounded bg-white/5 px-1 py-0.5 text-white/75">
-                /api/admin
-              </code>
-              .
+              Antes de guardar, conviene dejar clara la empresa, el contacto objetivo, la línea
+              comercial y el estado inicial del acercamiento.
             </p>
+
+            <ul className="mt-4 space-y-3 text-sm text-white/70">
+              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                Completa empresa, país y línea comercial.
+              </li>
+              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                Agrega LinkedIn o email si ya están disponibles.
+              </li>
+              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                Define una próxima acción sólo si necesitas salirte del flujo sugerido.
+              </li>
+            </ul>
           </section>
 
           <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Automatismos MVP</div>
+            <div className="text-lg font-semibold text-white">Ayuda operativa</div>
             <ul className="mt-4 space-y-3 text-sm text-white/70">
               <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <code className="rounded bg-white/5 px-1 py-0.5 text-white/75">
-                  contactStatus
-                </code>{" "}
-                dispara el primer timestamp vacío del hito asociado.
+                Si cambias el estado de contacto, se registra automáticamente la primera fecha
+                faltante de ese hito.
               </li>
               <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <code className="rounded bg-white/5 px-1 py-0.5 text-white/75">
-                  pipelineStage
-                </code>{" "}
-                permite separar prospecting, reuniones, propuesta y diagnóstico.
+                La etapa comercial ayuda a separar prospección, reuniones, propuesta y cierre.
               </li>
               <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <code className="rounded bg-white/5 px-1 py-0.5 text-white/75">nextAction</code>{" "}
-                y{" "}
-                <code className="rounded bg-white/5 px-1 py-0.5 text-white/75">
-                  nextActionAt
-                </code>{" "}
-                pisan la sugerencia automática sólo para ese caso.
+                La próxima acción manual sólo se usa cuando necesitas fijar una acción distinta a
+                la sugerida por el sistema.
               </li>
             </ul>
           </section>

@@ -53,13 +53,13 @@ export const CONSULTING_CONTACT_STATUS_OPTIONS: ReadonlyArray<{
   { value: ConsultingContactStatus.MEETING_DONE, label: "Reunión realizada" },
   {
     value: ConsultingContactStatus.FOLLOW_UP_1_SENT,
-    label: "Follow-up 1 enviado",
+    label: "Seguimiento 1 enviado",
   },
   {
     value: ConsultingContactStatus.FOLLOW_UP_2_SENT,
-    label: "Follow-up 2 enviado",
+    label: "Seguimiento 2 enviado",
   },
-  { value: ConsultingContactStatus.DORMANT, label: "Dormant" },
+  { value: ConsultingContactStatus.DORMANT, label: "Inactivo" },
   { value: ConsultingContactStatus.DISCARDED, label: "Descartado" },
 ] as const;
 
@@ -67,7 +67,7 @@ export const CONSULTING_PIPELINE_STAGE_OPTIONS: ReadonlyArray<{
   value: ConsultingPipelineStage;
   label: string;
 }> = [
-  { value: ConsultingPipelineStage.PROSPECTING, label: "Prospecting" },
+  { value: ConsultingPipelineStage.PROSPECTING, label: "Prospección" },
   { value: ConsultingPipelineStage.CONTACTED, label: "Contactado" },
   {
     value: ConsultingPipelineStage.CONVERSATION_OPEN,
@@ -81,7 +81,7 @@ export const CONSULTING_PIPELINE_STAGE_OPTIONS: ReadonlyArray<{
   { value: ConsultingPipelineStage.PROPOSAL_SENT, label: "Propuesta enviada" },
   {
     value: ConsultingPipelineStage.DIAGNOSIS_NEGOTIATION,
-    label: "Negociación diagnóstico",
+    label: "Diagnóstico en negociación",
   },
   {
     value: ConsultingPipelineStage.DIAGNOSIS_WON,
@@ -235,6 +235,7 @@ export type ConsultingPendingActionItem = {
   companyName: string;
   contactName: string;
   businessLineLabel: string;
+  contactStatusLabel: string;
   pipelineStageLabel: string;
   actionText: string;
   actionAt: string | null;
@@ -554,7 +555,7 @@ export function suggestConsultingNextAction(
     const followUpAt = addDays(prospect.linkedinMessageSentAt, 15);
     const isDueNow = followUpAt.getTime() <= now.getTime();
     return {
-      text: isDueNow ? "Enviar follow-up 1" : "Esperar respuesta al primer mensaje",
+      text: isDueNow ? "Enviar seguimiento 1" : "Esperar respuesta al primer mensaje",
       at: followUpAt.toISOString(),
       hasPendingAction: true,
       isDueNow,
@@ -565,7 +566,7 @@ export function suggestConsultingNextAction(
     const followUpAt = addDays(prospect.followUp1SentAt, 21);
     const isDueNow = followUpAt.getTime() <= now.getTime();
     return {
-      text: isDueNow ? "Evaluar follow-up 2" : "Esperar respuesta al follow-up 1",
+      text: isDueNow ? "Evaluar seguimiento 2" : "Esperar respuesta al seguimiento 1",
       at: followUpAt.toISOString(),
       hasPendingAction: true,
       isDueNow,
@@ -734,6 +735,7 @@ export async function getConsultingPageData(
       companyName: row.companyName,
       contactName: row.contactName,
       businessLineLabel: row.businessLineLabel,
+      contactStatusLabel: row.contactStatusLabel,
       pipelineStageLabel: row.pipelineStageLabel,
       actionText: row.nextActionManual ?? row.suggestedAction.text,
       actionAt: row.nextActionAt ?? row.suggestedAction.at,

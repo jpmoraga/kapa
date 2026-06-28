@@ -11,6 +11,7 @@ import {
 
 type BackofficeConsultingProspectPageProps = {
   params: Promise<{ prospectId: string }>;
+  searchParams?: Promise<{ created?: string; saved?: string }>;
 };
 
 const AUTOMATIC_DATE_LABELS: Array<{ key: string; label: string }> = [
@@ -21,8 +22,8 @@ const AUTOMATIC_DATE_LABELS: Array<{ key: string; label: string }> = [
   { key: "respondedAt", label: "Respondió" },
   { key: "meetingScheduledAt", label: "Reunión agendada" },
   { key: "meetingDoneAt", label: "Reunión realizada" },
-  { key: "followUp1SentAt", label: "Follow-up 1" },
-  { key: "followUp2SentAt", label: "Follow-up 2" },
+  { key: "followUp1SentAt", label: "Seguimiento 1" },
+  { key: "followUp2SentAt", label: "Seguimiento 2" },
 ];
 
 function formatDate(value: string | null) {
@@ -35,8 +36,10 @@ function formatDate(value: string | null) {
 
 export default async function BackofficeConsultingProspectPage({
   params,
+  searchParams,
 }: BackofficeConsultingProspectPageProps) {
   const { prospectId } = await params;
+  const sp = searchParams ? await searchParams : {};
   const prospect = await getConsultingProspectById(prospectId);
 
   if (!prospect) {
@@ -44,14 +47,20 @@ export default async function BackofficeConsultingProspectPage({
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="mx-auto max-w-[1500px] px-6 py-6">
       <BackofficePageHeader
         eyebrow="Backoffice / Consulting / Prospecto"
         title={prospect.companyName}
         description={`${prospect.contactName} · ${prospect.contactRole} · ${prospect.country}`}
       />
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+      {sp.created || sp.saved ? (
+        <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          {sp.created ? "Prospecto creado correctamente." : "Cambios guardados correctamente."}
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
         <ConsultingProspectForm
           key={`${prospect.id}:${prospect.updatedAt}`}
           mode="edit"
@@ -92,7 +101,7 @@ export default async function BackofficeConsultingProspectPage({
           </section>
 
           <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Timeline automático</div>
+            <div className="text-lg font-semibold text-white">Hitos automáticos</div>
             <div className="mt-4 space-y-3">
               {AUTOMATIC_DATE_LABELS.map((item) => {
                 const value = prospect.automaticDates[item.key];
@@ -112,13 +121,16 @@ export default async function BackofficeConsultingProspectPage({
           </section>
 
           <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Auditoría</div>
+            <div className="text-lg font-semibold text-white">Resumen de ficha</div>
             <div className="mt-4 space-y-3 text-sm text-white/65">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Creado: {formatDate(prospect.createdAt)}
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Última actualización: {formatDate(prospect.updatedAt)}
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                Próxima acción manual: {prospect.nextAction || "No definida"}
               </div>
             </div>
           </section>
