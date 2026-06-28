@@ -16,25 +16,6 @@ type BackofficeMiningOperationPageProps = {
   searchParams?: Promise<{ created?: string; saved?: string; promoted?: string }>;
 };
 
-const COMMERCIAL_DATE_LABELS: Array<{ key: string; label: string }> = [
-  { key: "contractPreparationAt", label: "Preparación contrato" },
-  { key: "contractSentAt", label: "Contrato enviado" },
-  { key: "contractSignedAt", label: "Contrato firmado" },
-  { key: "paymentPendingAt", label: "Pago pendiente" },
-  { key: "paymentReceivedAt", label: "Pago recibido" },
-  { key: "paymentProofUploadedAt", label: "Comprobante cargado" },
-  { key: "cancelledAt", label: "Cancelada" },
-];
-
-const OPERATIONAL_DATE_LABELS: Array<{ key: string; label: string }> = [
-  { key: "sharedWithPartnerAt", label: "Lista para Andes" },
-  { key: "receivedByAndesAt", label: "Recibida por Andes" },
-  { key: "activationPendingAt", label: "Activación pendiente" },
-  { key: "activatedAt", label: "Activa" },
-  { key: "incidentAt", label: "Incidencia" },
-  { key: "closedAt", label: "Cerrada" },
-];
-
 function formatDate(value: string | null) {
   if (!value) return "Pendiente";
 
@@ -109,30 +90,6 @@ export default async function BackofficeMiningOperationPage({
         </div>
       ) : null}
 
-      <div
-        className={
-          operation.prospect
-            ? "mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
-            : "mt-5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70"
-        }
-      >
-        {operation.prospect ? (
-          <>
-            Origen: Prospecto Mining. Esta operación nació desde
-            {" "}
-            <Link
-              href={`/backoffice/mining/${operation.prospect.id}`}
-              className="underline underline-offset-4"
-            >
-              {operation.prospect.name}
-            </Link>
-            .
-          </>
-        ) : (
-          <>Sin prospecto asociado. Operación creada antes de centralizar el flujo.</>
-        )}
-      </div>
-
       <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
         <MiningOperationForm
           key={`${operation.id}:${operation.updatedAt}`}
@@ -140,9 +97,15 @@ export default async function BackofficeMiningOperationPage({
           operationId={operation.id}
           linkedProspect={
             operation.prospect
-              ? { id: operation.prospect.id, name: operation.prospect.name }
+              ? {
+                  id: operation.prospect.id,
+                  name: operation.prospect.name,
+                  sourceLabel: operation.prospect.sourceLabel,
+                }
               : null
           }
+          commercialDates={operation.commercialDates}
+          operationalDates={operation.operationalDates}
           initialValues={{
             clientName: operation.clientName,
             clientCompanyName: operation.clientCompanyName,
@@ -258,50 +221,10 @@ export default async function BackofficeMiningOperationPage({
           </section>
 
           <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Hitos comerciales</div>
-            <div className="mt-4 space-y-3">
-              {COMMERCIAL_DATE_LABELS.map((item) => {
-                const value = operation.commercialDates[item.key];
-                return (
-                  <div
-                    key={item.key}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
-                  >
-                    <div className="text-sm text-white/80">{item.label}</div>
-                    <div className={value ? "text-sm text-white" : "text-sm text-white/35"}>
-                      {formatDate(value)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Hitos operativos</div>
-            <div className="mt-4 space-y-3">
-              {OPERATIONAL_DATE_LABELS.map((item) => {
-                const value = operation.operationalDates[item.key];
-                return (
-                  <div
-                    key={item.key}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
-                  >
-                    <div className="text-sm text-white/80">{item.label}</div>
-                    <div className={value ? "text-sm text-white" : "text-sm text-white/35"}>
-                      {formatDate(value)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Resumen de ficha</div>
+            <div className="text-lg font-semibold text-white">Resumen operativo</div>
             <div className="mt-4 space-y-3 text-sm text-white/65">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                Contacto principal: {operation.primaryContactLabel} · {operation.primaryContactValue}
+                Producto final: {operation.productTypeLabel}
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Venta bruta:{" "}
@@ -309,7 +232,7 @@ export default async function BackofficeMiningOperationPage({
               </div>
               {operation.prospect ? (
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                  Origen: Prospecto Mining.{" "}
+                  Origen: Desde prospecto.{" "}
                   <Link
                     href={`/backoffice/mining/${operation.prospect.id}`}
                     className="text-amber-100 underline underline-offset-4"
@@ -322,6 +245,9 @@ export default async function BackofficeMiningOperationPage({
                   Sin prospecto asociado. Operación creada antes de centralizar el flujo.
                 </div>
               )}
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                Contacto principal: {operation.primaryContactLabel} · {operation.primaryContactValue}
+              </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Creado: {formatDate(operation.createdAt)}
               </div>

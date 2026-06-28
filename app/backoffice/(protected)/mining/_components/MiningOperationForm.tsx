@@ -58,7 +58,25 @@ type MiningOperationFormProps = {
   linkedProspect?: {
     id: string;
     name: string;
+    sourceLabel: string;
   } | null;
+  commercialDates?: {
+    contractPreparationAt: string | null;
+    contractSentAt: string | null;
+    contractSignedAt: string | null;
+    paymentPendingAt: string | null;
+    paymentReceivedAt: string | null;
+    paymentProofUploadedAt: string | null;
+    cancelledAt?: string | null;
+  };
+  operationalDates?: {
+    sharedWithPartnerAt: string | null;
+    receivedByAndesAt: string | null;
+    activationPendingAt: string | null;
+    activatedAt: string | null;
+    incidentAt: string | null;
+    closedAt: string | null;
+  };
   commissionPreviewSeed: {
     nextProbableSaleSequence: number;
     currentConfirmedSequence: number | null;
@@ -95,6 +113,22 @@ const ASIC_HOSTING_SALES_RATES = {
   SILVER: 0.08,
   GOLD: 0.09,
 } as const;
+const COMMERCIAL_MILESTONE_LABELS = [
+  { key: "contractPreparationAt", label: "Preparación contrato" },
+  { key: "contractSentAt", label: "Contrato enviado" },
+  { key: "contractSignedAt", label: "Contrato firmado" },
+  { key: "paymentPendingAt", label: "Pago pendiente" },
+  { key: "paymentReceivedAt", label: "Pago recibido" },
+  { key: "paymentProofUploadedAt", label: "Comprobante cargado" },
+] as const;
+const OPERATIONAL_MILESTONE_LABELS = [
+  { key: "sharedWithPartnerAt", label: "Lista para Andes" },
+  { key: "receivedByAndesAt", label: "Recibida por Andes" },
+  { key: "activationPendingAt", label: "Activación pendiente" },
+  { key: "activatedAt", label: "Activa" },
+  { key: "incidentAt", label: "Incidencia" },
+  { key: "closedAt", label: "Cerrada" },
+] as const;
 const MONTHLY_HOSTING_RATE = 0.01;
 const CONFIRMED_SALE_STATUSES = new Set(["PAYMENT_RECEIVED", "PAYMENT_PROOF_UPLOADED"]);
 
@@ -152,6 +186,14 @@ function formatRatePreview(value: number | null) {
 
 function formatDatePreview(value: string | null) {
   if (!value) return "Se sugerirá al confirmar el pago.";
+
+  return new Intl.DateTimeFormat("es-CL", {
+    dateStyle: "medium",
+  }).format(new Date(value));
+}
+
+function formatRecordedDate(value: string | null | undefined) {
+  if (!value) return "Pendiente";
 
   return new Intl.DateTimeFormat("es-CL", {
     dateStyle: "medium",
@@ -235,10 +277,31 @@ function deriveCommissionPreview(
   };
 }
 
+function pickPrimaryContactFromForm(form: MiningOperationFormValues) {
+  if (form.whatsapp.trim()) {
+    return { label: "WhatsApp", value: form.whatsapp.trim() };
+  }
+  if (form.email.trim()) {
+    return { label: "Email", value: form.email.trim() };
+  }
+  if (form.instagramUrl.trim()) {
+    return { label: "Instagram", value: form.instagramUrl.trim() };
+  }
+  if (form.linkedinUrl.trim()) {
+    return { label: "LinkedIn", value: form.linkedinUrl.trim() };
+  }
+  if (form.xUrl.trim()) {
+    return { label: "X / Twitter", value: form.xUrl.trim() };
+  }
+  return { label: "Contacto", value: "Sin canal definido" };
+}
+
 export default function MiningOperationForm({
   mode,
   operationId,
   linkedProspect,
+  commercialDates,
+  operationalDates,
   commissionPreviewSeed,
   initialValues,
   productOptions,
@@ -278,6 +341,7 @@ export default function MiningOperationForm({
       ? formatCurrencyPreview(recordedSalesAmountValue, form.salesCommissionCurrency)
       : null,
   ].filter(Boolean);
+  const currentPrimaryContact = pickPrimaryContactFromForm(form);
 
   function updateField<K extends keyof MiningOperationFormValues>(
     field: K,
@@ -305,6 +369,108 @@ export default function MiningOperationForm({
       salesCommissionAmount: "",
       salesCommissionCurrency: current.grossSaleCurrency,
     }));
+  }
+
+  function renderContactInputs(title: string, description: string) {
+    return (
+      <div className={SECTION_CLASS_NAME}>
+        <div>
+          <div className="text-base font-semibold text-white">{title}</div>
+          <p className="mt-1 text-sm text-white/55">{description}</p>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <label className={LABEL_CLASS_NAME}>Cliente</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              value={form.clientName}
+              onChange={(event) => updateField("clientName", event.target.value)}
+              placeholder="Nombre del cliente"
+            />
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS_NAME}>Empresa</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              value={form.clientCompanyName}
+              onChange={(event) => updateField("clientCompanyName", event.target.value)}
+              placeholder="Empresa u organización"
+            />
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS_NAME}>País</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              value={form.country}
+              onChange={(event) => updateField("country", event.target.value)}
+              placeholder="Chile"
+            />
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS_NAME}>WhatsApp</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              value={form.whatsapp}
+              onChange={(event) => updateField("whatsapp", event.target.value)}
+              placeholder="+56 9 1234 5678"
+            />
+          </div>
+
+          <div>
+            <label className={LABEL_CLASS_NAME}>Email</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              type="email"
+              value={form.email}
+              onChange={(event) => updateField("email", event.target.value)}
+              placeholder="persona@empresa.com"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <label className={LABEL_CLASS_NAME}>Instagram</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              value={form.instagramUrl}
+              onChange={(event) => updateField("instagramUrl", event.target.value)}
+              placeholder="https://instagram.com/..."
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <label className={LABEL_CLASS_NAME}>LinkedIn</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              value={form.linkedinUrl}
+              onChange={(event) => updateField("linkedinUrl", event.target.value)}
+              placeholder="https://linkedin.com/in/..."
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <label className={LABEL_CLASS_NAME}>X / Twitter</label>
+            <input
+              className={FIELD_CLASS_NAME}
+              value={form.xUrl}
+              onChange={(event) => updateField("xUrl", event.target.value)}
+              placeholder="https://x.com/..."
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -391,119 +557,65 @@ export default function MiningOperationForm({
       <section className="k21-card p-6">
         <div className="grid gap-5">
           {linkedProspect ? (
-            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-              Esta operación nace desde el prospecto
-              {" "}
-              <Link
-                href={`/backoffice/mining/${linkedProspect.id}`}
-                className="underline underline-offset-4"
-              >
-                {linkedProspect.name}
-              </Link>
-              . Los datos de cliente y contacto provienen de esa base central y aquí se usan como
-              contexto operativo.
-            </div>
-          ) : null}
+            <div className={SECTION_CLASS_NAME}>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="text-base font-semibold text-white">
+                    Datos heredados del prospecto
+                  </div>
+                  <p className="mt-1 max-w-3xl text-sm text-white/55">
+                    Esta operación nace desde
+                    {" "}
+                    <span className="font-medium text-white">{linkedProspect.name}</span>. Los
+                    datos de contacto se muestran como contexto y el foco operativo queda en
+                    producto, contrato, pago, comisión y activación.
+                  </p>
+                </div>
 
-          <div className={SECTION_CLASS_NAME}>
-            <div>
-              <div className="text-base font-semibold text-white">Cliente y canales</div>
-              <p className="mt-1 text-sm text-white/55">
-                Identidad del cliente y vías de contacto disponibles para esta operación.
-              </p>
-            </div>
-
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <div>
-                <label className={LABEL_CLASS_NAME}>Cliente</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  value={form.clientName}
-                  onChange={(event) => updateField("clientName", event.target.value)}
-                  placeholder="Nombre del cliente"
-                />
+                <Link
+                  href={`/backoffice/mining/${linkedProspect.id}`}
+                  className="k21-btn-secondary"
+                >
+                  Ver prospecto privado
+                </Link>
               </div>
 
-              <div>
-                <label className={LABEL_CLASS_NAME}>Empresa</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  value={form.clientCompanyName}
-                  onChange={(event) => updateField("clientCompanyName", event.target.value)}
-                  placeholder="Empresa u organización"
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS_NAME}>País</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  value={form.country}
-                  onChange={(event) => updateField("country", event.target.value)}
-                  placeholder="Chile"
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS_NAME}>WhatsApp</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  value={form.whatsapp}
-                  onChange={(event) => updateField("whatsapp", event.target.value)}
-                  placeholder="+56 9 1234 5678"
-                />
-              </div>
-
-              <div>
-                <label className={LABEL_CLASS_NAME}>Email</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => updateField("email", event.target.value)}
-                  placeholder="persona@empresa.com"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                />
-              </div>
-
-              <div className="lg:col-span-2">
-                <label className={LABEL_CLASS_NAME}>Instagram</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  value={form.instagramUrl}
-                  onChange={(event) => updateField("instagramUrl", event.target.value)}
-                  placeholder="https://instagram.com/..."
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                />
-              </div>
-
-              <div className="lg:col-span-2">
-                <label className={LABEL_CLASS_NAME}>LinkedIn</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  value={form.linkedinUrl}
-                  onChange={(event) => updateField("linkedinUrl", event.target.value)}
-                  placeholder="https://linkedin.com/in/..."
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                />
-              </div>
-
-              <div className="lg:col-span-2">
-                <label className={LABEL_CLASS_NAME}>X / Twitter</label>
-                <input
-                  className={FIELD_CLASS_NAME}
-                  value={form.xUrl}
-                  onChange={(event) => updateField("xUrl", event.target.value)}
-                  placeholder="https://x.com/..."
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                />
+              <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                {[
+                  { label: "Cliente", value: form.clientName || linkedProspect.name },
+                  { label: "Empresa", value: form.clientCompanyName || "Sin empresa" },
+                  { label: "País", value: form.country || "Chile" },
+                  {
+                    label: "Contacto principal",
+                    value: `${currentPrimaryContact.label} · ${currentPrimaryContact.value}`,
+                  },
+                  { label: "WhatsApp", value: form.whatsapp || "No definido" },
+                  { label: "Email", value: form.email || "No definido" },
+                  { label: "Instagram", value: form.instagramUrl || "No definido" },
+                  { label: "LinkedIn", value: form.linkedinUrl || "No definido" },
+                  { label: "X / Twitter", value: form.xUrl || "No definido" },
+                  { label: "Origen del prospecto", value: linkedProspect.sourceLabel },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                  >
+                    <div className="text-xs uppercase tracking-wide text-white/40">
+                      {item.label}
+                    </div>
+                    <div className="mt-2 break-all text-sm font-medium text-white">
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          ) : (
+            renderContactInputs(
+              "Operación sin prospecto asociado",
+              "Fue creada antes de centralizar el flujo. En este caso los datos de cliente siguen siendo editables porque no existe un prospecto base desde donde heredarlos."
+            )
+          )}
 
           <div className={SECTION_CLASS_NAME}>
             <div>
@@ -627,9 +739,9 @@ export default function MiningOperationForm({
 
           <div className={SECTION_CLASS_NAME}>
             <div>
-              <div className="text-base font-semibold text-white">Estado comercial y links</div>
+              <div className="text-base font-semibold text-white">Contrato y pago</div>
               <p className="mt-1 text-sm text-white/55">
-                Contrato, comprobante de pago y etapa real del cierre comercial.
+                Estado comercial, URLs de cierre y hitos automáticos visibles del proceso.
               </p>
             </div>
 
@@ -684,41 +796,28 @@ export default function MiningOperationForm({
                   autoCorrect="off"
                 />
               </div>
-            </div>
-          </div>
-
-          <div className={SECTION_CLASS_NAME}>
-            <div>
-              <div className="text-base font-semibold text-white">Estado operativo</div>
-              <p className="mt-1 text-sm text-white/55">
-                Capa interna pensada para preparar el futuro acceso limitado de Andes SolarHash.
-              </p>
-            </div>
-
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <div>
-                <label className={LABEL_CLASS_NAME}>Estado operativo</label>
-                <select
-                  className={FIELD_CLASS_NAME}
-                  value={form.operationalStatus}
-                  onChange={(event) => updateField("operationalStatus", event.target.value)}
-                >
-                  {operationalStatusOptions.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-neutral-950">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               <div className="lg:col-span-2">
-                <label className={LABEL_CLASS_NAME}>Notas operativas internas</label>
-                <textarea
-                  className={`${FIELD_CLASS_NAME} min-h-28 resize-y`}
-                  value={form.andesOperationalNotes}
-                  onChange={(event) => updateField("andesOperationalNotes", event.target.value)}
-                  placeholder="Recepción, activación, incidentes o contexto operativo compartible."
-                />
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-sm font-medium text-white/85">
+                    Hitos automáticos del cierre comercial
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {COMMERCIAL_MILESTONE_LABELS.map((item) => (
+                      <div
+                        key={item.key}
+                        className="rounded-xl border border-white/10 bg-black/10 px-4 py-3"
+                      >
+                        <div className="text-xs uppercase tracking-wide text-white/40">
+                          {item.label}
+                        </div>
+                        <div className="mt-2 text-sm font-medium text-white">
+                          {formatRecordedDate(commercialDates?.[item.key] ?? null)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -992,24 +1091,76 @@ export default function MiningOperationForm({
                   autoCorrect="off"
                 />
               </div>
+            </div>
+          </div>
 
-              <div className="xl:col-span-3">
-                <label className={LABEL_CLASS_NAME}>Notas de comisión</label>
+          <div className={SECTION_CLASS_NAME}>
+            <div>
+              <div className="text-base font-semibold text-white">
+                Estado operativo / activación
+              </div>
+              <p className="mt-1 text-sm text-white/55">
+                Seguimiento operativo interno pensado para la futura coordinación con Andes.
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div>
+                <label className={LABEL_CLASS_NAME}>Estado operativo</label>
+                <select
+                  className={FIELD_CLASS_NAME}
+                  value={form.operationalStatus}
+                  onChange={(event) => updateField("operationalStatus", event.target.value)}
+                >
+                  {operationalStatusOptions.map((option) => (
+                    <option key={option.value} value={option.value} className="bg-neutral-950">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className={LABEL_CLASS_NAME}>Notas operativas Andes</label>
                 <textarea
                   className={`${FIELD_CLASS_NAME} min-h-28 resize-y`}
-                  value={form.commissionNotes}
-                  onChange={(event) => updateField("commissionNotes", event.target.value)}
-                  placeholder="Criterio manual, diferencias con la sugerencia o seguimiento de cobro."
+                  value={form.andesOperationalNotes}
+                  onChange={(event) => updateField("andesOperationalNotes", event.target.value)}
+                  placeholder="Recepción, activación, incidentes o contexto operativo compartible."
                 />
+              </div>
+
+              <div className="lg:col-span-2">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-sm font-medium text-white/85">
+                    Hitos automáticos de activación
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {OPERATIONAL_MILESTONE_LABELS.map((item) => (
+                      <div
+                        key={item.key}
+                        className="rounded-xl border border-white/10 bg-black/10 px-4 py-3"
+                      >
+                        <div className="text-xs uppercase tracking-wide text-white/40">
+                          {item.label}
+                        </div>
+                        <div className="mt-2 text-sm font-medium text-white">
+                          {formatRecordedDate(operationalDates?.[item.key] ?? null)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <div className={SECTION_CLASS_NAME}>
             <div>
-              <div className="text-base font-semibold text-white">Seguimiento interno</div>
+              <div className="text-base font-semibold text-white">Notas y seguimiento</div>
               <p className="mt-1 text-sm text-white/55">
-                Próximo paso manual y notas que no deben exponerse a partners externos.
+                Separa el seguimiento manual, el contexto privado de cierre y las notas de
+                comisión sin mezclarlo con la capa comercial del prospecto.
               </p>
             </div>
 
@@ -1035,7 +1186,7 @@ export default function MiningOperationForm({
               </div>
 
               <div className="lg:col-span-2">
-                <label className={LABEL_CLASS_NAME}>Notas internas</label>
+                <label className={LABEL_CLASS_NAME}>Notas internas de cierre</label>
                 <textarea
                   className={`${FIELD_CLASS_NAME} min-h-32 resize-y`}
                   value={form.internalNotes}
@@ -1043,8 +1194,121 @@ export default function MiningOperationForm({
                   placeholder="Contexto comercial privado, objeciones, acuerdos y detalles internos."
                 />
               </div>
+
+              <div className="lg:col-span-2">
+                <label className={LABEL_CLASS_NAME}>Notas de comisión</label>
+                <textarea
+                  className={`${FIELD_CLASS_NAME} min-h-28 resize-y`}
+                  value={form.commissionNotes}
+                  onChange={(event) => updateField("commissionNotes", event.target.value)}
+                  placeholder="Criterio manual, diferencias con la sugerencia o seguimiento de cobro."
+                />
+              </div>
             </div>
           </div>
+
+          {linkedProspect ? (
+            <details className={SECTION_CLASS_NAME}>
+              <summary className="cursor-pointer list-none text-base font-semibold text-white">
+                Ajuste excepcional de datos de cliente
+              </summary>
+              <p className="mt-2 text-sm text-white/55">
+                Úsalo sólo cuando necesites registrar una diferencia real respecto del prospecto
+                original. El flujo normal sigue siendo operar con los datos heredados.
+              </p>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div>
+                  <label className={LABEL_CLASS_NAME}>Cliente</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    value={form.clientName}
+                    onChange={(event) => updateField("clientName", event.target.value)}
+                    placeholder="Nombre del cliente"
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS_NAME}>Empresa</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    value={form.clientCompanyName}
+                    onChange={(event) => updateField("clientCompanyName", event.target.value)}
+                    placeholder="Empresa u organización"
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS_NAME}>País</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    value={form.country}
+                    onChange={(event) => updateField("country", event.target.value)}
+                    placeholder="Chile"
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS_NAME}>WhatsApp</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    value={form.whatsapp}
+                    onChange={(event) => updateField("whatsapp", event.target.value)}
+                    placeholder="+56 9 1234 5678"
+                  />
+                </div>
+
+                <div>
+                  <label className={LABEL_CLASS_NAME}>Email</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    type="email"
+                    value={form.email}
+                    onChange={(event) => updateField("email", event.target.value)}
+                    placeholder="persona@empresa.com"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
+                </div>
+
+                <div className="lg:col-span-2">
+                  <label className={LABEL_CLASS_NAME}>Instagram</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    value={form.instagramUrl}
+                    onChange={(event) => updateField("instagramUrl", event.target.value)}
+                    placeholder="https://instagram.com/..."
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
+                </div>
+
+                <div className="lg:col-span-2">
+                  <label className={LABEL_CLASS_NAME}>LinkedIn</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    value={form.linkedinUrl}
+                    onChange={(event) => updateField("linkedinUrl", event.target.value)}
+                    placeholder="https://linkedin.com/in/..."
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
+                </div>
+
+                <div className="lg:col-span-2">
+                  <label className={LABEL_CLASS_NAME}>X / Twitter</label>
+                  <input
+                    className={FIELD_CLASS_NAME}
+                    value={form.xUrl}
+                    onChange={(event) => updateField("xUrl", event.target.value)}
+                    placeholder="https://x.com/..."
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
+                </div>
+              </div>
+            </details>
+          ) : null}
         </div>
       </section>
 
@@ -1080,7 +1344,7 @@ export default function MiningOperationForm({
           </button>
 
           <Link href="/backoffice/mining/operations" className="k21-btn-secondary">
-            Cancelar
+            Volver a operaciones
           </Link>
         </div>
       </section>

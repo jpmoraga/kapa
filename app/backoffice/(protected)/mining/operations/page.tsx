@@ -312,19 +312,17 @@ export default async function BackofficeMiningOperationsPage({
 
           {data.rows.length ? (
             <div className="overflow-x-auto">
-              <table className="min-w-[1460px] text-left text-sm">
+              <table className="min-w-[1320px] text-left text-sm">
                 <thead className="bg-white/[0.03] text-white/50">
                   <tr>
                     <th className="px-4 py-3 font-medium">Cliente</th>
                     <th className="px-4 py-3 font-medium">Origen</th>
                     <th className="px-4 py-3 font-medium">Producto</th>
-                    <th className="px-4 py-3 font-medium">Venta bruta</th>
+                    <th className="px-4 py-3 font-medium">Monto</th>
                     <th className="px-4 py-3 font-medium">Estado comercial</th>
                     <th className="px-4 py-3 font-medium">Estado operativo</th>
-                    <th className="px-4 py-3 font-medium">Comisión estimada</th>
-                    <th className="px-4 py-3 font-medium">Estado comisión</th>
+                    <th className="px-4 py-3 font-medium">Comisión sugerida / final</th>
                     <th className="px-4 py-3 font-medium">Próxima acción</th>
-                    <th className="px-4 py-3 font-medium">Última actividad</th>
                     <th className="px-4 py-3 font-medium">Acción</th>
                   </tr>
                 </thead>
@@ -352,7 +350,7 @@ export default async function BackofficeMiningOperationsPage({
                           <div className="min-w-[230px]">
                             {row.prospect ? (
                               <>
-                                <div className="font-medium text-white">Origen: Prospecto Mining</div>
+                                <div className="font-medium text-white">Desde prospecto</div>
                                 <Link
                                   href={`/backoffice/mining/${row.prospect.id}`}
                                   className="mt-2 inline-flex text-sm text-amber-100 underline underline-offset-4"
@@ -362,7 +360,7 @@ export default async function BackofficeMiningOperationsPage({
                               </>
                             ) : (
                               <>
-                                <div className="font-medium text-white/70">Sin prospecto asociado</div>
+                                <div className="font-medium text-white/70">Sin prospecto</div>
                                 <div className="mt-2 text-xs text-white/45">
                                   Operación creada antes de centralizar el flujo.
                                 </div>
@@ -406,19 +404,16 @@ export default async function BackofficeMiningOperationsPage({
                             {row.commission.saleSequence}
                             {row.commission.isEstimated ? " estimada" : ""}
                           </div>
+                          <div className="mt-2">
+                            <span className={compactTagClass(commissionTone(row.commissionStatus))}>
+                              {row.commissionStatusLabel}
+                            </span>
+                          </div>
                           {row.commission.dueAt ? (
                             <div className="mt-2 text-xs text-white/45">
                               Vence {formatDate(row.commission.dueAt)}
                             </div>
                           ) : null}
-                        </td>
-
-                        <td className="px-4 py-4">
-                          <div className="min-w-[190px]">
-                            <span className={compactTagClass(commissionTone(row.commissionStatus))}>
-                              {row.commissionStatusLabel}
-                            </span>
-                          </div>
                         </td>
 
                         <td className="px-4 py-4">
@@ -432,13 +427,6 @@ export default async function BackofficeMiningOperationsPage({
                                 {formatDate(effectiveActionAt)}
                               </span>
                             </div>
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-4 text-white/60">
-                          <div>{formatDate(row.lastActivityAt)}</div>
-                          <div className="mt-2 text-xs text-white/40">
-                            Última actualización {formatDate(row.updatedAt)}
                           </div>
                         </td>
 

@@ -10,6 +10,7 @@ import {
   MiningPartnerLevel,
   Prisma,
 } from "@prisma/client";
+import { MINING_SOURCE_OPTIONS } from "@/lib/backofficeMining";
 import { prisma } from "@/lib/prisma";
 
 export const MINING_OPERATION_PRODUCT_OPTIONS: ReadonlyArray<{
@@ -227,6 +228,7 @@ export type MiningOperationDetail = {
     id: string;
     name: string;
     statusLabel: string;
+    sourceLabel: string;
   } | null;
   clientName: string;
   clientCompanyName: string;
@@ -237,6 +239,7 @@ export type MiningOperationDetail = {
   linkedinUrl: string;
   xUrl: string;
   productType: MiningOperationProductType;
+  productTypeLabel: string;
   productDescription: string;
   asicModel: string;
   quantity: string;
@@ -270,8 +273,23 @@ export type MiningOperationDetail = {
   internalNotes: string;
   createdAt: string;
   updatedAt: string;
-  commercialDates: Record<string, string | null>;
-  operationalDates: Record<string, string | null>;
+  commercialDates: {
+    contractPreparationAt: string | null;
+    contractSentAt: string | null;
+    contractSignedAt: string | null;
+    paymentPendingAt: string | null;
+    paymentReceivedAt: string | null;
+    paymentProofUploadedAt: string | null;
+    cancelledAt: string | null;
+  };
+  operationalDates: {
+    sharedWithPartnerAt: string | null;
+    receivedByAndesAt: string | null;
+    activationPendingAt: string | null;
+    activatedAt: string | null;
+    incidentAt: string | null;
+    closedAt: string | null;
+  };
   suggestedAction: MiningOperationSuggestedAction;
   primaryContactLabel: string;
   primaryContactValue: string;
@@ -388,6 +406,7 @@ const miningOperationSelect = {
       id: true,
       name: true,
       status: true,
+      source: true,
     },
   },
 } satisfies Prisma.MiningOperationSelect;
@@ -1465,6 +1484,7 @@ export async function getMiningOperationById(
           id: operation.prospect.id,
           name: operation.prospect.name,
           statusLabel: operation.prospect.status,
+          sourceLabel: optionLabel(MINING_SOURCE_OPTIONS, operation.prospect.source),
         }
       : null,
     clientName: operation.clientName,
@@ -1476,6 +1496,7 @@ export async function getMiningOperationById(
     linkedinUrl: operation.linkedinUrl ?? "",
     xUrl: operation.xUrl ?? "",
     productType: operation.productType,
+    productTypeLabel: optionLabel(MINING_OPERATION_PRODUCT_OPTIONS, operation.productType),
     productDescription: operation.productDescription ?? "",
     asicModel: operation.asicModel ?? "",
     quantity: operation.quantity !== null ? String(operation.quantity) : "",
