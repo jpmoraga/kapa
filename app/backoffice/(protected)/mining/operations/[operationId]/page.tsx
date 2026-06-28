@@ -109,6 +109,30 @@ export default async function BackofficeMiningOperationPage({
         </div>
       ) : null}
 
+      <div
+        className={
+          operation.prospect
+            ? "mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100"
+            : "mt-5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/70"
+        }
+      >
+        {operation.prospect ? (
+          <>
+            Origen: Prospecto Mining. Esta operación nació desde
+            {" "}
+            <Link
+              href={`/backoffice/mining/${operation.prospect.id}`}
+              className="underline underline-offset-4"
+            >
+              {operation.prospect.name}
+            </Link>
+            .
+          </>
+        ) : (
+          <>Sin prospecto asociado. Operación creada antes de centralizar el flujo.</>
+        )}
+      </div>
+
       <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
         <MiningOperationForm
           key={`${operation.id}:${operation.updatedAt}`}
@@ -285,15 +309,19 @@ export default async function BackofficeMiningOperationPage({
               </div>
               {operation.prospect ? (
                 <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                  Prospecto privado vinculado:{" "}
+                  Origen: Prospecto Mining.{" "}
                   <Link
                     href={`/backoffice/mining/${operation.prospect.id}`}
                     className="text-amber-100 underline underline-offset-4"
                   >
-                    {operation.prospect.name}
+                    Ver prospecto original
                   </Link>
                 </div>
-              ) : null}
+              ) : (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  Sin prospecto asociado. Operación creada antes de centralizar el flujo.
+                </div>
+              )}
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Creado: {formatDate(operation.createdAt)}
               </div>

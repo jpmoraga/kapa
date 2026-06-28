@@ -102,22 +102,23 @@ export default async function BackofficeMiningProspectPage({
           <section className="k21-card p-6">
             <div className="text-lg font-semibold text-white">Capa de operaciones</div>
             <p className="mt-2 text-sm text-white/60">
-              Usa esta transición sólo cuando el prospecto ya pasó de interés privado a una venta
-              real o casi real.
+              Cuando el cliente pida contrato o esté listo para cierre, promueve este prospecto a
+              operación. Así mantienes una base centralizada y evitas duplicar contactos.
             </p>
 
             <div className="mt-4">
               {linkedOperation ? (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-sm font-semibold text-white">Operación asociada</div>
+                  <div className="text-sm font-semibold text-white">Operación existente</div>
                   <p className="mt-2 text-sm text-white/60">
-                    Este prospecto ya tiene una operación creada y separada del pipeline privado.
+                    Este prospecto ya tiene una operación asociada. No se permiten duplicados desde
+                    esta ficha.
                   </p>
                   <Link
                     href={`/backoffice/mining/operations/${linkedOperation.id}`}
-                    className="k21-btn-secondary mt-4 inline-flex"
+                    className="k21-btn-primary mt-4 inline-flex"
                   >
-                    Ver operación
+                    Ver operación existente
                   </Link>
                 </div>
               ) : (

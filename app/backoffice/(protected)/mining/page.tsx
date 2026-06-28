@@ -58,6 +58,7 @@ export default async function BackofficeMiningPage({
   searchParams,
 }: BackofficeMiningPageProps) {
   const sp = searchParams ? await searchParams : {};
+  const operationFlowNotice = readSearchValue(sp.operationFlow) === "prospects";
   const data = await getMiningPageData({
     source: readSearchValue(sp.source),
     interestType: readSearchValue(sp.interestType),
@@ -82,8 +83,16 @@ export default async function BackofficeMiningPage({
       <BackofficePageHeader
         eyebrow="Backoffice / Mining"
         title="Pipeline Mining"
-        description="Prospectos privados de minería antes de pasar a operación compartida."
+        description="Base central privada de prospectos desde donde nacen las operaciones de Mining."
       />
+
+      {operationFlowNotice ? (
+        <div className="mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Para crear una operación, primero crea o selecciona un prospecto y luego usa
+          {" "}
+          <span className="font-semibold">Promover a operación</span>.
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-white/55">
@@ -93,6 +102,25 @@ export default async function BackofficeMiningPage({
           Nuevo prospecto
         </Link>
       </div>
+
+      <section className="mt-4 rounded-3xl border border-amber-500/25 bg-amber-500/10 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-sm font-semibold text-amber-50">
+              Las operaciones nacen desde Prospectos Mining.
+            </div>
+            <p className="mt-1 max-w-3xl text-sm text-amber-100/75">
+              Mantén aquí la base centralizada de contactos, seguimiento y contexto comercial.
+              Cuando el cliente pida contrato o esté listo para cierre, entra a su ficha y usa
+              {" "}
+              <span className="font-semibold">Promover a operación</span>.
+            </p>
+          </div>
+          <Link href="/backoffice/mining/operations" className="k21-btn-secondary">
+            Ver operaciones
+          </Link>
+        </div>
+      </section>
 
       <section className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metricCards.map((card) => (
@@ -315,12 +343,31 @@ export default async function BackofficeMiningPage({
                         </td>
 
                         <td className="px-4 py-4">
-                          <Link
-                            href={`/backoffice/mining/${row.id}`}
-                            className="k21-btn-secondary inline-flex"
-                          >
-                            Editar
-                          </Link>
+                          <div className="flex min-w-[210px] flex-wrap gap-2">
+                            {row.linkedOperationId ? (
+                              <>
+                                <Link
+                                  href={`/backoffice/mining/operations/${row.linkedOperationId}`}
+                                  className="k21-btn-secondary inline-flex"
+                                >
+                                  Ver operación
+                                </Link>
+                                <Link
+                                  href={`/backoffice/mining/${row.id}`}
+                                  className="inline-flex items-center text-xs text-white/55 underline underline-offset-4"
+                                >
+                                  Ver prospecto
+                                </Link>
+                              </>
+                            ) : (
+                              <Link
+                                href={`/backoffice/mining/${row.id}`}
+                                className="k21-btn-primary inline-flex"
+                              >
+                                Promover a operación
+                              </Link>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -332,7 +379,7 @@ export default async function BackofficeMiningPage({
             <div className="px-5 py-6">
               <div className="k21-empty">
                 No hay prospectos para estos filtros. Puedes limpiar la vista o crear un prospecto
-                nuevo.
+                nuevo para iniciar el flujo hacia operaciones.
               </div>
             </div>
           )}

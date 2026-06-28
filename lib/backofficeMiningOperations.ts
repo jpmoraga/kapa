@@ -147,6 +147,10 @@ export type MiningCommissionPreviewSeed = {
 export type MiningOperationListItem = {
   id: string;
   prospectId: string | null;
+  prospect: {
+    id: string;
+    name: string;
+  } | null;
   clientName: string;
   clientCompanyName: string | null;
   country: string;
@@ -1204,6 +1208,12 @@ function mapListItem(
   return {
     id: operation.id,
     prospectId: operation.prospectId ?? null,
+    prospect: operation.prospect
+      ? {
+          id: operation.prospect.id,
+          name: operation.prospect.name,
+        }
+      : null,
     clientName: operation.clientName,
     clientCompanyName: operation.clientCompanyName ?? null,
     country: operation.country,

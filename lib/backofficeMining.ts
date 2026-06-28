@@ -104,6 +104,15 @@ const miningProspectSelect = {
       name: true,
     },
   },
+  operations: {
+    select: {
+      id: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 1,
+  },
 } satisfies Prisma.MiningProspectSelect;
 
 type MiningProspectRecord = Prisma.MiningProspectGetPayload<{
@@ -144,6 +153,7 @@ export type MiningSuggestedAction = {
 
 export type MiningProspectListItem = {
   id: string;
+  linkedOperationId: string | null;
   name: string;
   companyName: string | null;
   country: string;
@@ -502,6 +512,7 @@ function mapListItem(prospect: MiningProspectRecord): MiningProspectListItem {
 
   return {
     id: prospect.id,
+    linkedOperationId: prospect.operations[0]?.id ?? null,
     name: prospect.name,
     companyName: prospect.companyName ?? null,
     country: prospect.country,

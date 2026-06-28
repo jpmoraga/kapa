@@ -44,7 +44,8 @@ export default function PromoteMiningProspectButton({
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="text-sm font-semibold text-white">Promover a operación</div>
       <p className="mt-2 text-sm text-white/60">
-        Crea una operación separada sin borrar el prospecto privado ni copiar notas internas.
+        Usa esta transición cuando el cliente ya está listo para contrato o cierre. La operación
+        nace desde este prospecto para no duplicar la base comercial.
       </p>
 
       {error ? (

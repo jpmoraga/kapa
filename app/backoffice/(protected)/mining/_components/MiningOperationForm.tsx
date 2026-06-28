@@ -390,11 +390,26 @@ export default function MiningOperationForm({
 
       <section className="k21-card p-6">
         <div className="grid gap-5">
+          {linkedProspect ? (
+            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              Esta operación nace desde el prospecto
+              {" "}
+              <Link
+                href={`/backoffice/mining/${linkedProspect.id}`}
+                className="underline underline-offset-4"
+              >
+                {linkedProspect.name}
+              </Link>
+              . Los datos de cliente y contacto provienen de esa base central y aquí se usan como
+              contexto operativo.
+            </div>
+          ) : null}
+
           <div className={SECTION_CLASS_NAME}>
             <div>
               <div className="text-base font-semibold text-white">Cliente y canales</div>
               <p className="mt-1 text-sm text-white/55">
-                Identidad del cliente y vías de contacto que ya están disponibles.
+                Identidad del cliente y vías de contacto disponibles para esta operación.
               </p>
             </div>
 
