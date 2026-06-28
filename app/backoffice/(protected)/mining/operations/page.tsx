@@ -365,6 +365,11 @@ export default async function BackofficeMiningOperationsPage({
 
                         <td className="px-4 py-4 text-white/75">
                           <div className="min-w-[260px]">{row.commission.summary}</div>
+                          <div className="mt-2 text-xs text-white/45">
+                            Nivel Kapa21: {row.commission.partnerLevelLabel} · Venta #
+                            {row.commission.saleSequence}
+                            {row.commission.isEstimated ? " estimada" : ""}
+                          </div>
                           {row.commission.dueAt ? (
                             <div className="mt-2 text-xs text-white/45">
                               Vence {formatDate(row.commission.dueAt)}

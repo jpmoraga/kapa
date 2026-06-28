@@ -1,12 +1,12 @@
 import BackofficePageHeader from "../../../_components/BackofficePageHeader";
 import MiningOperationForm from "../../_components/MiningOperationForm";
 import {
+  getMiningOperationCreateCommissionPreviewSeed,
   MINING_COMMERCIAL_STATUS_OPTIONS,
   MINING_COMMISSION_STATUS_OPTIONS,
   MINING_MONEY_CURRENCY_OPTIONS,
   MINING_OPERATION_PRODUCT_OPTIONS,
   MINING_OPERATIONAL_STATUS_OPTIONS,
-  MINING_PARTNER_LEVEL_OPTIONS,
 } from "@/lib/backofficeMiningOperations";
 
 const initialValues = {
@@ -33,7 +33,6 @@ const initialValues = {
   paymentProofUrl: "",
   operationalStatus: "NOT_SHARED",
   andesOperationalNotes: "",
-  partnerLevel: "BRONZE",
   salesCommissionRate: "",
   salesCommissionAmount: "",
   salesCommissionCurrency: "USD",
@@ -53,7 +52,9 @@ const initialValues = {
   internalNotes: "",
 };
 
-export default function BackofficeMiningOperationNewPage() {
+export default async function BackofficeMiningOperationNewPage() {
+  const commissionPreviewSeed = await getMiningOperationCreateCommissionPreviewSeed();
+
   return (
     <div className="mx-auto max-w-[1500px] px-6 py-6">
       <BackofficePageHeader
@@ -65,12 +66,12 @@ export default function BackofficeMiningOperationNewPage() {
       <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
         <MiningOperationForm
           mode="create"
+          commissionPreviewSeed={commissionPreviewSeed}
           initialValues={initialValues}
           productOptions={MINING_OPERATION_PRODUCT_OPTIONS}
           currencyOptions={MINING_MONEY_CURRENCY_OPTIONS}
           commercialStatusOptions={MINING_COMMERCIAL_STATUS_OPTIONS}
           operationalStatusOptions={MINING_OPERATIONAL_STATUS_OPTIONS}
-          partnerLevelOptions={MINING_PARTNER_LEVEL_OPTIONS}
           commissionStatusOptions={MINING_COMMISSION_STATUS_OPTIONS}
         />
 

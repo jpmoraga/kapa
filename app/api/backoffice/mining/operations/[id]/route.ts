@@ -15,7 +15,6 @@ const BAD_REQUEST_MESSAGES: Record<string, string> = {
   invalid_payment_currency: "Moneda de pago inválida.",
   invalid_commercial_status: "Estado comercial inválido.",
   invalid_operational_status: "Estado operativo inválido.",
-  invalid_partner_level: "Nivel partner inválido.",
   invalid_sales_commission_currency: "Moneda de comisión inválida.",
   invalid_commission_status: "Estado de comisión inválido.",
   invalid_monthly_hosting_currency: "Moneda de hosting inválida.",

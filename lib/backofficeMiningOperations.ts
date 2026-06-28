@@ -114,9 +114,28 @@ export type MiningCommissionSuggestion = {
   monthlyHostingRate: string | null;
   monthlyHostingAmount: string | null;
   monthlyHostingCurrency: MiningMoneyCurrency | null;
+  suggestedSalesRate: string | null;
+  suggestedSalesAmount: string | null;
+  suggestedSalesCurrency: MiningMoneyCurrency | null;
+  suggestedMonthlyHostingRate: string | null;
+  suggestedMonthlyHostingAmount: string | null;
+  suggestedMonthlyHostingCurrency: MiningMoneyCurrency | null;
+  suggestedDueAt: string | null;
   dueAt: string | null;
+  saleSequence: number;
+  partnerLevel: MiningPartnerLevel;
+  partnerLevelLabel: string;
+  isEstimated: boolean;
+  explanation: string;
   needsManualCalculation: boolean;
   summary: string;
+};
+
+export type MiningCommissionPreviewSeed = {
+  nextProbableSaleSequence: number;
+  currentConfirmedSequence: number | null;
+  agreementStartLabel: string;
+  initialSuggestedDueAt: string | null;
 };
 
 export type MiningOperationListItem = {
@@ -222,7 +241,6 @@ export type MiningOperationDetail = {
   paymentProofUrl: string;
   operationalStatus: MiningOperationalStatus;
   andesOperationalNotes: string;
-  partnerLevel: MiningPartnerLevel;
   salesCommissionRate: string;
   salesCommissionAmount: string;
   salesCommissionCurrency: MiningMoneyCurrency;
@@ -248,6 +266,7 @@ export type MiningOperationDetail = {
   primaryContactLabel: string;
   primaryContactValue: string;
   commissionSuggestion: MiningCommissionSuggestion;
+  commissionPreviewSeed: MiningCommissionPreviewSeed;
 };
 
 type MiningOperationMutationInput = {
@@ -274,7 +293,6 @@ type MiningOperationMutationInput = {
   paymentProofUrl?: string | null;
   operationalStatus?: string | null;
   andesOperationalNotes?: string | null;
-  partnerLevel?: string | null;
   salesCommissionRate?: string | null;
   salesCommissionAmount?: string | null;
   salesCommissionCurrency?: string | null;
@@ -389,6 +407,32 @@ type MiningOperationalDateFields = Pick<
   | "closedAt"
 >;
 
+const miningOperationCommissionContextSelect = {
+  id: true,
+  commercialStatus: true,
+  paymentReceivedAt: true,
+  paymentProofUploadedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.MiningOperationSelect;
+
+type MiningOperationCommissionContextRecord = Prisma.MiningOperationGetPayload<{
+  select: typeof miningOperationCommissionContextSelect;
+}>;
+
+type MiningConfirmedTimelineItem = MiningOperationCommissionContextRecord & {
+  confirmedAt: Date;
+};
+
+type MiningPartnerSaleContext = {
+  saleSequence: number;
+  nextProbableSaleSequence: number;
+  currentConfirmedSequence: number | null;
+  partnerLevel: MiningPartnerLevel;
+  partnerLevelLabel: string;
+  isEstimated: boolean;
+};
+
 const COMMERCIAL_STATUS_TIMESTAMP_FIELD: Record<
   MiningCommercialStatus,
   keyof MiningCommercialDateFields
@@ -426,8 +470,14 @@ const ASIC_HOSTING_SALES_RATES: Record<MiningPartnerLevel, string> = {
   [MiningPartnerLevel.GOLD]: "0.09",
 };
 
+const PARTNER_PROGRAM_START_AT = new Date("2026-07-01T00:00:00.000Z");
+const PARTNER_PROGRAM_START_LABEL = "1 de julio de 2026";
 const MONTHLY_HOSTING_RATE = "0.01";
 const COMMISSION_DUE_IN_DAYS = 30;
+const CONFIRMED_SALE_STATUSES: MiningCommercialStatus[] = [
+  MiningCommercialStatus.PAYMENT_RECEIVED,
+  MiningCommercialStatus.PAYMENT_PROOF_UPLOADED,
+];
 const PENDING_COMMISSION_STATUSES: MiningCommissionStatus[] = [
   MiningCommissionStatus.PENDING_CALCULATION,
   MiningCommissionStatus.CALCULATED,
@@ -532,15 +582,6 @@ function normalizeOperationalStatus(value: string | null | undefined) {
   );
 }
 
-function normalizePartnerLevel(value: string | null | undefined) {
-  return normalizeEnum(
-    value,
-    MiningPartnerLevel.BRONZE,
-    Object.values(MiningPartnerLevel),
-    "invalid_partner_level"
-  );
-}
-
 function normalizeCommissionStatus(value: string | null | undefined) {
   return normalizeEnum(
     value,
@@ -615,6 +656,82 @@ function maxDate(values: Array<Date | null | undefined>) {
   return filtered.reduce((latest, current) =>
     current.getTime() > latest.getTime() ? current : latest
   );
+}
+
+function isConfirmedSaleStatus(status: MiningCommercialStatus) {
+  return CONFIRMED_SALE_STATUSES.includes(status);
+}
+
+function pickConfirmedAt(
+  operation: Pick<
+    MiningOperationCommissionContextRecord,
+    "paymentReceivedAt" | "paymentProofUploadedAt" | "updatedAt" | "createdAt"
+  >
+) {
+  return (
+    operation.paymentReceivedAt ??
+    operation.paymentProofUploadedAt ??
+    operation.updatedAt ??
+    operation.createdAt
+  );
+}
+
+function buildConfirmedSalesTimeline(
+  operations: MiningOperationCommissionContextRecord[]
+): MiningConfirmedTimelineItem[] {
+  return operations
+    .filter((operation) => isConfirmedSaleStatus(operation.commercialStatus))
+    .map((operation) => ({
+      ...operation,
+      confirmedAt: pickConfirmedAt(operation),
+    }))
+    .filter((operation) => operation.confirmedAt.getTime() >= PARTNER_PROGRAM_START_AT.getTime())
+    .sort((a, b) => {
+      const confirmedDiff = a.confirmedAt.getTime() - b.confirmedAt.getTime();
+      if (confirmedDiff !== 0) return confirmedDiff;
+
+      const createdDiff = a.createdAt.getTime() - b.createdAt.getTime();
+      if (createdDiff !== 0) return createdDiff;
+
+      return a.id.localeCompare(b.id);
+    });
+}
+
+function partnerLevelForSaleSequence(sequence: number) {
+  if (sequence >= 16) return MiningPartnerLevel.GOLD;
+  if (sequence >= 6) return MiningPartnerLevel.SILVER;
+  return MiningPartnerLevel.BRONZE;
+}
+
+function resolvePartnerSaleContext(
+  currentOperation: Pick<
+    MiningOperationCommissionContextRecord,
+    "id" | "commercialStatus" | "paymentReceivedAt" | "paymentProofUploadedAt" | "createdAt" | "updatedAt"
+  >,
+  confirmedTimeline: MiningConfirmedTimelineItem[]
+): MiningPartnerSaleContext {
+  const sequenceById = new Map(
+    confirmedTimeline.map((operation, index) => [operation.id, index + 1] as const)
+  );
+  const currentConfirmedSequence = sequenceById.get(currentOperation.id) ?? null;
+  const confirmedSalesExcludingCurrent = confirmedTimeline.filter(
+    (operation) => operation.id !== currentOperation.id
+  ).length;
+  const nextProbableSaleSequence = confirmedSalesExcludingCurrent + 1;
+  const isConfirmed = isConfirmedSaleStatus(currentOperation.commercialStatus);
+  const saleSequence = isConfirmed
+    ? currentConfirmedSequence ?? nextProbableSaleSequence
+    : nextProbableSaleSequence;
+  const partnerLevel = partnerLevelForSaleSequence(saleSequence);
+
+  return {
+    saleSequence,
+    nextProbableSaleSequence,
+    currentConfirmedSequence,
+    partnerLevel,
+    partnerLevelLabel: optionLabel(MINING_PARTNER_LEVEL_OPTIONS, partnerLevel),
+    isEstimated: !isConfirmed,
+  };
 }
 
 function formatMoneySummary(value: string, currency: MiningMoneyCurrency) {
@@ -900,42 +1017,50 @@ function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-function buildCommissionSuggestion(operation: {
-  productType: MiningOperationProductType;
-  partnerLevel: MiningPartnerLevel;
-  grossSaleAmount: Prisma.Decimal | null;
-  grossSaleCurrency: MiningMoneyCurrency;
-  paymentReceivedAt: Date | null;
-  monthlyHostingAmount: Prisma.Decimal | null;
-  monthlyHostingCurrency: MiningMoneyCurrency;
-  hostingCommissionActive: boolean;
-  salesCommissionRate: Prisma.Decimal | null;
-  salesCommissionAmount: Prisma.Decimal | null;
-  salesCommissionCurrency: MiningMoneyCurrency;
-  monthlyHostingCommissionRate: Prisma.Decimal | null;
-  monthlyHostingCommissionAmount: Prisma.Decimal | null;
-  commissionDueAt: Date | null;
-}) {
-  let salesRate: Prisma.Decimal | null = null;
-  let salesAmount: Prisma.Decimal | null = null;
-  let monthlyHostingRate: Prisma.Decimal | null = null;
-  let monthlyHostingAmount: Prisma.Decimal | null = null;
+function buildCommissionSuggestion(
+  operation: {
+    productType: MiningOperationProductType;
+    grossSaleAmount: Prisma.Decimal | null;
+    grossSaleCurrency: MiningMoneyCurrency;
+    paymentReceivedAt: Date | null;
+    monthlyHostingAmount: Prisma.Decimal | null;
+    monthlyHostingCurrency: MiningMoneyCurrency;
+    hostingCommissionActive: boolean;
+    salesCommissionRate: Prisma.Decimal | null;
+    salesCommissionAmount: Prisma.Decimal | null;
+    salesCommissionCurrency: MiningMoneyCurrency;
+    monthlyHostingCommissionRate: Prisma.Decimal | null;
+    monthlyHostingCommissionAmount: Prisma.Decimal | null;
+    commissionDueAt: Date | null;
+  },
+  partnerSaleContext: MiningPartnerSaleContext
+) {
+  let suggestedSalesRate: Prisma.Decimal | null = null;
+  let suggestedSalesAmount: Prisma.Decimal | null = null;
+  let suggestedMonthlyHostingRate: Prisma.Decimal | null = null;
+  let suggestedMonthlyHostingAmount: Prisma.Decimal | null = null;
   let needsManualCalculation = false;
 
-  const suggestedSalesRate = salesRateForOperation(operation.productType, operation.partnerLevel);
-  if (suggestedSalesRate) {
-    salesRate = new Prisma.Decimal(suggestedSalesRate);
+  const suggestedSalesRateValue = salesRateForOperation(
+    operation.productType,
+    partnerSaleContext.partnerLevel
+  );
+
+  if (suggestedSalesRateValue) {
+    suggestedSalesRate = new Prisma.Decimal(suggestedSalesRateValue);
     if (operation.grossSaleAmount) {
-      salesAmount = operation.grossSaleAmount.mul(salesRate).toDecimalPlaces(8);
+      suggestedSalesAmount = operation.grossSaleAmount
+        .mul(suggestedSalesRate)
+        .toDecimalPlaces(8);
     }
   } else if (operation.productType === MiningOperationProductType.OTHER) {
     needsManualCalculation = true;
   }
 
   if (operation.hostingCommissionActive && operation.monthlyHostingAmount) {
-    monthlyHostingRate = new Prisma.Decimal(MONTHLY_HOSTING_RATE);
-    monthlyHostingAmount = operation.monthlyHostingAmount
-      .mul(monthlyHostingRate)
+    suggestedMonthlyHostingRate = new Prisma.Decimal(MONTHLY_HOSTING_RATE);
+    suggestedMonthlyHostingAmount = operation.monthlyHostingAmount
+      .mul(suggestedMonthlyHostingRate)
       .toDecimalPlaces(8);
   } else if (
     operation.productType === MiningOperationProductType.HOSTING_ONLY &&
@@ -944,36 +1069,36 @@ function buildCommissionSuggestion(operation: {
     needsManualCalculation = true;
   }
 
-  const effectiveSalesRate = toDecimalString(operation.salesCommissionRate) ?? toDecimalString(salesRate);
+  const effectiveSalesRate =
+    toDecimalString(operation.salesCommissionRate) ?? toDecimalString(suggestedSalesRate);
   const effectiveSalesAmount =
-    toDecimalString(operation.salesCommissionAmount) ?? toDecimalString(salesAmount);
+    toDecimalString(operation.salesCommissionAmount) ?? toDecimalString(suggestedSalesAmount);
   const effectiveMonthlyRate =
-    toDecimalString(operation.monthlyHostingCommissionRate) ?? toDecimalString(monthlyHostingRate);
+    toDecimalString(operation.monthlyHostingCommissionRate) ??
+    toDecimalString(suggestedMonthlyHostingRate);
   const effectiveMonthlyAmount =
     toDecimalString(operation.monthlyHostingCommissionAmount) ??
-    toDecimalString(monthlyHostingAmount);
-  const effectiveDueAt = toIso(operation.commissionDueAt) ??
-    toIso(operation.paymentReceivedAt ? addDays(operation.paymentReceivedAt, COMMISSION_DUE_IN_DAYS) : null);
+    toDecimalString(suggestedMonthlyHostingAmount);
+  const suggestedDueAt =
+    operation.paymentReceivedAt ? addDays(operation.paymentReceivedAt, COMMISSION_DUE_IN_DAYS) : null;
+  const effectiveDueAt = toIso(operation.commissionDueAt) ?? toIso(suggestedDueAt);
+  const hasManualSalesOverride = Boolean(
+    operation.salesCommissionRate || operation.salesCommissionAmount
+  );
 
   const summary = buildCommissionSummary({
     salesRate: effectiveSalesRate,
     salesAmount: effectiveSalesAmount,
-    salesCurrency: effectiveSalesAmount
-      ? operation.salesCommissionCurrency ?? operation.grossSaleCurrency
-      : effectiveSalesRate
-        ? operation.salesCommissionCurrency
-        : salesRate
-          ? operation.grossSaleCurrency
-          : null,
+    salesCurrency:
+      effectiveSalesRate || effectiveSalesAmount
+        ? hasManualSalesOverride
+          ? operation.salesCommissionCurrency
+          : operation.grossSaleCurrency
+        : null,
     monthlyHostingRate: effectiveMonthlyRate,
     monthlyHostingAmount: effectiveMonthlyAmount,
-    monthlyHostingCurrency: effectiveMonthlyAmount
-      ? operation.monthlyHostingCurrency
-      : effectiveMonthlyRate
-        ? operation.monthlyHostingCurrency
-        : monthlyHostingRate
-          ? operation.monthlyHostingCurrency
-          : null,
+    monthlyHostingCurrency:
+      effectiveMonthlyRate || effectiveMonthlyAmount ? operation.monthlyHostingCurrency : null,
     needsManualCalculation,
   });
 
@@ -983,22 +1108,40 @@ function buildCommissionSuggestion(operation: {
     salesCurrency:
       effectiveSalesRate || effectiveSalesAmount
         ? operation.salesCommissionCurrency
-        : salesRate
+        : suggestedSalesRate
           ? operation.grossSaleCurrency
           : null,
     monthlyHostingRate: effectiveMonthlyRate,
     monthlyHostingAmount: effectiveMonthlyAmount,
     monthlyHostingCurrency:
       effectiveMonthlyRate || effectiveMonthlyAmount ? operation.monthlyHostingCurrency : null,
+    suggestedSalesRate: toDecimalString(suggestedSalesRate),
+    suggestedSalesAmount: toDecimalString(suggestedSalesAmount),
+    suggestedSalesCurrency: suggestedSalesRate ? operation.grossSaleCurrency : null,
+    suggestedMonthlyHostingRate: toDecimalString(suggestedMonthlyHostingRate),
+    suggestedMonthlyHostingAmount: toDecimalString(suggestedMonthlyHostingAmount),
+    suggestedMonthlyHostingCurrency: suggestedMonthlyHostingRate
+      ? operation.monthlyHostingCurrency
+      : null,
+    suggestedDueAt: toIso(suggestedDueAt),
     dueAt: effectiveDueAt,
+    saleSequence: partnerSaleContext.saleSequence,
+    partnerLevel: partnerSaleContext.partnerLevel,
+    partnerLevelLabel: partnerSaleContext.partnerLevelLabel,
+    isEstimated: partnerSaleContext.isEstimated,
+    explanation: `El nivel se calcula según las ventas acumuladas de Kapa21 con Andes SolarHash desde el ${PARTNER_PROGRAM_START_LABEL}.`,
     needsManualCalculation,
     summary,
   } satisfies MiningCommissionSuggestion;
 }
 
-function mapListItem(operation: MiningOperationRecord): MiningOperationListItem {
+function mapListItem(
+  operation: MiningOperationRecord,
+  confirmedTimeline: MiningConfirmedTimelineItem[]
+): MiningOperationListItem {
   const suggestedAction = suggestMiningOperationNextAction(operation);
   const primaryContact = pickPrimaryContact(operation);
+  const partnerSaleContext = resolvePartnerSaleContext(operation, confirmedTimeline);
   const isNextActionDueNow = operation.nextActionAt
     ? operation.nextActionAt.getTime() <= Date.now()
     : false;
@@ -1060,7 +1203,7 @@ function mapListItem(operation: MiningOperationRecord): MiningOperationListItem 
     effectiveNextAction: operation.nextAction ?? suggestedAction.text,
     primaryContactLabel: primaryContact.label,
     primaryContactValue: primaryContact.value,
-    commission: buildCommissionSuggestion(operation),
+    commission: buildCommissionSuggestion(operation, partnerSaleContext),
     lastActivityAt: lastActivityAt.toISOString(),
     updatedAt: operation.updatedAt.toISOString(),
   };
@@ -1126,8 +1269,11 @@ export async function getMiningOperationsPageData(
     fetchOperations(where),
     fetchOperations(),
   ]);
+  const confirmedTimeline = buildConfirmedSalesTimeline(allOperations);
 
-  const rows = filteredOperations.map(mapListItem).filter((row) => filterByAction(row, actionFilter));
+  const rows = filteredOperations
+    .map((operation) => mapListItem(operation, confirmedTimeline))
+    .filter((row) => filterByAction(row, actionFilter));
   const pendingActions = rows
     .filter((row) => Boolean(row.nextActionManual) || row.suggestedAction.hasPendingAction)
     .map<MiningOperationPendingActionItem>((row) => ({
@@ -1149,7 +1295,7 @@ export async function getMiningOperationsPageData(
     })
     .slice(0, 8);
 
-  const metricsRows = allOperations.map(mapListItem);
+  const metricsRows = allOperations.map((operation) => mapListItem(operation, confirmedTimeline));
   const metrics: MiningOperationMetrics = {
     totalOperations: metricsRows.length,
     contractsSent: metricsRows.filter(
@@ -1207,6 +1353,23 @@ export async function getMiningOperationsPageData(
   };
 }
 
+export async function getMiningOperationCreateCommissionPreviewSeed(): Promise<MiningCommissionPreviewSeed> {
+  const confirmedOperations = await prisma.miningOperation.findMany({
+    where: {
+      commercialStatus: { in: CONFIRMED_SALE_STATUSES },
+    },
+    select: miningOperationCommissionContextSelect,
+  });
+  const confirmedTimeline = buildConfirmedSalesTimeline(confirmedOperations);
+
+  return {
+    nextProbableSaleSequence: confirmedTimeline.length + 1,
+    currentConfirmedSequence: null,
+    agreementStartLabel: PARTNER_PROGRAM_START_LABEL,
+    initialSuggestedDueAt: null,
+  };
+}
+
 export async function getMiningOperationsMetrics() {
   const data = await getMiningOperationsPageData();
   return data.metrics;
@@ -1230,14 +1393,25 @@ export async function getMiningOperationById(
   const normalized = normalizeText(operationId);
   if (!normalized) return null;
 
-  const operation = await prisma.miningOperation.findUnique({
-    where: { id: normalized },
-    select: miningOperationSelect,
-  });
+  const [operation, confirmedOperations] = await Promise.all([
+    prisma.miningOperation.findUnique({
+      where: { id: normalized },
+      select: miningOperationSelect,
+    }),
+    prisma.miningOperation.findMany({
+      where: {
+        commercialStatus: { in: CONFIRMED_SALE_STATUSES },
+      },
+      select: miningOperationCommissionContextSelect,
+    }),
+  ]);
 
   if (!operation) return null;
 
   const primaryContact = pickPrimaryContact(operation);
+  const confirmedTimeline = buildConfirmedSalesTimeline(confirmedOperations);
+  const partnerSaleContext = resolvePartnerSaleContext(operation, confirmedTimeline);
+  const commissionSuggestion = buildCommissionSuggestion(operation, partnerSaleContext);
 
   return {
     id: operation.id,
@@ -1271,7 +1445,6 @@ export async function getMiningOperationById(
     paymentProofUrl: operation.paymentProofUrl ?? "",
     operationalStatus: operation.operationalStatus,
     andesOperationalNotes: operation.andesOperationalNotes ?? "",
-    partnerLevel: operation.partnerLevel,
     salesCommissionRate: toDecimalString(operation.salesCommissionRate) ?? "",
     salesCommissionAmount: toDecimalString(operation.salesCommissionAmount) ?? "",
     salesCommissionCurrency: operation.salesCommissionCurrency,
@@ -1312,14 +1485,29 @@ export async function getMiningOperationById(
     suggestedAction: suggestMiningOperationNextAction(operation),
     primaryContactLabel: primaryContact.label,
     primaryContactValue: primaryContact.value,
-    commissionSuggestion: buildCommissionSuggestion(operation),
+    commissionSuggestion,
+    commissionPreviewSeed: {
+      nextProbableSaleSequence: partnerSaleContext.nextProbableSaleSequence,
+      currentConfirmedSequence: partnerSaleContext.currentConfirmedSequence,
+      agreementStartLabel: PARTNER_PROGRAM_START_LABEL,
+      initialSuggestedDueAt: commissionSuggestion.suggestedDueAt,
+    },
   };
 }
 
-function buildCreateData(
+async function fetchConfirmedOperationsForPartnerProgram() {
+  return prisma.miningOperation.findMany({
+    where: {
+      commercialStatus: { in: CONFIRMED_SALE_STATUSES },
+    },
+    select: miningOperationCommissionContextSelect,
+  });
+}
+
+async function buildCreateData(
   input: MiningOperationMutationInput,
   actorUserId: string
-): Prisma.MiningOperationCreateInput {
+): Promise<Prisma.MiningOperationCreateInput> {
   const productType = normalizeProductType(input.productType);
   const commercialStatus = normalizeCommercialStatus(input.commercialStatus);
   const operationalStatus = normalizeOperationalStatus(input.operationalStatus);
@@ -1352,6 +1540,27 @@ function buildCreateData(
     incidentAt: null,
     closedAt: null,
   };
+  const [automaticCommercialDates, confirmedOperations] = await Promise.all([
+    Promise.resolve(pickCommercialTimestampPatch(commercialStatus, initialCommercialDates)),
+    fetchConfirmedOperationsForPartnerProgram(),
+  ]);
+  const partnerSaleContext = resolvePartnerSaleContext(
+    {
+      id: "__new_operation__",
+      commercialStatus,
+      paymentReceivedAt:
+        "paymentReceivedAt" in automaticCommercialDates
+          ? automaticCommercialDates.paymentReceivedAt ?? null
+          : null,
+      paymentProofUploadedAt:
+        "paymentProofUploadedAt" in automaticCommercialDates
+          ? automaticCommercialDates.paymentProofUploadedAt ?? null
+          : null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    buildConfirmedSalesTimeline(confirmedOperations)
+  );
 
   return {
     clientName: normalizeRequiredText(input.clientName, "client_name"),
@@ -1383,7 +1592,7 @@ function buildCreateData(
     paymentProofUrl: normalizeOptionalUrl(input.paymentProofUrl),
     operationalStatus,
     andesOperationalNotes: normalizeText(input.andesOperationalNotes),
-    partnerLevel: normalizePartnerLevel(input.partnerLevel),
+    partnerLevel: partnerSaleContext.partnerLevel,
     salesCommissionRate: parseNullableDecimal(
       input.salesCommissionRate,
       "invalid_sales_commission_rate"
@@ -1429,16 +1638,16 @@ function buildCreateData(
     internalNotes: normalizeText(input.internalNotes),
     createdBy: { connect: { id: actorUserId } },
     updatedBy: { connect: { id: actorUserId } },
-    ...pickCommercialTimestampPatch(commercialStatus, initialCommercialDates),
+    ...automaticCommercialDates,
     ...pickOperationalTimestampPatch(operationalStatus, initialOperationalDates),
   };
 }
 
-function buildUpdateData(
+async function buildUpdateData(
   current: MiningOperationRecord,
   input: MiningOperationMutationInput,
   actorUserId: string
-): Prisma.MiningOperationUpdateInput {
+): Promise<Prisma.MiningOperationUpdateInput> {
   const productType = normalizeProductType(input.productType ?? current.productType);
   const commercialStatus = normalizeCommercialStatus(
     input.commercialStatus ?? current.commercialStatus
@@ -1455,6 +1664,27 @@ function buildUpdateData(
     input.paymentCurrency ?? current.paymentCurrency,
     current.paymentCurrency,
     "invalid_payment_currency"
+  );
+  const [automaticCommercialDates, confirmedOperations] = await Promise.all([
+    Promise.resolve(pickCommercialTimestampPatch(commercialStatus, readCommercialDates(current))),
+    fetchConfirmedOperationsForPartnerProgram(),
+  ]);
+  const partnerSaleContext = resolvePartnerSaleContext(
+    {
+      id: current.id,
+      commercialStatus,
+      paymentReceivedAt:
+        "paymentReceivedAt" in automaticCommercialDates
+          ? automaticCommercialDates.paymentReceivedAt ?? current.paymentReceivedAt
+          : current.paymentReceivedAt,
+      paymentProofUploadedAt:
+        "paymentProofUploadedAt" in automaticCommercialDates
+          ? automaticCommercialDates.paymentProofUploadedAt ?? current.paymentProofUploadedAt
+          : current.paymentProofUploadedAt,
+      createdAt: current.createdAt,
+      updatedAt: current.updatedAt,
+    },
+    buildConfirmedSalesTimeline(confirmedOperations)
   );
 
   return {
@@ -1487,7 +1717,7 @@ function buildUpdateData(
     paymentProofUrl: normalizeOptionalUrl(input.paymentProofUrl),
     operationalStatus,
     andesOperationalNotes: normalizeText(input.andesOperationalNotes),
-    partnerLevel: normalizePartnerLevel(input.partnerLevel ?? current.partnerLevel),
+    partnerLevel: partnerSaleContext.partnerLevel,
     salesCommissionRate: parseNullableDecimal(
       input.salesCommissionRate,
       "invalid_sales_commission_rate"
@@ -1532,7 +1762,7 @@ function buildUpdateData(
     nextActionAt: parseNullableDate(input.nextActionAt, "invalid_next_action_at"),
     internalNotes: normalizeText(input.internalNotes),
     updatedBy: { connect: { id: actorUserId } },
-    ...pickCommercialTimestampPatch(commercialStatus, readCommercialDates(current)),
+    ...automaticCommercialDates,
     ...pickOperationalTimestampPatch(operationalStatus, readOperationalDates(current)),
   };
 }
@@ -1541,8 +1771,9 @@ export async function createMiningOperation(
   input: MiningOperationMutationInput,
   actorUserId: string
 ) {
+  const data = await buildCreateData(input, actorUserId);
   const created = await prisma.miningOperation.create({
-    data: buildCreateData(input, actorUserId),
+    data,
     select: { id: true },
   });
 
@@ -1568,9 +1799,10 @@ export async function updateMiningOperation(
     throw new Error("operation_not_found");
   }
 
+  const data = await buildUpdateData(current, input, actorUserId);
   const updated = await prisma.miningOperation.update({
     where: { id: normalized },
-    data: buildUpdateData(current, input, actorUserId),
+    data,
     select: { id: true },
   });
 
@@ -1629,6 +1861,19 @@ export async function promoteMiningProspectToOperation(
     throw new Error("prospect_not_found");
   }
 
+  const confirmedOperations = await fetchConfirmedOperationsForPartnerProgram();
+  const partnerSaleContext = resolvePartnerSaleContext(
+    {
+      id: "__promoted_operation__",
+      commercialStatus: MiningCommercialStatus.CONTRACT_PREPARATION,
+      paymentReceivedAt: null,
+      paymentProofUploadedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    buildConfirmedSalesTimeline(confirmedOperations)
+  );
+
   try {
     const created = await prisma.miningOperation.create({
       data: {
@@ -1647,7 +1892,7 @@ export async function promoteMiningProspectToOperation(
         paymentCurrency: MiningMoneyCurrency.USD,
         commercialStatus: MiningCommercialStatus.CONTRACT_PREPARATION,
         operationalStatus: MiningOperationalStatus.NOT_SHARED,
-        partnerLevel: MiningPartnerLevel.BRONZE,
+        partnerLevel: partnerSaleContext.partnerLevel,
         commissionStatus: MiningCommissionStatus.PENDING_CALCULATION,
         createdBy: { connect: { id: actorUserId } },
         updatedBy: { connect: { id: actorUserId } },

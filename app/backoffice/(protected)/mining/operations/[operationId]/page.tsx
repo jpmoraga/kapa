@@ -9,7 +9,6 @@ import {
   MINING_MONEY_CURRENCY_OPTIONS,
   MINING_OPERATION_PRODUCT_OPTIONS,
   MINING_OPERATIONAL_STATUS_OPTIONS,
-  MINING_PARTNER_LEVEL_OPTIONS,
 } from "@/lib/backofficeMiningOperations";
 
 type BackofficeMiningOperationPageProps = {
@@ -135,7 +134,6 @@ export default async function BackofficeMiningOperationPage({
             paymentProofUrl: operation.paymentProofUrl,
             operationalStatus: operation.operationalStatus,
             andesOperationalNotes: operation.andesOperationalNotes,
-            partnerLevel: operation.partnerLevel,
             salesCommissionRate: operation.salesCommissionRate,
             salesCommissionAmount: operation.salesCommissionAmount,
             salesCommissionCurrency: operation.salesCommissionCurrency,
@@ -154,11 +152,11 @@ export default async function BackofficeMiningOperationPage({
             nextActionAt: operation.nextActionAt,
             internalNotes: operation.internalNotes,
           }}
+          commissionPreviewSeed={operation.commissionPreviewSeed}
           productOptions={MINING_OPERATION_PRODUCT_OPTIONS}
           currencyOptions={MINING_MONEY_CURRENCY_OPTIONS}
           commercialStatusOptions={MINING_COMMERCIAL_STATUS_OPTIONS}
           operationalStatusOptions={MINING_OPERATIONAL_STATUS_OPTIONS}
-          partnerLevelOptions={MINING_PARTNER_LEVEL_OPTIONS}
           commissionStatusOptions={MINING_COMMISSION_STATUS_OPTIONS}
         />
 
@@ -180,9 +178,31 @@ export default async function BackofficeMiningOperationPage({
             <div className="mt-3 text-white">{operation.commissionSuggestion.summary}</div>
             <div className="mt-3 space-y-2 text-sm text-white/65">
               <div>
-                Vencimiento sugerido: {formatDate(operation.commissionSuggestion.dueAt)}
+                Venta acumulada: #{operation.commissionSuggestion.saleSequence}
+                {operation.commissionSuggestion.isEstimated ? " · estimada" : ""}
               </div>
-              <div>Acuerdo partner activo desde 1 de julio de 2026.</div>
+              <div>
+                Nivel Kapa21: {operation.commissionSuggestion.partnerLevelLabel}
+              </div>
+              <div>
+                Tasa sugerida:{" "}
+                {operation.commissionSuggestion.suggestedSalesRate
+                  ? `${(Number(operation.commissionSuggestion.suggestedSalesRate) * 100).toFixed(2)}%`
+                  : "Pendiente"}
+              </div>
+              <div>
+                Comisión sugerida:{" "}
+                {operation.commissionSuggestion.suggestedSalesAmount
+                  ? formatMoney(
+                      operation.commissionSuggestion.suggestedSalesAmount,
+                      operation.commissionSuggestion.suggestedSalesCurrency ?? "USD"
+                    )
+                  : "Pendiente"}
+              </div>
+              <div>
+                Vencimiento sugerido: {formatDate(operation.commissionSuggestion.suggestedDueAt)}
+              </div>
+              <div>{operation.commissionSuggestion.explanation}</div>
             </div>
           </section>
 

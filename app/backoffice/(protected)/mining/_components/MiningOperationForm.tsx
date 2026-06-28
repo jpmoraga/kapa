@@ -33,7 +33,6 @@ type MiningOperationFormValues = {
   paymentProofUrl: string;
   operationalStatus: string;
   andesOperationalNotes: string;
-  partnerLevel: string;
   salesCommissionRate: string;
   salesCommissionAmount: string;
   salesCommissionCurrency: string;
@@ -60,12 +59,17 @@ type MiningOperationFormProps = {
     id: string;
     name: string;
   } | null;
+  commissionPreviewSeed: {
+    nextProbableSaleSequence: number;
+    currentConfirmedSequence: number | null;
+    agreementStartLabel: string;
+    initialSuggestedDueAt: string | null;
+  };
   initialValues: MiningOperationFormValues;
   productOptions: readonly FormOption[];
   currencyOptions: readonly FormOption[];
   commercialStatusOptions: readonly FormOption[];
   operationalStatusOptions: readonly FormOption[];
-  partnerLevelOptions: readonly FormOption[];
   commissionStatusOptions: readonly FormOption[];
 };
 
@@ -76,6 +80,23 @@ const FIELD_CLASS_NAME =
 
 const LABEL_CLASS_NAME = "text-sm font-medium text-white/80";
 const SECTION_CLASS_NAME = "rounded-2xl border border-white/10 bg-white/[0.03] p-5";
+const PARTNER_LEVEL_LABELS = {
+  BRONZE: "Bronce",
+  SILVER: "Plata",
+  GOLD: "Oro",
+} as const;
+const FRACTIONAL_SALES_RATES = {
+  BRONZE: 0.05,
+  SILVER: 0.05,
+  GOLD: 0.07,
+} as const;
+const ASIC_HOSTING_SALES_RATES = {
+  BRONZE: 0.07,
+  SILVER: 0.08,
+  GOLD: 0.09,
+} as const;
+const MONTHLY_HOSTING_RATE = 0.01;
+const CONFIRMED_SALE_STATUSES = new Set(["PAYMENT_RECEIVED", "PAYMENT_PROOF_UPLOADED"]);
 
 function readSaveIntent(event: React.FormEvent<HTMLFormElement>): SaveIntent {
   const nativeEvent = event.nativeEvent as SubmitEvent;
@@ -83,22 +104,128 @@ function readSaveIntent(event: React.FormEvent<HTMLFormElement>): SaveIntent {
   return submitter?.value === "stay" ? "stay" : "back";
 }
 
+function parseNumber(value: string) {
+  const normalized = value.replace(/\$/g, "").replace(/\s+/g, "").replace(/,/g, "");
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function formatCurrencyPreview(value: number | null, currency: string) {
+  if (value === null || !Number.isFinite(value)) return "Pendiente";
+
+  if (currency === "CLP") {
+    return new Intl.NumberFormat("es-CL", {
+      style: "currency",
+      currency: "CLP",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
+  if (currency === "BTC") {
+    return `BTC ${value.toFixed(8)}`;
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatRatePreview(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "Pendiente";
+  return `${(value * 100).toFixed(2)}%`;
+}
+
+function formatDatePreview(value: string | null) {
+  if (!value) return "Se sugerirá al confirmar el pago.";
+
+  return new Intl.DateTimeFormat("es-CL", {
+    dateStyle: "medium",
+  }).format(new Date(value));
+}
+
+function levelForSaleSequence(sequence: number) {
+  if (sequence >= 16) return "GOLD" as const;
+  if (sequence >= 6) return "SILVER" as const;
+  return "BRONZE" as const;
+}
+
+function salesRateForPreview(productType: string, level: keyof typeof PARTNER_LEVEL_LABELS) {
+  if (productType === "FRACTIONAL_MINING" || productType === "TOKENIZED_MINING") {
+    return FRACTIONAL_SALES_RATES[level];
+  }
+
+  if (productType === "ASIC_HOSTING") {
+    return ASIC_HOSTING_SALES_RATES[level];
+  }
+
+  return null;
+}
+
+function deriveCommissionPreview(
+  form: MiningOperationFormValues,
+  seed: MiningOperationFormProps["commissionPreviewSeed"]
+) {
+  const isConfirmed = CONFIRMED_SALE_STATUSES.has(form.commercialStatus);
+  const saleSequence = isConfirmed
+    ? seed.currentConfirmedSequence ?? seed.nextProbableSaleSequence
+    : seed.nextProbableSaleSequence;
+  const partnerLevel = levelForSaleSequence(saleSequence);
+  const salesRate = salesRateForPreview(form.productType, partnerLevel);
+  const grossSaleAmount = parseNumber(form.grossSaleAmount);
+  const suggestedSalesAmount =
+    salesRate !== null && grossSaleAmount !== null ? grossSaleAmount * salesRate : null;
+  const monthlyHostingAmount = parseNumber(form.monthlyHostingAmount);
+  const suggestedHostingAmount =
+    form.hostingCommissionActive && monthlyHostingAmount !== null
+      ? monthlyHostingAmount * MONTHLY_HOSTING_RATE
+      : null;
+
+  return {
+    saleSequence,
+    partnerLevel,
+    partnerLevelLabel: PARTNER_LEVEL_LABELS[partnerLevel],
+    isEstimated: !isConfirmed,
+    salesRate,
+    suggestedSalesAmount,
+    suggestedSalesAmountLabel: formatCurrencyPreview(
+      suggestedSalesAmount,
+      form.grossSaleCurrency
+    ),
+    suggestedSalesRateLabel: formatRatePreview(salesRate),
+    suggestedHostingRateLabel:
+      form.hostingCommissionActive && monthlyHostingAmount !== null
+        ? formatRatePreview(MONTHLY_HOSTING_RATE)
+        : "No aplica",
+    suggestedHostingAmountLabel:
+      form.hostingCommissionActive && monthlyHostingAmount !== null
+        ? formatCurrencyPreview(suggestedHostingAmount, form.monthlyHostingCurrency)
+        : "No aplica",
+    dueAtLabel: isConfirmed
+      ? formatDatePreview(seed.initialSuggestedDueAt)
+      : "Se calculará 30 días después de confirmar el pago.",
+  };
+}
+
 export default function MiningOperationForm({
   mode,
   operationId,
   linkedProspect,
+  commissionPreviewSeed,
   initialValues,
   productOptions,
   currencyOptions,
   commercialStatusOptions,
   operationalStatusOptions,
-  partnerLevelOptions,
   commissionStatusOptions,
 }: MiningOperationFormProps) {
   const router = useRouter();
   const [form, setForm] = useState(initialValues);
   const [loading, setLoading] = useState<SaveIntent | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const commissionPreview = deriveCommissionPreview(form, commissionPreviewSeed);
 
   function updateField<K extends keyof MiningOperationFormValues>(
     field: K,
@@ -512,29 +639,76 @@ export default function MiningOperationForm({
             <div>
               <div className="text-base font-semibold text-white">Comisión Kapa21</div>
               <p className="mt-1 text-sm text-white/55">
-                Si dejas tasa o monto vacíos, el sistema sugerirá valores al guardar según producto,
-                nivel partner y pago recibido.
+                El nivel se calcula según las ventas acumuladas de Kapa21 con Andes SolarHash
+                desde el {commissionPreviewSeed.agreementStartLabel}.
               </p>
             </div>
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              <div>
-                <label className={LABEL_CLASS_NAME}>Nivel partner</label>
-                <select
-                  className={FIELD_CLASS_NAME}
-                  value={form.partnerLevel}
-                  onChange={(event) => updateField("partnerLevel", event.target.value)}
-                >
-                  {partnerLevelOptions.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-neutral-950">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-amber-100/70">
+                  Venta acumulada sugerida
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-amber-50">
+                  #{commissionPreview.saleSequence}
+                </div>
+                <div className="mt-2 text-xs text-amber-100/70">
+                  {commissionPreview.isEstimated ? "Estimado mientras no exista pago confirmado." : "Venta confirmada dentro del programa partner."}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-white/45">Nivel Kapa21 sugerido</div>
+                <div className="mt-2 text-2xl font-semibold text-white">
+                  {commissionPreview.partnerLevelLabel}
+                </div>
+                <div className="mt-2 text-xs text-white/50">
+                  Se asigna por secuencia acumulada del partner, no del cliente.
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-white/45">Tasa sugerida venta</div>
+                <div className="mt-2 text-2xl font-semibold text-white">
+                  {commissionPreview.suggestedSalesRateLabel}
+                </div>
+                <div className="mt-2 text-xs text-white/50">
+                  Según producto y nivel Kapa21 al momento de esta venta.
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-white/45">Comisión sugerida venta</div>
+                <div className="mt-2 text-2xl font-semibold text-white">
+                  {commissionPreview.suggestedSalesAmountLabel}
+                </div>
+                <div className="mt-2 text-xs text-white/50">
+                  Base: venta bruta pagada antes de impuestos y costos de procesamiento.
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-white/45">Hosting recurrente sugerido</div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  {commissionPreview.suggestedHostingRateLabel}
+                </div>
+                <div className="mt-2 text-sm text-white/60">
+                  {commissionPreview.suggestedHostingAmountLabel}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-white/45">Vencimiento sugerido</div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  {commissionPreview.dueAtLabel}
+                </div>
+                <div className="mt-2 text-xs text-white/50">
+                  Pago dentro de 30 días posteriores a la confirmación del pago del cliente.
+                </div>
               </div>
 
               <div>
-                <label className={LABEL_CLASS_NAME}>Tasa comisión venta</label>
+                <label className={LABEL_CLASS_NAME}>Tasa comisión venta (ajuste manual)</label>
                 <input
                   className={FIELD_CLASS_NAME}
                   value={form.salesCommissionRate}
@@ -545,7 +719,7 @@ export default function MiningOperationForm({
               </div>
 
               <div>
-                <label className={LABEL_CLASS_NAME}>Monto comisión venta</label>
+                <label className={LABEL_CLASS_NAME}>Monto comisión venta (ajuste manual)</label>
                 <input
                   className={FIELD_CLASS_NAME}
                   value={form.salesCommissionAmount}
