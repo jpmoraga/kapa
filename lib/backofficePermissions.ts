@@ -24,7 +24,7 @@ const BACKOFFICE_SECTION_ACCESS: Record<BackofficeSection, readonly BackofficeRo
     BackofficeRole.MINING_PARTNER,
   ],
   consulting: [BackofficeRole.OWNER, BackofficeRole.CONSULTING_ADMIN],
-  mining: [BackofficeRole.OWNER, BackofficeRole.MINING_ADMIN, BackofficeRole.MINING_PARTNER],
+  mining: [BackofficeRole.OWNER, BackofficeRole.MINING_ADMIN],
   users: [BackofficeRole.OWNER],
 };
 
@@ -44,7 +44,7 @@ const BACKOFFICE_NAV_ITEMS: readonly BackofficeNavItem[] = [
   {
     href: "/backoffice/mining",
     title: "Mining",
-    description: "Entrada reservada para el pipeline privado y compartido de Mining.",
+    description: "Entrada reservada para el pipeline privado de Mining.",
     section: "mining",
   },
   {

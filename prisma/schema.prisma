@@ -116,6 +116,8 @@ model BackofficeUser {
   sessions                  BackofficeSession[]
   createdConsultingProspects ConsultingProspect[] @relation("ConsultingProspectCreatedBy")
   updatedConsultingProspects ConsultingProspect[] @relation("ConsultingProspectUpdatedBy")
+  createdMiningProspects    MiningProspect[]    @relation("MiningProspectCreatedBy")
+  updatedMiningProspects    MiningProspect[]    @relation("MiningProspectUpdatedBy")
 }
 
 model BackofficeSession {
@@ -166,6 +168,46 @@ model ConsultingProspect {
   @@index([country, updatedAt])
   @@index([contactStatus, updatedAt])
   @@index([pipelineStage, updatedAt])
+  @@index([nextActionAt])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model MiningProspect {
+  id                 String               @id @default(cuid())
+  name               String
+  companyName        String?
+  country            String               @default("Chile")
+  whatsapp           String?
+  instagramUrl       String?
+  linkedinUrl        String?
+  xUrl               String?
+  email              String?
+  source             MiningProspectSource @default(OTHER)
+  interestType       MiningInterestType   @default(UNDEFINED)
+  estimatedAmountUsd Decimal?             @db.Decimal(18, 2)
+  status             MiningProspectStatus @default(NEW_INTEREST)
+  firstContactAt     DateTime?
+  meetingScheduledAt DateTime?
+  meetingDoneAt      DateTime?
+  followUpAt         DateTime?
+  readyForContractAt DateTime?
+  dormantAt          DateTime?
+  discardedAt        DateTime?
+  nextAction         String?
+  nextActionAt       DateTime?
+  notes              String?
+  createdById        String?
+  updatedById        String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  createdBy          BackofficeUser?      @relation("MiningProspectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy          BackofficeUser?      @relation("MiningProspectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([source, updatedAt])
+  @@index([interestType, updatedAt])
+  @@index([status, updatedAt])
+  @@index([country, updatedAt])
   @@index([nextActionAt])
   @@index([createdById])
   @@index([updatedById])
@@ -882,6 +924,34 @@ enum ConsultingPipelineStage {
   DIAGNOSIS_WON
   LOST
   PAUSED
+}
+
+enum MiningProspectSource {
+  WHATSAPP
+  INSTAGRAM
+  LINKEDIN
+  X
+  WEB
+  REFERRAL
+  PERSONAL
+  OTHER
+}
+
+enum MiningInterestType {
+  FRACTIONAL_MINING
+  TOKENIZED_MINING
+  ASIC_PURCHASE
+  UNDEFINED
+}
+
+enum MiningProspectStatus {
+  NEW_INTEREST
+  MEETING_SCHEDULED
+  MEETING_DONE
+  FOLLOW_UP
+  READY_FOR_CONTRACT
+  DORMANT
+  DISCARDED
 }
 
 model EmailVerificationToken {
