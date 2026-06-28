@@ -44,7 +44,7 @@ const BACKOFFICE_NAV_ITEMS: readonly BackofficeNavItem[] = [
   {
     href: "/backoffice/mining",
     title: "Mining",
-    description: "Entrada reservada para el pipeline privado de Mining.",
+    description: "Pipeline privado y operaciones internas de Mining.",
     section: "mining",
   },
   {

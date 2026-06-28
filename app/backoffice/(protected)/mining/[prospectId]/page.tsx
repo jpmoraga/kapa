@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import BackofficePageHeader from "../../_components/BackofficePageHeader";
+import PromoteMiningProspectButton from "../_components/PromoteMiningProspectButton";
 import MiningProspectForm from "../_components/MiningProspectForm";
 import {
   getMiningProspectById,
@@ -7,6 +9,7 @@ import {
   MINING_SOURCE_OPTIONS,
   MINING_STATUS_OPTIONS,
 } from "@/lib/backofficeMining";
+import { getMiningOperationByProspectId } from "@/lib/backofficeMiningOperations";
 
 type BackofficeMiningProspectPageProps = {
   params: Promise<{ prospectId: string }>;
@@ -48,6 +51,7 @@ export default async function BackofficeMiningProspectPage({
   const { prospectId } = await params;
   const sp = searchParams ? await searchParams : {};
   const prospect = await getMiningProspectById(prospectId);
+  const linkedOperation = await getMiningOperationByProspectId(prospectId);
 
   if (!prospect) {
     notFound();
@@ -95,6 +99,33 @@ export default async function BackofficeMiningProspectPage({
         />
 
         <aside className="space-y-6">
+          <section className="k21-card p-6">
+            <div className="text-lg font-semibold text-white">Capa de operaciones</div>
+            <p className="mt-2 text-sm text-white/60">
+              Usa esta transición sólo cuando el prospecto ya pasó de interés privado a una venta
+              real o casi real.
+            </p>
+
+            <div className="mt-4">
+              {linkedOperation ? (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-sm font-semibold text-white">Operación asociada</div>
+                  <p className="mt-2 text-sm text-white/60">
+                    Este prospecto ya tiene una operación creada y separada del pipeline privado.
+                  </p>
+                  <Link
+                    href={`/backoffice/mining/operations/${linkedOperation.id}`}
+                    className="k21-btn-secondary mt-4 inline-flex"
+                  >
+                    Ver operación
+                  </Link>
+                </div>
+              ) : (
+                <PromoteMiningProspectButton prospectId={prospect.id} />
+              )}
+            </div>
+          </section>
+
           <section className="k21-card p-6">
             <div className="text-lg font-semibold text-white">Siguiente paso sugerido</div>
             <div className="mt-3 text-xl font-semibold text-white">

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getBackofficeSession } from "@/lib/backofficeAuth";
 import { canAccessBackofficeSection } from "@/lib/backofficePermissions";
+import MiningModuleTabs from "./_components/MiningModuleTabs";
 
 export default async function BackofficeMiningLayout({
   children,
@@ -13,5 +14,10 @@ export default async function BackofficeMiningLayout({
     redirect("/backoffice");
   }
 
-  return children;
+  return (
+    <>
+      <MiningModuleTabs />
+      {children}
+    </>
+  );
 }

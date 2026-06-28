@@ -118,6 +118,8 @@ model BackofficeUser {
   updatedConsultingProspects ConsultingProspect[] @relation("ConsultingProspectUpdatedBy")
   createdMiningProspects    MiningProspect[]    @relation("MiningProspectCreatedBy")
   updatedMiningProspects    MiningProspect[]    @relation("MiningProspectUpdatedBy")
+  createdMiningOperations   MiningOperation[]   @relation("MiningOperationCreatedBy")
+  updatedMiningOperations   MiningOperation[]   @relation("MiningOperationUpdatedBy")
 }
 
 model BackofficeSession {
@@ -203,11 +205,89 @@ model MiningProspect {
   updatedAt          DateTime             @updatedAt
   createdBy          BackofficeUser?      @relation("MiningProspectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedBy          BackofficeUser?      @relation("MiningProspectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  operations         MiningOperation[]
 
   @@index([source, updatedAt])
   @@index([interestType, updatedAt])
   @@index([status, updatedAt])
   @@index([country, updatedAt])
+  @@index([nextActionAt])
+  @@index([createdById])
+  @@index([updatedById])
+}
+
+model MiningOperation {
+  id                            String                    @id @default(cuid())
+  prospectId                    String?                   @unique
+  clientName                    String
+  clientCompanyName             String?
+  country                       String                    @default("Chile")
+  whatsapp                      String?
+  email                         String?
+  instagramUrl                  String?
+  linkedinUrl                   String?
+  xUrl                          String?
+  productType                   MiningOperationProductType @default(OTHER)
+  productDescription            String?
+  asicModel                     String?
+  quantity                      Int?
+  grossSaleAmount               Decimal?                  @db.Decimal(18, 8)
+  grossSaleCurrency             MiningMoneyCurrency       @default(USD)
+  paymentCurrency               MiningMoneyCurrency       @default(USD)
+  grossSaleAmountClp            Decimal?                  @db.Decimal(18, 2)
+  grossSaleAmountBtc            Decimal?                  @db.Decimal(18, 8)
+  commercialStatus              MiningCommercialStatus    @default(CONTRACT_PREPARATION)
+  contractPreparationAt         DateTime?
+  contractSentAt                DateTime?
+  contractSignedAt              DateTime?
+  paymentPendingAt              DateTime?
+  paymentReceivedAt             DateTime?
+  paymentProofUploadedAt        DateTime?
+  cancelledAt                   DateTime?
+  docusignUrl                   String?
+  signedContractUrl             String?
+  paymentProofUrl               String?
+  operationalStatus             MiningOperationalStatus   @default(NOT_SHARED)
+  sharedWithPartnerAt           DateTime?
+  receivedByAndesAt             DateTime?
+  activationPendingAt           DateTime?
+  activatedAt                   DateTime?
+  incidentAt                    DateTime?
+  closedAt                      DateTime?
+  andesOperationalNotes         String?
+  partnerLevel                  MiningPartnerLevel        @default(BRONZE)
+  salesCommissionRate           Decimal?                  @db.Decimal(7, 4)
+  salesCommissionAmount         Decimal?                  @db.Decimal(18, 8)
+  salesCommissionCurrency       MiningMoneyCurrency       @default(USD)
+  commissionStatus              MiningCommissionStatus    @default(PENDING_CALCULATION)
+  commissionDueAt               DateTime?
+  commissionPaidAt              DateTime?
+  commissionReceivedAt          DateTime?
+  commissionPaymentProofUrl     String?
+  monthlyHostingAmount          Decimal?                  @db.Decimal(18, 8)
+  monthlyHostingCurrency        MiningMoneyCurrency       @default(USD)
+  monthlyHostingCommissionRate  Decimal?                  @db.Decimal(7, 4)
+  monthlyHostingCommissionAmount Decimal?                 @db.Decimal(18, 8)
+  hostingCommissionActive       Boolean                   @default(false)
+  commissionNotes               String?
+  nextAction                    String?
+  nextActionAt                  DateTime?
+  internalNotes                 String?
+  createdById                   String?
+  updatedById                   String?
+  createdAt                     DateTime                  @default(now())
+  updatedAt                     DateTime                  @updatedAt
+  prospect                      MiningProspect?           @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  createdBy                     BackofficeUser?           @relation("MiningOperationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy                     BackofficeUser?           @relation("MiningOperationUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([productType, updatedAt])
+  @@index([commercialStatus, updatedAt])
+  @@index([operationalStatus, updatedAt])
+  @@index([commissionStatus, updatedAt])
+  @@index([grossSaleCurrency, updatedAt])
+  @@index([country, updatedAt])
+  @@index([partnerLevel, updatedAt])
   @@index([nextActionAt])
   @@index([createdById])
   @@index([updatedById])
@@ -952,6 +1032,56 @@ enum MiningProspectStatus {
   READY_FOR_CONTRACT
   DORMANT
   DISCARDED
+}
+
+enum MiningOperationProductType {
+  FRACTIONAL_MINING
+  TOKENIZED_MINING
+  ASIC_HOSTING
+  HOSTING_ONLY
+  OTHER
+}
+
+enum MiningMoneyCurrency {
+  USD
+  CLP
+  BTC
+}
+
+enum MiningCommercialStatus {
+  CONTRACT_PREPARATION
+  CONTRACT_SENT
+  CONTRACT_SIGNED
+  PAYMENT_PENDING
+  PAYMENT_RECEIVED
+  PAYMENT_PROOF_UPLOADED
+  CANCELLED
+}
+
+enum MiningOperationalStatus {
+  NOT_SHARED
+  READY_FOR_ANDES
+  RECEIVED_BY_ANDES
+  ACTIVATION_PENDING
+  ACTIVE
+  INCIDENT
+  CLOSED
+}
+
+enum MiningPartnerLevel {
+  BRONZE
+  SILVER
+  GOLD
+}
+
+enum MiningCommissionStatus {
+  NOT_APPLICABLE
+  PENDING_CALCULATION
+  CALCULATED
+  INVOICED
+  PAID
+  RECEIVED
+  DISPUTED
 }
 
 model EmailVerificationToken {
