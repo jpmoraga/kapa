@@ -111,6 +111,18 @@ function parseNumber(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function formatInputNumber(value: number | null, maximumFractionDigits = 8) {
+  if (value === null || !Number.isFinite(value)) return "";
+  return value.toFixed(maximumFractionDigits).replace(/\.?0+$/, "");
+}
+
+function matchesSuggestedNumber(value: string, suggestion: number | null) {
+  const parsed = parseNumber(value);
+  if (parsed === null && suggestion === null) return true;
+  if (parsed === null || suggestion === null) return false;
+  return Math.abs(parsed - suggestion) < 0.00000001;
+}
+
 function formatCurrencyPreview(value: number | null, currency: string) {
   if (value === null || !Number.isFinite(value)) return "Pendiente";
 
@@ -182,19 +194,33 @@ function deriveCommissionPreview(
     form.hostingCommissionActive && monthlyHostingAmount !== null
       ? monthlyHostingAmount * MONTHLY_HOSTING_RATE
       : null;
+  const hasSingleSaleCommission =
+    form.productType === "FRACTIONAL_MINING" ||
+    form.productType === "TOKENIZED_MINING" ||
+    form.productType === "ASIC_HOSTING";
+  const suggestedSalesRateLabel = hasSingleSaleCommission
+    ? formatRatePreview(salesRate)
+    : form.productType === "HOSTING_ONLY"
+      ? "No aplica"
+      : "Pendiente";
+  const suggestedSalesAmountLabel = hasSingleSaleCommission
+    ? formatCurrencyPreview(suggestedSalesAmount, form.grossSaleCurrency)
+    : form.productType === "HOSTING_ONLY"
+      ? "No aplica"
+      : "Pendiente";
 
   return {
     saleSequence,
     partnerLevel,
     partnerLevelLabel: PARTNER_LEVEL_LABELS[partnerLevel],
     isEstimated: !isConfirmed,
+    hasSuggestedSalesCommission: hasSingleSaleCommission,
     salesRate,
     suggestedSalesAmount,
-    suggestedSalesAmountLabel: formatCurrencyPreview(
-      suggestedSalesAmount,
-      form.grossSaleCurrency
-    ),
-    suggestedSalesRateLabel: formatRatePreview(salesRate),
+    suggestedSalesRateInputValue: formatInputNumber(salesRate, 4),
+    suggestedSalesAmountInputValue: formatInputNumber(suggestedSalesAmount, 8),
+    suggestedSalesAmountLabel,
+    suggestedSalesRateLabel,
     suggestedHostingRateLabel:
       form.hostingCommissionActive && monthlyHostingAmount !== null
         ? formatRatePreview(MONTHLY_HOSTING_RATE)
@@ -223,15 +249,62 @@ export default function MiningOperationForm({
 }: MiningOperationFormProps) {
   const router = useRouter();
   const [form, setForm] = useState(initialValues);
+  const [salesRateTouched, setSalesRateTouched] = useState(false);
+  const [salesAmountTouched, setSalesAmountTouched] = useState(false);
   const [loading, setLoading] = useState<SaveIntent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const commissionPreview = deriveCommissionPreview(form, commissionPreviewSeed);
+  const salesFieldsTouched = salesRateTouched || salesAmountTouched;
+  const hasStoredSalesValues = Boolean(
+    form.salesCommissionRate.trim() || form.salesCommissionAmount.trim()
+  );
+  const storedSalesDiffersFromSuggestion =
+    hasStoredSalesValues &&
+    (!matchesSuggestedNumber(form.salesCommissionRate, commissionPreview.salesRate) ||
+      !matchesSuggestedNumber(
+        form.salesCommissionAmount,
+        commissionPreview.suggestedSalesAmount
+      ));
+  const shouldMaskStoredSalesValues =
+    !salesFieldsTouched &&
+    form.commissionStatus === "PENDING_CALCULATION" &&
+    commissionPreview.hasSuggestedSalesCommission &&
+    hasStoredSalesValues;
+  const recordedSalesRateValue = parseNumber(form.salesCommissionRate);
+  const recordedSalesAmountValue = parseNumber(form.salesCommissionAmount);
+  const recordedSalesParts = [
+    recordedSalesRateValue !== null ? formatRatePreview(recordedSalesRateValue) : null,
+    recordedSalesAmountValue !== null
+      ? formatCurrencyPreview(recordedSalesAmountValue, form.salesCommissionCurrency)
+      : null,
+  ].filter(Boolean);
 
   function updateField<K extends keyof MiningOperationFormValues>(
     field: K,
     value: MiningOperationFormValues[K]
   ) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateSalesCommissionRate(value: string) {
+    setSalesRateTouched(true);
+    updateField("salesCommissionRate", value);
+  }
+
+  function updateSalesCommissionAmount(value: string) {
+    setSalesAmountTouched(true);
+    updateField("salesCommissionAmount", value);
+  }
+
+  function useSuggestedSalesCommission() {
+    setSalesRateTouched(true);
+    setSalesAmountTouched(true);
+    setForm((current) => ({
+      ...current,
+      salesCommissionRate: "",
+      salesCommissionAmount: "",
+      salesCommissionCurrency: current.grossSaleCurrency,
+    }));
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -707,30 +780,66 @@ export default function MiningOperationForm({
                 </div>
               </div>
 
+              <div className="lg:col-span-2 xl:col-span-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                  <div>
+                    <div className="text-sm font-medium text-white/85">Ajuste manual opcional</div>
+                    <div className="mt-1 text-xs text-white/50">
+                      Deja estos campos vacíos para usar la sugerencia actual. Úsalos sólo para
+                      registrar un valor final distinto.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={useSuggestedSalesCommission}
+                    className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-white/75 transition hover:border-white/25 hover:text-white"
+                  >
+                    Usar sugerencia
+                  </button>
+                </div>
+              </div>
+
+              {shouldMaskStoredSalesValues && storedSalesDiffersFromSuggestion ? (
+                <div className="lg:col-span-2 xl:col-span-3 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-100/85">
+                  Existe un valor final registrado distinto a la sugerencia actual:
+                  {recordedSalesParts.length ? ` ${recordedSalesParts.join(" · ")}.` : ""}
+                  Mientras el estado siga en pendiente de cálculo, arriba se prioriza la
+                  sugerencia recalculada.
+                </div>
+              ) : null}
+
               <div>
-                <label className={LABEL_CLASS_NAME}>Tasa comisión venta (ajuste manual)</label>
+                <label className={LABEL_CLASS_NAME}>Tasa final registrada</label>
                 <input
                   className={FIELD_CLASS_NAME}
-                  value={form.salesCommissionRate}
-                  onChange={(event) => updateField("salesCommissionRate", event.target.value)}
-                  placeholder="0.05"
+                  value={shouldMaskStoredSalesValues ? "" : form.salesCommissionRate}
+                  onChange={(event) => updateSalesCommissionRate(event.target.value)}
+                  placeholder={
+                    commissionPreview.suggestedSalesRateInputValue
+                      ? `Usar sugerencia: ${commissionPreview.suggestedSalesRateInputValue}`
+                      : "Sin sugerencia automática"
+                  }
                   inputMode="decimal"
                 />
               </div>
 
               <div>
-                <label className={LABEL_CLASS_NAME}>Monto comisión venta (ajuste manual)</label>
+                <label className={LABEL_CLASS_NAME}>Monto final registrado</label>
                 <input
                   className={FIELD_CLASS_NAME}
-                  value={form.salesCommissionAmount}
-                  onChange={(event) => updateField("salesCommissionAmount", event.target.value)}
-                  placeholder="1250"
+                  value={shouldMaskStoredSalesValues ? "" : form.salesCommissionAmount}
+                  onChange={(event) => updateSalesCommissionAmount(event.target.value)}
+                  placeholder={
+                    commissionPreview.suggestedSalesAmountInputValue
+                      ? `Usar sugerencia: ${commissionPreview.suggestedSalesAmountInputValue}`
+                      : "Sin sugerencia automática"
+                  }
                   inputMode="decimal"
                 />
               </div>
 
               <div>
-                <label className={LABEL_CLASS_NAME}>Moneda comisión venta</label>
+                <label className={LABEL_CLASS_NAME}>Moneda final registrada</label>
                 <select
                   className={FIELD_CLASS_NAME}
                   value={form.salesCommissionCurrency}

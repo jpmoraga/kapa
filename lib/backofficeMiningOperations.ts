@@ -111,6 +111,12 @@ export type MiningCommissionSuggestion = {
   salesRate: string | null;
   salesAmount: string | null;
   salesCurrency: MiningMoneyCurrency | null;
+  recordedSalesRate: string | null;
+  recordedSalesAmount: string | null;
+  recordedSalesCurrency: MiningMoneyCurrency | null;
+  hasRecordedSalesValues: boolean;
+  isShowingRecordedSalesValues: boolean;
+  recordedSalesDiffersFromSuggestion: boolean;
   monthlyHostingRate: string | null;
   monthlyHostingAmount: string | null;
   monthlyHostingCurrency: MiningMoneyCurrency | null;
@@ -650,6 +656,12 @@ function toDecimalString(value: Prisma.Decimal | null | undefined) {
   return value ? value.toString() : null;
 }
 
+function decimalStringsEqual(left: string | null, right: string | null) {
+  if (!left && !right) return true;
+  if (!left || !right) return false;
+  return new Prisma.Decimal(left).eq(new Prisma.Decimal(right));
+}
+
 function maxDate(values: Array<Date | null | undefined>) {
   const filtered = values.filter((value): value is Date => Boolean(value));
   if (!filtered.length) return null;
@@ -1026,6 +1038,7 @@ function buildCommissionSuggestion(
     monthlyHostingAmount: Prisma.Decimal | null;
     monthlyHostingCurrency: MiningMoneyCurrency;
     hostingCommissionActive: boolean;
+    commissionStatus: MiningCommissionStatus;
     salesCommissionRate: Prisma.Decimal | null;
     salesCommissionAmount: Prisma.Decimal | null;
     salesCommissionCurrency: MiningMoneyCurrency;
@@ -1069,10 +1082,26 @@ function buildCommissionSuggestion(
     needsManualCalculation = true;
   }
 
-  const effectiveSalesRate =
-    toDecimalString(operation.salesCommissionRate) ?? toDecimalString(suggestedSalesRate);
-  const effectiveSalesAmount =
-    toDecimalString(operation.salesCommissionAmount) ?? toDecimalString(suggestedSalesAmount);
+  const recordedSalesRate = toDecimalString(operation.salesCommissionRate);
+  const recordedSalesAmount = toDecimalString(operation.salesCommissionAmount);
+  const suggestedSalesRateString = toDecimalString(suggestedSalesRate);
+  const suggestedSalesAmountString = toDecimalString(suggestedSalesAmount);
+  const hasRecordedSalesValues = Boolean(recordedSalesRate || recordedSalesAmount);
+  const shouldPrioritizeSuggestedSales =
+    operation.commissionStatus === MiningCommissionStatus.PENDING_CALCULATION &&
+    Boolean(suggestedSalesRateString || suggestedSalesAmountString);
+  const recordedSalesDiffersFromSuggestion =
+    hasRecordedSalesValues &&
+    (!decimalStringsEqual(recordedSalesRate, suggestedSalesRateString) ||
+      !decimalStringsEqual(recordedSalesAmount, suggestedSalesAmountString));
+  const isShowingRecordedSalesValues =
+    hasRecordedSalesValues && !shouldPrioritizeSuggestedSales;
+  const effectiveSalesRate = shouldPrioritizeSuggestedSales
+    ? suggestedSalesRateString
+    : recordedSalesRate ?? suggestedSalesRateString;
+  const effectiveSalesAmount = shouldPrioritizeSuggestedSales
+    ? suggestedSalesAmountString
+    : recordedSalesAmount ?? suggestedSalesAmountString;
   const effectiveMonthlyRate =
     toDecimalString(operation.monthlyHostingCommissionRate) ??
     toDecimalString(suggestedMonthlyHostingRate);
@@ -1082,16 +1111,13 @@ function buildCommissionSuggestion(
   const suggestedDueAt =
     operation.paymentReceivedAt ? addDays(operation.paymentReceivedAt, COMMISSION_DUE_IN_DAYS) : null;
   const effectiveDueAt = toIso(operation.commissionDueAt) ?? toIso(suggestedDueAt);
-  const hasManualSalesOverride = Boolean(
-    operation.salesCommissionRate || operation.salesCommissionAmount
-  );
 
   const summary = buildCommissionSummary({
     salesRate: effectiveSalesRate,
     salesAmount: effectiveSalesAmount,
     salesCurrency:
       effectiveSalesRate || effectiveSalesAmount
-        ? hasManualSalesOverride
+        ? isShowingRecordedSalesValues
           ? operation.salesCommissionCurrency
           : operation.grossSaleCurrency
         : null,
@@ -1107,17 +1133,26 @@ function buildCommissionSuggestion(
     salesAmount: effectiveSalesAmount,
     salesCurrency:
       effectiveSalesRate || effectiveSalesAmount
-        ? operation.salesCommissionCurrency
-        : suggestedSalesRate
+        ? isShowingRecordedSalesValues
+          ? operation.salesCommissionCurrency
+          : operation.grossSaleCurrency
+        : suggestedSalesRateString || suggestedSalesAmountString
           ? operation.grossSaleCurrency
           : null,
+    recordedSalesRate,
+    recordedSalesAmount,
+    recordedSalesCurrency: hasRecordedSalesValues ? operation.salesCommissionCurrency : null,
+    hasRecordedSalesValues,
+    isShowingRecordedSalesValues,
+    recordedSalesDiffersFromSuggestion,
     monthlyHostingRate: effectiveMonthlyRate,
     monthlyHostingAmount: effectiveMonthlyAmount,
     monthlyHostingCurrency:
       effectiveMonthlyRate || effectiveMonthlyAmount ? operation.monthlyHostingCurrency : null,
-    suggestedSalesRate: toDecimalString(suggestedSalesRate),
-    suggestedSalesAmount: toDecimalString(suggestedSalesAmount),
-    suggestedSalesCurrency: suggestedSalesRate ? operation.grossSaleCurrency : null,
+    suggestedSalesRate: suggestedSalesRateString,
+    suggestedSalesAmount: suggestedSalesAmountString,
+    suggestedSalesCurrency:
+      suggestedSalesRateString || suggestedSalesAmountString ? operation.grossSaleCurrency : null,
     suggestedMonthlyHostingRate: toDecimalString(suggestedMonthlyHostingRate),
     suggestedMonthlyHostingAmount: toDecimalString(suggestedMonthlyHostingAmount),
     suggestedMonthlyHostingCurrency: suggestedMonthlyHostingRate

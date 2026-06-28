@@ -68,6 +68,15 @@ function formatMoney(value: string, currency: string) {
   }).format(amount);
 }
 
+function formatRate(value: string | null) {
+  if (!value) return null;
+
+  const rate = Number(value);
+  if (!Number.isFinite(rate)) return value;
+
+  return `${(rate * 100).toFixed(2)}%`;
+}
+
 export default async function BackofficeMiningOperationPage({
   params,
   searchParams,
@@ -202,6 +211,24 @@ export default async function BackofficeMiningOperationPage({
               <div>
                 Vencimiento sugerido: {formatDate(operation.commissionSuggestion.suggestedDueAt)}
               </div>
+              {operation.commissionSuggestion.recordedSalesDiffersFromSuggestion &&
+              !operation.commissionSuggestion.isShowingRecordedSalesValues ? (
+                <div>
+                  Override registrado:{" "}
+                  {[
+                    formatRate(operation.commissionSuggestion.recordedSalesRate),
+                    operation.commissionSuggestion.recordedSalesAmount &&
+                    operation.commissionSuggestion.recordedSalesCurrency
+                      ? formatMoney(
+                          operation.commissionSuggestion.recordedSalesAmount,
+                          operation.commissionSuggestion.recordedSalesCurrency
+                        )
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              ) : null}
               <div>{operation.commissionSuggestion.explanation}</div>
             </div>
           </section>
