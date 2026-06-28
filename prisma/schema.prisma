@@ -104,6 +104,30 @@ model AdminSession {
   @@index([expiresAt])
 }
 
+model BackofficeUser {
+  id           String             @id @default(cuid())
+  email        String             @unique
+  name         String?
+  passwordHash String
+  role         BackofficeRole     @default(OWNER)
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  sessions     BackofficeSession[]
+}
+
+model BackofficeSession {
+  id        String         @id @default(cuid())
+  userId    String
+  tokenHash String         @unique
+  expiresAt DateTime
+  createdAt DateTime       @default(now())
+  user      BackofficeUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Company {
   id                     String                       @id @default(cuid())
   name                   String
@@ -768,6 +792,13 @@ enum LoanEventType {
 
 enum AdminRole {
   ADMIN
+}
+
+enum BackofficeRole {
+  OWNER
+  CONSULTING_ADMIN
+  MINING_ADMIN
+  MINING_PARTNER
 }
 
 model EmailVerificationToken {
