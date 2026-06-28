@@ -105,15 +105,17 @@ model AdminSession {
 }
 
 model BackofficeUser {
-  id           String             @id @default(cuid())
-  email        String             @unique
-  name         String?
-  passwordHash String
-  role         BackofficeRole     @default(OWNER)
-  isActive     Boolean            @default(true)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  sessions     BackofficeSession[]
+  id                        String              @id @default(cuid())
+  email                     String              @unique
+  name                      String?
+  passwordHash              String
+  role                      BackofficeRole      @default(OWNER)
+  isActive                  Boolean             @default(true)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  sessions                  BackofficeSession[]
+  createdConsultingProspects ConsultingProspect[] @relation("ConsultingProspectCreatedBy")
+  updatedConsultingProspects ConsultingProspect[] @relation("ConsultingProspectUpdatedBy")
 }
 
 model BackofficeSession {
@@ -126,6 +128,47 @@ model BackofficeSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model ConsultingProspect {
+  id                    String                   @id @default(cuid())
+  businessLine          ConsultingBusinessLine
+  country               String
+  companyName           String
+  contactName           String
+  contactRole           String
+  linkedinUrl           String?
+  email                 String?
+  emailStatus           ConsultingEmailStatus   @default(UNKNOWN)
+  source                String?
+  contactStatus         ConsultingContactStatus @default(LINKEDIN_INVITE_SENT)
+  pipelineStage         ConsultingPipelineStage @default(PROSPECTING)
+  linkedinInviteSentAt  DateTime?
+  linkedinAcceptedAt    DateTime?
+  linkedinMessageSentAt DateTime?
+  emailSentAt           DateTime?
+  respondedAt           DateTime?
+  meetingScheduledAt    DateTime?
+  meetingDoneAt         DateTime?
+  followUp1SentAt       DateTime?
+  followUp2SentAt       DateTime?
+  nextAction            String?
+  nextActionAt          DateTime?
+  notes                 String?
+  createdById           String?
+  updatedById           String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  createdBy             BackofficeUser?          @relation("ConsultingProspectCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy             BackofficeUser?          @relation("ConsultingProspectUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([businessLine, updatedAt])
+  @@index([country, updatedAt])
+  @@index([contactStatus, updatedAt])
+  @@index([pipelineStage, updatedAt])
+  @@index([nextActionAt])
+  @@index([createdById])
+  @@index([updatedById])
 }
 
 model Company {
@@ -799,6 +842,46 @@ enum BackofficeRole {
   CONSULTING_ADMIN
   MINING_ADMIN
   MINING_PARTNER
+}
+
+enum ConsultingBusinessLine {
+  FLEXIBLE_FUNDING
+  OPERATING_TREASURY
+}
+
+enum ConsultingEmailStatus {
+  UNKNOWN
+  VALID
+  INVALID
+  NOT_FOUND
+}
+
+enum ConsultingContactStatus {
+  NEW
+  LINKEDIN_INVITE_SENT
+  LINKEDIN_ACCEPTED
+  LINKEDIN_MESSAGE_SENT
+  EMAIL_SENT
+  RESPONDED
+  MEETING_SCHEDULED
+  MEETING_DONE
+  FOLLOW_UP_1_SENT
+  FOLLOW_UP_2_SENT
+  DORMANT
+  DISCARDED
+}
+
+enum ConsultingPipelineStage {
+  PROSPECTING
+  CONTACTED
+  CONVERSATION_OPEN
+  MEETING_SCHEDULED
+  MEETING_DONE
+  PROPOSAL_SENT
+  DIAGNOSIS_NEGOTIATION
+  DIAGNOSIS_WON
+  LOST
+  PAUSED
 }
 
 model EmailVerificationToken {

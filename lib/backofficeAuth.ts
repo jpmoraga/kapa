@@ -4,6 +4,10 @@ import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  canAccessBackofficeSection,
+  type BackofficeSection,
+} from "@/lib/backofficePermissions";
 
 export const BACKOFFICE_SESSION_COOKIE = "kapa_backoffice_session";
 const BACKOFFICE_SESSION_TTL_DAYS = 7;
@@ -107,4 +111,18 @@ export async function requireBackofficeSession() {
     ok: true as const,
     user: session.user,
   };
+}
+
+export async function requireBackofficeSectionAccess(section: BackofficeSection) {
+  const auth = await requireBackofficeSession();
+  if (!auth.ok) return auth;
+
+  if (!canAccessBackofficeSection(auth.user.role, section)) {
+    return {
+      ok: false as const,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    };
+  }
+
+  return auth;
 }
