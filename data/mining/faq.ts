@@ -7,7 +7,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Qué estoy contratando?",
     answer:
-      "Depende de la modalidad: capacidad computacional, una participación tokenizada o un equipo ASIC con hosting.",
+      "Depende de la modalidad: minería fraccionada por 15 meses, una fracción de ASIC por vida útil del equipo o un ASIC propio con hosting.",
   },
   {
     question: "¿Quién firma el contrato?",
@@ -21,27 +21,27 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Cuál es el rol de Kapa21?",
     answer:
-      "Kapa21 explica, compara, orienta y coordina la relación comercial inicial.",
+      "Kapa21 explica, compara, orienta y acompaña la evaluación comercial inicial.",
   },
   {
     question: "¿Dónde operan los equipos?",
     answer:
-      "La ubicación y condiciones vigentes se informan en la propuesta y documentación contractual.",
+      "La operación minera se realiza en Emiratos Árabes Unidos, con hosting internacional y condiciones operativas definidas por contrato.",
   },
   {
     question: "¿Cómo recibo el Bitcoin?",
     answer:
-      "Según la modalidad contratada, mediante distribución periódica o directamente desde el pool a la wallet indicada.",
+      "Según la modalidad contratada, mediante distribución periódica o directamente desde el pool a la wallet indicada en el caso de ASIC propio.",
   },
   {
     question: "¿Existe una rentabilidad garantizada?",
     answer:
-      "La producción y su valorización dependen de variables operativas, de red y de mercado.",
+      "No. La producción y su valorización dependen de minería efectiva, uptime, dificultad, costos operativos y precio de Bitcoin.",
   },
   {
     question: "¿Qué incluye el hosting?",
     answer:
-      "Energía, conectividad, instalación, infraestructura y soporte según las condiciones de cada contrato.",
+      "Energía, conectividad, instalación, infraestructura y soporte según las condiciones de cada contrato. Costo energético referencial de hosting: USD 0,078/kWh.",
   },
   {
     question: "¿Puedo ampliar mi capacidad?",

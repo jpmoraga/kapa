@@ -11,9 +11,9 @@ const modalityWhatsAppText: Record<MiningModalityKey, string> = {
   fractional:
     "Hola, quiero consultar sobre minería fraccionada y entender cómo funciona esta alternativa a través de Kapa21.",
   tokenized:
-    "Hola, quiero consultar sobre minería tokenizada y conocer sus condiciones operativas a través de Kapa21.",
+    "Hola, quiero consultar sobre fracción de ASIC y conocer sus condiciones operativas a través de Kapa21.",
   "asic-hosting":
-    "Hola, quiero cotizar alternativas de equipos ASIC con hosting y entender qué opción puede calzar conmigo.",
+    "Hola, quiero cotizar alternativas de ASIC propio con hosting y entender qué opción puede calzar conmigo.",
 };
 
 export function getModalityWhatsAppText(key: MiningModalityKey) {

@@ -11,13 +11,13 @@ const kapa21Responsibilities = [
   "explicación de alternativas",
   "selección de modalidad o equipo",
   "coordinación comercial",
-  "acompañamiento del lead",
+  "acompañamiento de la evaluación",
 ] as const;
 
 const operatorResponsibilities = [
   "contrato y formalización",
   "recepción del pago",
-  "infraestructura minera",
+  "hosting internacional en Emiratos Árabes Unidos",
   "operación de equipos",
   "hosting y mantenimiento",
   "producción y reportes",
@@ -38,8 +38,9 @@ export function OperatingPartner() {
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="PARTNER OPERATIVO"
-          title="Kapa21 te ayuda a elegir. Andes SolarHash opera la infraestructura."
-          className="gap-3 [&_h2]:max-w-5xl [&_h2]:text-[2.04rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.12rem]"
+          title="Kapa21 acompaña la evaluación. Andes SolarHash opera la infraestructura."
+          description="La operación minera se realiza en Emiratos Árabes Unidos, con hosting internacional y costos energéticos competitivos."
+          className="gap-3 [&_h2]:max-w-5xl [&_h2]:text-[2.04rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.12rem] [&_p]:max-w-4xl [&_p]:text-[0.98rem] [&_p]:leading-6 sm:[&_p]:text-base sm:[&_p]:leading-7"
         />
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.06fr)_minmax(320px,0.94fr)] lg:items-stretch lg:gap-5">
@@ -106,6 +107,11 @@ export function OperatingPartner() {
               <p className="text-[0.95rem] leading-6 text-foreground-muted sm:text-base sm:leading-7">
                 Andes SolarHash ejecuta la infraestructura minera, formaliza la contratación y administra la operación según la modalidad acordada.
               </p>
+              <div className="rounded-[0.95rem] border border-[#ffb31e]/20 bg-[#12172f] px-3.5 py-3 sm:rounded-[1rem] sm:px-4 sm:py-3.5">
+                <p className="text-[0.95rem] leading-6 text-foreground sm:text-base sm:leading-7">
+                  Costo energético referencial de hosting: USD 0,078/kWh.
+                </p>
+              </div>
               <ul className="grid gap-2.5 sm:gap-3">
                 {operatorResponsibilities.map((item) => (
                   <li
@@ -125,7 +131,7 @@ export function OperatingPartner() {
         </div>
 
         <p className="max-w-5xl text-[0.88rem] leading-5 text-foreground-muted sm:text-sm sm:leading-6">
-          La prestación del servicio minero, la operación técnica, el contrato y la facturación corresponden a Andes SolarHash. Kapa21 participa como asesor y canal comercial de la alianza.
+          La prestación del servicio minero, la operación técnica, el contrato y la facturación corresponden a Andes SolarHash. Kapa21 participa como asesor y canal comercial de la alianza, acompañando la evaluación sin prometer rentabilidad.
         </p>
       </Container>
     </Section>

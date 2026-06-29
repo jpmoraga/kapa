@@ -74,7 +74,7 @@ export function MiningVariables() {
         </div>
 
         <p className="max-w-4xl text-[0.98rem] leading-6 text-foreground-muted sm:text-base sm:leading-7">
-          La minería produce Bitcoin bajo condiciones variables. Kapa21 te ayuda a comprenderlas antes de contratar.
+          La minería produce Bitcoin bajo condiciones variables y no promete rentabilidad. Kapa21 te ayuda a comprenderlas antes de contratar.
         </p>
       </Container>
     </Section>

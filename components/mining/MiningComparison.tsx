@@ -8,15 +8,15 @@ import { Card } from "@/components/ui/Card";
 const comparisonRows = [
   {
     label: "Qué contratas",
-    fractional: "Capacidad en TH/s",
-    tokenized: "Capacidad representada digitalmente",
-    hosting: "Equipo físico",
+    fractional: "Hashrate por 15 meses",
+    tokenized: "Fracción estandarizada de hashrate",
+    hosting: "ASIC propio + hosting",
   },
   {
     label: "Plazo",
-    fractional: "Definido",
-    tokenized: "Asociado a la modalidad",
-    hosting: "Vida operativa del equipo",
+    fractional: "15 meses",
+    tokenized: "Vida útil del equipo",
+    hosting: "Vida útil del equipo / equipo propio",
   },
   {
     label: "Propiedad del hardware",
@@ -26,7 +26,7 @@ const comparisonRows = [
   },
   {
     label: "Nivel de entrada",
-    fractional: "Menor",
+    fractional: "Desde tickets bajos",
     tokenized: "Intermedio",
     hosting: "Mayor",
   },
@@ -66,22 +66,22 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="ELIGE TU NIVEL DE PARTICIPACIÓN"
-          title="Tres modelos, distintos niveles de entrada y control"
+          title="Tres modalidades, con una escalera desde tickets bajos hasta ASIC propio"
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.02rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.08rem]"
         />
 
         <div className="grid gap-3 lg:hidden">
           {[
             {
-              title: "Fraccionada",
+              title: "Minería fraccionada",
               entries: comparisonRows.map((row) => ({ label: row.label, value: row.fractional })),
             },
             {
-              title: "Tokenizada",
+              title: "Fracción de ASIC",
               entries: comparisonRows.map((row) => ({ label: row.label, value: row.tokenized })),
             },
             {
-              title: "ASIC + hosting",
+              title: "ASIC propio",
               entries: comparisonRows.map((row) => ({ label: row.label, value: row.hosting })),
             },
           ].map((card) => (
@@ -120,9 +120,9 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
             <thead>
               <tr className="border-b border-border">
                 <th className="px-6 py-4 text-sm font-semibold text-foreground">Variable</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">Fraccionada</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">Tokenizada</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">ASIC + hosting</th>
+                <th className="px-6 py-4 text-sm font-semibold text-foreground">Minería fraccionada</th>
+                <th className="px-6 py-4 text-sm font-semibold text-foreground">Fracción de ASIC</th>
+                <th className="px-6 py-4 text-sm font-semibold text-foreground">ASIC propio</th>
               </tr>
             </thead>
             <tbody>

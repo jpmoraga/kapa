@@ -5,28 +5,28 @@ import { Card } from "@/components/ui/Card";
 
 const processSteps = [
   {
-    title: "Hablamos contigo",
-    body: "Entendemos tu presupuesto, horizonte y nivel de participación.",
+    title: "Eliges alternativa",
+    body: "Partimos por minería fraccionada, fracción de ASIC o ASIC propio según ticket y objetivo.",
   },
   {
-    title: "Comparamos alternativas",
-    body: "Revisamos modalidad, equipo, costos y condiciones.",
+    title: "Revisamos condiciones",
+    body: "Kapa21 ordena modalidad, costos, plazos y criterios antes de avanzar.",
   },
   {
-    title: "Recibes una propuesta",
-    body: "Kapa21 coordina una cotización vigente y la documentación correspondiente.",
+    title: "Formalizas contrato y pago",
+    body: "Andes SolarHash emite la propuesta, formaliza la contratación y recibe el pago.",
   },
   {
-    title: "Formalizas con Andes SolarHash",
-    body: "El operador celebra el contrato, recibe el pago y confirma las condiciones de ejecución.",
+    title: "Activación hasta 7 días",
+    body: "Una vez confirmadas las condiciones, la activación operativa puede completarse hasta en 7 días.",
   },
   {
-    title: "Comienza la operación",
-    body: "Andes SolarHash administra equipos, hosting, conectividad y producción.",
+    title: "Recibes distribuciones o producción",
+    body: "Según el producto contratado, recibes distribuciones periódicas o producción minera directa.",
   },
   {
-    title: "Recibes producción y reportes",
-    body: "La entrega de Bitcoin y la reportería se realizan según la modalidad contratada.",
+    title: "Seguimiento coordinado",
+    body: "Kapa21 acompaña el proceso comercial y Andes SolarHash reporta la operación según modalidad.",
   },
 ] as const;
 
@@ -36,7 +36,7 @@ export function MiningProcess() {
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="PROCESO"
-          title="De la conversación inicial a la operación minera"
+          title="Cómo funciona el proceso comercial y operativo"
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.02rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.08rem]"
         />
 

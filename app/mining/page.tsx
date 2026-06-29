@@ -33,7 +33,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.kapa21.cl";
 const PAGE_PATH = "/mining";
 const PAGE_TITLE = "Minería Bitcoin | Kapa21";
 const PAGE_DESCRIPTION =
-  "Kapa21 te ayuda a entender y elegir entre minería fraccionada, tokenizada y ASIC propio con hosting. Andes SolarHash opera la infraestructura minera.";
+  "Kapa21 te ayuda a evaluar minería fraccionada, fracción de ASIC y ASIC propio con hosting internacional en Emiratos Árabes Unidos.";
 
 const heroPrimaryHref = buildWhatsAppUrl(GENERAL_MINING_WHATSAPP_TEXT);
 const heroSecondaryHref = "#modalidades";

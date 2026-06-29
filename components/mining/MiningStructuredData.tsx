@@ -30,7 +30,7 @@ export function MiningStructuredData({
   const serviceSchema = {
     "@context": "https://schema.org",
     "@type": "Service",
-    name: "Minería Bitcoin, acompañada por Kapa21",
+    name: "Minería de Bitcoin en Emiratos Árabes con Kapa21",
     serviceType: "Orientación comercial para minería Bitcoin",
     description: pageDescription,
     url: pageUrl,

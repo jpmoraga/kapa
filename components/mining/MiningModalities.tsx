@@ -25,59 +25,59 @@ export function MiningModalities({
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="TRES ALTERNATIVAS"
-          title="Distintas formas de acceder a minería Bitcoin"
+          title="Tres alternativas, desde tickets bajos hasta ASIC propio"
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.04rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.1rem]"
         />
 
         <div className="grid gap-3.5 xl:grid-cols-3 xl:gap-5">
           <MiningModalityCard
             title="Minería fraccionada"
-            subtitle="Capacidad minera sin comprar un equipo completo"
-            body="Contratas una cantidad determinada de hashrate por un período definido y participas proporcionalmente en la producción asociada. Puede calzar con quienes buscan comenzar con una capacidad acotada y una estructura simple."
+            subtitle="Arriendo de poder computacional por 15 meses"
+            body="Para entrar con tickets bajos, sin comprar un equipo completo."
             commercialBadge="Oferta de lanzamiento"
             commercialValue="Desde USD 15"
             commercialCaption="1 TH/s de capacidad minera"
             commercialHighlight="15 meses de contrato por el precio de 12"
             keyPoints={[
-              "Participación por TH/s",
-              "Plazo definido",
+              "Desde tickets bajos",
+              "Plazo fijo de 15 meses",
               "Equipo operado por Andes SolarHash",
               "Distribución según condiciones contractuales",
             ]}
-            ctaLabel="Acceder a la oferta"
+            ctaLabel="Ver minería fraccionada"
             ctaHref={fractionalHref}
           />
 
           <MiningModalityCard
-            title="Minería tokenizada"
-            subtitle="Capacidad minera representada digitalmente"
-            body="Accedes a una fracción de hashrate asociada a infraestructura minera mediante una representación digital verificable. Puede calzar con quienes buscan una participación identificable y transferible durante la vida útil de la capacidad asociada."
+            title="Fracción de ASIC"
+            subtitle="Arriendo de poder computacional por la vida útil del equipo"
+            body="Accedes a una fracción estandarizada del hashrate de un ASIC, con distribuciones mensuales en Bitcoin."
             commercialValue="Desde USD 60"
-            commercialCaption="2,34 TH/s representados mediante NFT"
-            commercialHighlight="Acceso durante la vida útil del equipo asociado"
+            commercialCaption="2,34 TH/s de hashrate estandarizado"
+            commercialHighlight="Acceso durante la vida útil del equipo"
             keyPoints={[
-              "Capacidad expresada en TH/s",
-              "Representación digital",
+              "Fracción estandarizada de hashrate",
+              "Distribuciones mensuales en Bitcoin",
               "Condiciones definidas por contrato",
-              "Producción y reportes según modalidad",
+              "Operación técnica delegada",
             ]}
-            ctaLabel="Consultar minería tokenizada"
+            ctaLabel="Consultar fracción de ASIC"
             ctaHref={tokenizedHref}
             highlight
           />
 
           <MiningModalityCard
-            title="ASIC propio con hosting"
-            subtitle="Propiedad directa del equipo"
-            body="Compras un equipo ASIC y lo mantienes operando en infraestructura especializada, con hosting, energía, conectividad y soporte técnico. Puede calzar con quienes buscan mayor control, escala y exposición directa a la operación."
-            commercialCaption="Desde: según equipo y configuración"
+            title="ASIC propio"
+            subtitle="Compra de equipo completo + hosting internacional"
+            body="El equipo es tuyo y la producción minera va directo desde el pool a tu wallet."
+            commercialCaption="Según equipo, stock y configuración"
             keyPoints={[
               "Propiedad del hardware",
-              "Hosting especializado",
-              "Producción desde el pool",
+              "Hosting internacional",
+              "Producción del pool directo a tu wallet",
               "Operación técnica delegada",
             ]}
-            ctaLabel="Cotizar un equipo ASIC"
+            ctaLabel="Cotizar ASIC propio"
             ctaHref={hostingHref}
           />
         </div>

@@ -13,16 +13,23 @@ type MiningHeroProps = {
 const heroConcepts = [
   {
     title: "Capacidad",
-    body: "Participación mediante hashrate, equipos ASIC o estructuras fraccionadas.",
+    body: "Escala desde tickets bajos hasta ASIC propio, según tu presupuesto y horizonte.",
   },
   {
     title: "Operación",
-    body: "Infraestructura, hosting y gestión técnica a cargo del partner operativo.",
+    body: "Hosting internacional en Emiratos Árabes Unidos, con costos energéticos competitivos.",
   },
   {
     title: "Acompañamiento",
-    body: "Orientación comercial y seguimiento coordinado por Kapa21.",
+    body: "Kapa21 acompaña la evaluación y coordina el proceso comercial de punta a punta.",
   },
+] as const;
+
+const heroTrustSignals = [
+  "Desde tickets bajos",
+  "Activación hasta 7 días",
+  "Uptime contractual 95%",
+  "Producción a wallet en ASIC propio",
 ] as const;
 
 export function MiningHero({ primaryCtaHref, secondaryCtaHref }: MiningHeroProps) {
@@ -41,11 +48,11 @@ export function MiningHero({ primaryCtaHref, secondaryCtaHref }: MiningHeroProps
 
         <div className="grid gap-3 sm:gap-4">
           <h1 className="max-w-5xl text-balance text-[clamp(2.8rem,12vw,4.4rem)] leading-[0.96] font-semibold tracking-[-0.05em] text-foreground sm:text-[3.35rem] lg:text-[4.7rem]">
-            Minería Bitcoin, acompañada por Kapa21
+            Minería de Bitcoin en Emiratos Árabes, con energía competitiva
           </h1>
           <p className="max-w-[34rem] text-[1rem] leading-6 text-foreground-muted sm:text-[1.08rem] sm:leading-7 lg:max-w-[43rem] lg:text-[1.26rem] lg:leading-9">
-            Te ayudamos a entender, comparar y acceder a alternativas de minería Bitcoin
-            según tu presupuesto, horizonte y nivel de participación.
+            Accede a minería fraccionada, fracción de ASIC por vida útil del equipo o
+            ASIC propio con hosting internacional.
           </p>
         </div>
 
@@ -64,7 +71,7 @@ export function MiningHero({ primaryCtaHref, secondaryCtaHref }: MiningHeroProps
             variant="secondary"
             className="min-h-11 rounded-full px-4 text-sm sm:w-auto sm:min-h-11 sm:px-4"
           >
-            Conocer las alternativas
+            Ver alternativas
           </Button>
         </div>
 
@@ -102,6 +109,17 @@ export function MiningHero({ primaryCtaHref, secondaryCtaHref }: MiningHeroProps
               Kapa21 primero
             </Badge>
             <span className="text-[0.82rem] text-foreground-muted sm:text-sm">Partner operativo coordinado</span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {heroTrustSignals.map((signal) => (
+              <span
+                key={signal}
+                className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[0.76rem] font-medium text-foreground-muted sm:text-[0.8rem]"
+              >
+                {signal}
+              </span>
+            ))}
           </div>
 
           <div className="grid gap-2.5 sm:gap-3">
