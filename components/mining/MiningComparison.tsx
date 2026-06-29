@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 const comparisonRows = [
   {
     label: "Qué contratas",
-    fractional: "Hashrate por 15 meses",
+    fractional: "Poder computacional por 15 meses",
     tokenized: "Fracción estandarizada de hashrate",
     hosting: "ASIC propio + hosting",
   },
@@ -66,7 +66,7 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="ELIGE TU NIVEL DE PARTICIPACIÓN"
-          title="Tres modalidades, con una escalera desde tickets bajos hasta ASIC propio"
+          title="Tres alternativas, con una escalera desde tickets bajos hasta ASIC propio"
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.02rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.08rem]"
         />
 

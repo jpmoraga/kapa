@@ -41,7 +41,7 @@ export function MiningModalities({
             keyPoints={[
               "Desde tickets bajos",
               "Plazo fijo de 15 meses",
-              "Equipo operado por Andes SolarHash",
+              "Operación delegada a Andes SolarHash",
               "Distribución según condiciones contractuales",
             ]}
             ctaLabel="Ver minería fraccionada"
@@ -58,7 +58,7 @@ export function MiningModalities({
             keyPoints={[
               "Fracción estandarizada de hashrate",
               "Distribuciones mensuales en Bitcoin",
-              "Condiciones definidas por contrato",
+              "Contrato y distribución mensual",
               "Operación técnica delegada",
             ]}
             ctaLabel="Consultar fracción de ASIC"
@@ -74,7 +74,7 @@ export function MiningModalities({
             keyPoints={[
               "Propiedad del hardware",
               "Hosting internacional",
-              "Producción del pool directo a tu wallet",
+              "Producción minera directa a tu wallet",
               "Operación técnica delegada",
             ]}
             ctaLabel="Cotizar ASIC propio"

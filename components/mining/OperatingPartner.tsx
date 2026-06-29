@@ -7,20 +7,20 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 
 const kapa21Responsibilities = [
-  "orientación inicial",
-  "explicación de alternativas",
-  "selección de modalidad o equipo",
-  "coordinación comercial",
-  "acompañamiento de la evaluación",
+  "Orientación inicial",
+  "Explicación de alternativas",
+  "Selección de modalidad o equipo",
+  "Coordinación comercial",
+  "Acompañamiento de la evaluación",
 ] as const;
 
 const operatorResponsibilities = [
-  "contrato y formalización",
-  "recepción del pago",
-  "hosting internacional en Emiratos Árabes Unidos",
-  "operación de equipos",
-  "hosting y mantenimiento",
-  "producción y reportes",
+  "Contrato y formalización",
+  "Recepción del pago",
+  "Hosting internacional en Emiratos Árabes Unidos",
+  "Operación de equipos",
+  "Hosting y mantenimiento",
+  "Producción y reportes",
 ] as const;
 
 export function OperatingPartner() {
