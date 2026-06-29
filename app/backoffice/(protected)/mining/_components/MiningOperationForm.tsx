@@ -94,10 +94,10 @@ type MiningOperationFormProps = {
 type SaveIntent = "back" | "stay";
 
 const FIELD_CLASS_NAME =
-  "mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-white outline-none placeholder:text-white/25 focus:border-white/20 focus:ring-2 focus:ring-white/15";
+  "mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-white/20 focus:ring-2 focus:ring-white/15";
 
 const LABEL_CLASS_NAME = "text-sm font-medium text-white/80";
-const SECTION_CLASS_NAME = "rounded-2xl border border-white/10 bg-white/[0.03] p-5";
+const SECTION_CLASS_NAME = "rounded-2xl border border-white/10 bg-white/[0.03] p-4";
 const PARTNER_LEVEL_LABELS = {
   BRONZE: "Bronce",
   SILVER: "Plata",
@@ -525,14 +525,14 @@ export default function MiningOperationForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <section className="k21-card p-6">
+    <form onSubmit={onSubmit} className="space-y-4">
+      <section className="k21-card border-white/10 bg-white/[0.02] p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs uppercase tracking-[0.2em] text-white/45">
               {mode === "create" ? "Nueva operación" : "Edición de operación"}
             </div>
-            <h2 className="mt-2 text-2xl font-semibold text-white">
+            <h2 className="mt-2 text-xl font-semibold text-white">
               {mode === "create" ? "Cargar operación de Mining" : "Actualizar operación"}
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-white/60">
@@ -554,8 +554,8 @@ export default function MiningOperationForm({
         </div>
       </section>
 
-      <section className="k21-card p-6">
-        <div className="grid gap-5">
+      <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+        <div className="grid gap-4">
           {linkedProspect ? (
             <div className={SECTION_CLASS_NAME}>
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1312,7 +1312,7 @@ export default function MiningOperationForm({
         </div>
       </section>
 
-      <section className="k21-card p-5">
+      <section className="k21-card border-white/10 bg-white/[0.02] p-4">
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/60">
           Al cambiar estados comerciales u operativos, el sistema completa automáticamente el
           primer hito faltante correspondiente sin sobrescribir fechas ya registradas.
@@ -1329,7 +1329,7 @@ export default function MiningOperationForm({
             type="submit"
             value="back"
             disabled={Boolean(loading)}
-            className="k21-btn-primary min-w-56 disabled:opacity-60"
+            className="k21-btn-primary min-w-48 px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {loading === "back" ? "Guardando…" : "Guardar y volver a operaciones"}
           </button>
@@ -1338,12 +1338,15 @@ export default function MiningOperationForm({
             type="submit"
             value="stay"
             disabled={Boolean(loading)}
-            className="k21-btn-secondary min-w-56 disabled:opacity-60"
+            className="k21-btn-secondary min-w-48 px-4 py-2.5 text-sm disabled:opacity-60"
           >
             {loading === "stay" ? "Guardando…" : "Guardar y seguir editando"}
           </button>
 
-          <Link href="/backoffice/mining/operations" className="k21-btn-secondary">
+          <Link
+            href="/backoffice/mining/operations"
+            className="k21-btn-secondary px-4 py-2.5 text-sm"
+          >
             Volver a operaciones
           </Link>
         </div>

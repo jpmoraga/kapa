@@ -23,7 +23,7 @@ export default function MiningModuleTabs() {
 
   return (
     <div className="border-b border-white/10 bg-black/10">
-      <div className="mx-auto flex max-w-[1500px] flex-wrap gap-3 px-6 py-4">
+      <div className="mx-auto flex max-w-[1760px] flex-wrap gap-2.5 px-5 py-3 lg:px-6">
         {TABS.map((tab) => {
           const active = tab.isActive(pathname);
 
@@ -32,16 +32,26 @@ export default function MiningModuleTabs() {
               key={tab.href}
               href={tab.href}
               className={[
-                "rounded-2xl border px-4 py-3 transition",
+                "rounded-2xl border px-4 py-2.5 transition",
                 active
                   ? "border-amber-500/40 bg-amber-500/10"
                   : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]",
               ].join(" ")}
             >
-              <div className={active ? "text-sm font-medium text-amber-100" : "text-sm font-medium text-white"}>
+              <div
+                className={
+                  active ? "text-sm font-medium text-amber-100" : "text-sm font-medium text-white"
+                }
+              >
                 {tab.title}
               </div>
-              <div className={active ? "mt-1 text-xs text-amber-100/70" : "mt-1 text-xs text-white/55"}>
+              <div
+                className={
+                  active
+                    ? "mt-1 text-[11px] text-amber-100/70"
+                    : "mt-1 text-[11px] text-white/55"
+                }
+              >
                 {tab.description}
               </div>
             </Link>

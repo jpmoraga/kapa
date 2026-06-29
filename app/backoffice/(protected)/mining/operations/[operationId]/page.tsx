@@ -71,7 +71,7 @@ export default async function BackofficeMiningOperationPage({
   }
 
   return (
-    <div className="mx-auto max-w-[1500px] px-6 py-6">
+    <div className="mx-auto max-w-[1760px] px-5 py-5 lg:px-6">
       <BackofficePageHeader
         eyebrow="Backoffice / Mining / Operaciones"
         title={operation.clientName}
@@ -90,7 +90,7 @@ export default async function BackofficeMiningOperationPage({
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
+      <div className="mt-4 grid gap-5 2xl:grid-cols-[minmax(0,1.62fr)_minmax(300px,0.72fr)]">
         <MiningOperationForm
           key={`${operation.id}:${operation.updatedAt}`}
           mode="edit"
@@ -156,10 +156,10 @@ export default async function BackofficeMiningOperationPage({
           commissionStatusOptions={MINING_COMMISSION_STATUS_OPTIONS}
         />
 
-        <aside className="space-y-6">
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Siguiente paso sugerido</div>
-            <div className="mt-3 text-xl font-semibold text-white">
+        <aside className="space-y-4">
+          <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+            <div className="text-base font-semibold text-white">Siguiente paso sugerido</div>
+            <div className="mt-2 text-lg font-semibold text-white">
               {operation.suggestedAction.text}
             </div>
             <p className="mt-2 text-sm text-white/60">
@@ -169,8 +169,8 @@ export default async function BackofficeMiningOperationPage({
             </p>
           </section>
 
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Comisión sugerida</div>
+          <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+            <div className="text-base font-semibold text-white">Comisión sugerida</div>
             <div className="mt-3 text-white">{operation.commissionSuggestion.summary}</div>
             <div className="mt-3 space-y-2 text-sm text-white/65">
               <div>
@@ -220,9 +220,9 @@ export default async function BackofficeMiningOperationPage({
             </div>
           </section>
 
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Resumen operativo</div>
-            <div className="mt-4 space-y-3 text-sm text-white/65">
+          <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+            <div className="text-base font-semibold text-white">Resumen operativo</div>
+            <div className="mt-3 space-y-2.5 text-sm text-white/65">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Producto final: {operation.productTypeLabel}
               </div>
@@ -257,16 +257,16 @@ export default async function BackofficeMiningOperationPage({
             </div>
           </section>
 
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Nota operativa</div>
-            <ul className="mt-4 space-y-3 text-sm text-white/70">
-              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+            <div className="text-base font-semibold text-white">Nota operativa</div>
+            <ul className="mt-3 space-y-2.5 text-sm text-white/70">
+              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5">
                 No prometer rentabilidades.
               </li>
-              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5">
                 No hablar de ROI garantizado.
               </li>
-              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <li className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5">
                 No presentar el producto como inversión sin riesgo.
               </li>
             </ul>

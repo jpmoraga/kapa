@@ -47,7 +47,7 @@ export default async function BackofficeConsultingProspectPage({
   }
 
   return (
-    <div className="mx-auto max-w-[1500px] px-6 py-6">
+    <div className="mx-auto max-w-[1760px] px-5 py-5 lg:px-6">
       <BackofficePageHeader
         eyebrow="Backoffice / Consulting / Prospecto"
         title={prospect.companyName}
@@ -60,7 +60,7 @@ export default async function BackofficeConsultingProspectPage({
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.55fr)]">
+      <div className="mt-4 grid gap-5 2xl:grid-cols-[minmax(0,1.62fr)_minmax(300px,0.72fr)]">
         <ConsultingProspectForm
           key={`${prospect.id}:${prospect.updatedAt}`}
           mode="edit"
@@ -87,10 +87,10 @@ export default async function BackofficeConsultingProspectPage({
           pipelineStageOptions={CONSULTING_PIPELINE_STAGE_OPTIONS}
         />
 
-        <aside className="space-y-6">
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Siguiente paso sugerido</div>
-            <div className="mt-3 text-xl font-semibold text-white">
+        <aside className="space-y-4">
+          <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+            <div className="text-base font-semibold text-white">Siguiente paso sugerido</div>
+            <div className="mt-2 text-lg font-semibold text-white">
               {prospect.suggestedAction.text}
             </div>
             <p className="mt-2 text-sm text-white/60">
@@ -100,15 +100,15 @@ export default async function BackofficeConsultingProspectPage({
             </p>
           </section>
 
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Hitos automáticos</div>
-            <div className="mt-4 space-y-3">
+          <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+            <div className="text-base font-semibold text-white">Hitos automáticos</div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-1">
               {AUTOMATIC_DATE_LABELS.map((item) => {
                 const value = prospect.automaticDates[item.key];
                 return (
                   <div
                     key={item.key}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5"
                   >
                     <div className="text-sm text-white/80">{item.label}</div>
                     <div className={value ? "text-sm text-white" : "text-sm text-white/35"}>
@@ -120,9 +120,9 @@ export default async function BackofficeConsultingProspectPage({
             </div>
           </section>
 
-          <section className="k21-card p-6">
-            <div className="text-lg font-semibold text-white">Resumen de ficha</div>
-            <div className="mt-4 space-y-3 text-sm text-white/65">
+          <section className="k21-card border-white/10 bg-white/[0.02] p-5">
+            <div className="text-base font-semibold text-white">Resumen de ficha</div>
+            <div className="mt-3 space-y-2.5 text-sm text-white/65">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Creado: {formatDate(prospect.createdAt)}
               </div>
