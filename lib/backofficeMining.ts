@@ -6,6 +6,12 @@ import {
   MiningProspectStatus,
   Prisma,
 } from "@prisma/client";
+import {
+  type BackofficePaginationMeta,
+  matchesSearchQuery,
+  normalizeSearchQuery,
+  paginateItems,
+} from "@/lib/backofficeList";
 import { prisma } from "@/lib/prisma";
 
 export const MINING_SOURCE_OPTIONS: ReadonlyArray<{
@@ -60,6 +66,9 @@ export type MiningProspectFilters = {
   status?: string | null;
   country?: string | null;
   actionFilter?: string | null;
+  q?: string | null;
+  page?: string | number | null;
+  pageSize?: string | number | null;
 };
 
 const miningProspectSelect = {
@@ -212,11 +221,14 @@ export type MiningPageData = {
     status: string;
     country: string;
     actionFilter: MiningActionFilter;
+    q: string;
+    pageSize: number;
   };
   rows: MiningProspectListItem[];
   metrics: MiningMetrics;
   pendingActions: MiningPendingActionItem[];
   countryOptions: string[];
+  pagination: BackofficePaginationMeta;
 };
 
 export type MiningProspectDetail = {
@@ -553,6 +565,35 @@ function filterByAction(row: MiningProspectListItem, actionFilter: MiningActionF
   return true;
 }
 
+function matchesMiningSearch(
+  prospect: MiningProspectRecord,
+  row: MiningProspectListItem,
+  query: string
+) {
+  return matchesSearchQuery(query, [
+    prospect.name,
+    prospect.companyName,
+    prospect.country,
+    prospect.whatsapp,
+    prospect.instagramUrl,
+    prospect.linkedinUrl,
+    prospect.xUrl,
+    prospect.email,
+    prospect.source,
+    prospect.interestType,
+    prospect.status,
+    prospect.notes,
+    prospect.nextAction,
+    row.sourceLabel,
+    row.interestTypeLabel,
+    row.statusLabel,
+    row.effectiveNextAction,
+    row.suggestedAction.text,
+    row.primaryContactLabel,
+    row.primaryContactValue,
+  ]);
+}
+
 function buildWhere(filters: MiningProspectFilters): Prisma.MiningProspectWhereInput {
   const source = normalizeEnumFilter(filters.source, Object.values(MiningProspectSource));
   const interestType = normalizeEnumFilter(
@@ -582,14 +623,23 @@ export async function getMiningPageData(
   filters: MiningProspectFilters = {}
 ): Promise<MiningPageData> {
   const actionFilter = normalizeActionFilter(filters.actionFilter);
+  const q = normalizeSearchQuery(filters.q);
   const where = buildWhere(filters);
   const [filteredProspects, allProspects] = await Promise.all([
     fetchProspects(where),
     fetchProspects(),
   ]);
 
-  const rows = filteredProspects.map(mapListItem).filter((row) => filterByAction(row, actionFilter));
-  const pendingActions = rows
+  const filteredRows = filteredProspects
+    .map((prospect) => {
+      const row = mapListItem(prospect);
+      return { prospect, row };
+    })
+    .filter(({ prospect, row }) => matchesMiningSearch(prospect, row, q))
+    .filter(({ row }) => filterByAction(row, actionFilter))
+    .map(({ row }) => row);
+
+  const pendingActions = filteredRows
     .filter((row) => Boolean(row.nextActionManual) || row.suggestedAction.hasPendingAction)
     .map<MiningPendingActionItem>((row) => ({
       id: row.id,
@@ -611,6 +661,13 @@ export async function getMiningPageData(
       return aAt - bAt;
     })
     .slice(0, 8);
+
+  const { items: rows, pagination } = paginateItems(
+    filteredRows,
+    filters.page,
+    filters.pageSize,
+    allProspects.length
+  );
 
   const metricsRows = allProspects.map(mapListItem);
   const metrics: MiningMetrics = {
@@ -644,11 +701,14 @@ export async function getMiningPageData(
       status: normalizeEnumFilter(filters.status, Object.values(MiningProspectStatus)),
       country: String(filters.country ?? "").trim(),
       actionFilter,
+      q,
+      pageSize: pagination.pageSize,
     },
     rows,
     metrics,
     pendingActions,
     countryOptions,
+    pagination,
   };
 }
 

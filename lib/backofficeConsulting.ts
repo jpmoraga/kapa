@@ -7,6 +7,12 @@ import {
   ConsultingPipelineStage,
   Prisma,
 } from "@prisma/client";
+import {
+  type BackofficePaginationMeta,
+  matchesSearchQuery,
+  normalizeSearchQuery,
+  paginateItems,
+} from "@/lib/backofficeList";
 import { prisma } from "@/lib/prisma";
 
 export const CONSULTING_BUSINESS_LINE_OPTIONS: ReadonlyArray<{
@@ -106,6 +112,9 @@ export type ConsultingProspectFilters = {
   contactStatus?: string | null;
   pipelineStage?: string | null;
   actionFilter?: string | null;
+  q?: string | null;
+  page?: string | number | null;
+  pageSize?: string | number | null;
 };
 
 type ConsultingProspectRecord = Prisma.ConsultingProspectGetPayload<{
@@ -250,11 +259,14 @@ export type ConsultingPageData = {
     contactStatus: string;
     pipelineStage: string;
     actionFilter: ConsultingActionFilter;
+    q: string;
+    pageSize: number;
   };
   rows: ConsultingProspectListItem[];
   metrics: ConsultingMetrics;
   pendingActions: ConsultingPendingActionItem[];
   countryOptions: string[];
+  pagination: BackofficePaginationMeta;
 };
 
 export type ConsultingProspectDetail = {
@@ -677,6 +689,34 @@ function filterByAction(
   return true;
 }
 
+function matchesConsultingSearch(
+  prospect: ConsultingProspectRecord,
+  row: ConsultingProspectListItem,
+  query: string
+) {
+  return matchesSearchQuery(query, [
+    prospect.companyName,
+    prospect.contactName,
+    prospect.contactRole,
+    prospect.country,
+    prospect.source,
+    prospect.linkedinUrl,
+    prospect.email,
+    prospect.notes,
+    prospect.nextAction,
+    row.businessLine,
+    row.businessLineLabel,
+    row.emailStatus,
+    row.emailStatusLabel,
+    row.contactStatus,
+    row.contactStatusLabel,
+    row.pipelineStage,
+    row.pipelineStageLabel,
+    row.effectiveNextAction,
+    row.suggestedAction.text,
+  ]);
+}
+
 function normalizeCountryFilter(value: string | null | undefined) {
   return String(value ?? "").trim();
 }
@@ -721,14 +761,23 @@ export async function getConsultingPageData(
   filters: ConsultingProspectFilters = {}
 ): Promise<ConsultingPageData> {
   const actionFilter = normalizeActionFilter(filters.actionFilter);
+  const q = normalizeSearchQuery(filters.q);
   const where = buildWhere(filters);
   const [filteredProspects, allProspects] = await Promise.all([
     fetchProspects(where),
     fetchProspects(),
   ]);
 
-  const rows = filteredProspects.map(mapListItem).filter((row) => filterByAction(row, actionFilter));
-  const pendingActions = rows
+  const filteredRows = filteredProspects
+    .map((prospect) => {
+      const row = mapListItem(prospect);
+      return { prospect, row };
+    })
+    .filter(({ prospect, row }) => matchesConsultingSearch(prospect, row, q))
+    .filter(({ row }) => filterByAction(row, actionFilter))
+    .map(({ row }) => row);
+
+  const pendingActions = filteredRows
     .filter((row) => Boolean(row.nextActionManual) || row.suggestedAction.hasPendingAction)
     .map<ConsultingPendingActionItem>((row) => ({
       id: row.id,
@@ -749,6 +798,13 @@ export async function getConsultingPageData(
       return aAt - bAt;
     })
     .slice(0, 8);
+
+  const { items: rows, pagination } = paginateItems(
+    filteredRows,
+    filters.page,
+    filters.pageSize,
+    allProspects.length
+  );
 
   const metricsRows = allProspects.map(mapListItem);
   const metrics: ConsultingMetrics = {
@@ -824,11 +880,14 @@ export async function getConsultingPageData(
         Object.values(ConsultingPipelineStage)
       ),
       actionFilter,
+      q,
+      pageSize: pagination.pageSize,
     },
     rows,
     metrics,
     pendingActions,
     countryOptions,
+    pagination,
   };
 }
 

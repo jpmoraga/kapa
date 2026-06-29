@@ -1,5 +1,7 @@
 import Link from "next/link";
 import BackofficePageHeader from "../_components/BackofficePageHeader";
+import BackofficePagination from "../_components/BackofficePagination";
+import { BACKOFFICE_PAGE_SIZE_OPTIONS } from "@/lib/backofficeList";
 import {
   CONSULTING_ACTION_FILTER_OPTIONS,
   CONSULTING_BUSINESS_LINE_OPTIONS,
@@ -23,6 +25,10 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("es-CL", {
     dateStyle: "medium",
   }).format(new Date(value));
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("es-CL").format(value);
 }
 
 function actionTone(isDueNow: boolean, isManual: boolean) {
@@ -54,6 +60,9 @@ export default async function BackofficeConsultingPage({
     contactStatus: readSearchValue(sp.contactStatus),
     pipelineStage: readSearchValue(sp.pipelineStage),
     actionFilter: readSearchValue(sp.actionFilter),
+    q: readSearchValue(sp.q),
+    page: readSearchValue(sp.page),
+    pageSize: readSearchValue(sp.pageSize),
   });
 
   const metricCards = [
@@ -67,13 +76,29 @@ export default async function BackofficeConsultingPage({
     { label: "Ganados", value: data.metrics.diagnosisWon },
   ];
 
-  const visiblePendingCount = data.rows.filter(
+  const currentPagePendingCount = data.rows.filter(
     (row) => Boolean(row.nextActionManual) || row.suggestedAction.hasPendingAction
   ).length;
-  const dueNowCount = data.rows.filter((row) =>
+  const currentPageDueNowCount = data.rows.filter((row) =>
     row.nextActionAt ? row.isNextActionDueNow : row.suggestedAction.isDueNow
   ).length;
-  const manualCount = data.rows.filter((row) => Boolean(row.nextActionManual)).length;
+  const currentPageManualCount = data.rows.filter((row) => Boolean(row.nextActionManual)).length;
+
+  const paginationParams = {
+    businessLine: data.filters.businessLine,
+    country: data.filters.country,
+    contactStatus: data.filters.contactStatus,
+    pipelineStage: data.filters.pipelineStage,
+    actionFilter: data.filters.actionFilter,
+    q: data.filters.q,
+    pageSize: data.filters.pageSize,
+  };
+
+  const resultsSummary = data.pagination.totalFiltered
+    ? `Mostrando ${formatCount(data.pagination.start)}-${formatCount(data.pagination.end)} de ${formatCount(
+        data.pagination.totalFiltered
+      )} prospectos filtrados.`
+    : "No hay prospectos para la combinación actual.";
 
   return (
     <div className="mx-auto max-w-[1760px] px-5 py-5 lg:px-6">
@@ -85,7 +110,8 @@ export default async function BackofficeConsultingPage({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-white/55">
-          {data.rows.length} prospectos visibles con los filtros actuales.
+          {resultsSummary} Base total {formatCount(data.pagination.totalGlobal)}. Página{" "}
+          {formatCount(data.pagination.page)} de {formatCount(data.pagination.totalPages)}.
         </div>
         <Link href="/backoffice/consulting/new" className="k21-btn-primary">
           Nuevo prospecto
@@ -105,13 +131,39 @@ export default async function BackofficeConsultingPage({
 
       <section className="mt-4 k21-card border-white/10 bg-white/[0.02] p-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-white">Filtros</div>
+          <div className="text-sm font-semibold text-white">Búsqueda y filtros</div>
           <Link href="/backoffice/consulting" className="k21-btn-secondary px-3 py-2 text-xs">
             Limpiar
           </Link>
         </div>
 
-        <form className="mt-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[repeat(5,minmax(0,1fr))_auto_auto]">
+        <form className="mt-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <div className="md:col-span-2 xl:col-span-2">
+            <label className="text-sm font-medium text-white/80">Buscador</label>
+            <input
+              type="text"
+              name="q"
+              defaultValue={data.filters.q}
+              placeholder="Buscar por empresa, contacto, cargo, país, LinkedIn, email, notas…"
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20 focus:ring-2 focus:ring-white/15"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-white/80">Filas</label>
+            <select
+              name="pageSize"
+              defaultValue={String(data.filters.pageSize)}
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/15"
+            >
+              {BACKOFFICE_PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option} className="bg-neutral-950">
+                  {option} por página
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="text-sm font-medium text-white/80">Línea comercial</label>
             <select
@@ -199,8 +251,8 @@ export default async function BackofficeConsultingPage({
             </select>
           </div>
 
-          <div className="flex items-end 2xl:justify-end">
-            <button type="submit" className="k21-btn-primary w-full px-3 py-2 text-xs 2xl:w-auto 2xl:min-w-28">
+          <div className="flex items-end">
+            <button type="submit" className="k21-btn-primary w-full px-3 py-2 text-xs">
               Aplicar
             </button>
           </div>
@@ -208,129 +260,143 @@ export default async function BackofficeConsultingPage({
       </section>
 
       <section className="mt-4 k21-card overflow-hidden border-white/10 bg-white/[0.02]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div>
             <div className="text-base font-semibold text-white">Prospectos</div>
             <p className="mt-1 text-sm text-white/55">
               Seguimiento activo de la cartera comercial visible.
             </p>
           </div>
+          <div className="text-right text-xs text-white/45">
+            Página {formatCount(data.pagination.page)} de {formatCount(data.pagination.totalPages)}
+          </div>
         </div>
 
         {data.rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1260px] text-left text-sm">
-              <thead className="bg-neutral-950/95 text-white/45 backdrop-blur">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Empresa</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Contacto</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Estado comercial</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Próxima acción</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Última actividad</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((row) => {
-                  const effectiveActionAt = row.nextActionAt ?? row.suggestedAction.at;
-                  const isManual = Boolean(row.nextActionManual);
-                  const isDueNow = row.nextActionAt
-                    ? row.isNextActionDueNow
-                    : row.suggestedAction.isDueNow;
+          <>
+            <div className="max-h-[72vh] overflow-auto">
+              <table className="min-w-[1260px] text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-neutral-950/95 text-white/45 backdrop-blur">
+                  <tr>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Empresa</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Contacto</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Estado comercial
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Próxima acción</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Última actividad</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.rows.map((row) => {
+                    const effectiveActionAt = row.nextActionAt ?? row.suggestedAction.at;
+                    const isManual = Boolean(row.nextActionManual);
+                    const isDueNow = row.nextActionAt
+                      ? row.isNextActionDueNow
+                      : row.suggestedAction.isDueNow;
 
-                  return (
-                    <tr key={row.id} className="border-t border-white/10 align-top">
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[240px]">
-                          <div className="font-semibold text-white">{row.companyName}</div>
-                          <div className="mt-1.5 text-sm text-white/60">País: {row.country}</div>
-                          <div className="mt-1 text-sm text-white/50">
-                            Fuente: {row.source || "Sin fuente"}
+                    return (
+                      <tr key={row.id} className="border-t border-white/10 align-top hover:bg-white/[0.02]">
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[240px]">
+                            <div className="font-semibold text-white">{row.companyName}</div>
+                            <div className="mt-1.5 text-sm text-white/60">País: {row.country}</div>
+                            <div className="mt-1 text-sm text-white/50">
+                              Fuente: {row.source || "Sin fuente"}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[260px]">
-                          <div className="font-medium text-white">{row.contactName}</div>
-                          <div className="mt-1 text-white/60">{row.contactRole}</div>
-                          <div className="mt-2.5 flex flex-wrap gap-2">
-                            {row.email ? (
-                              <a
-                                href={`mailto:${row.email}`}
-                                className="k21-badge break-all px-2.5 py-1 text-[11px] text-white/75 hover:text-white"
-                              >
-                                {row.email}
-                              </a>
-                            ) : null}
-                            {row.linkedinUrl ? (
-                              <a
-                                href={row.linkedinUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="k21-badge px-2.5 py-1 text-[11px] text-white/75 hover:text-white"
-                              >
-                                LinkedIn
-                              </a>
-                            ) : null}
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[260px]">
+                            <div className="font-medium text-white">{row.contactName}</div>
+                            <div className="mt-1 text-white/60">{row.contactRole}</div>
+                            <div className="mt-2.5 flex flex-wrap gap-2">
+                              {row.email ? (
+                                <a
+                                  href={`mailto:${row.email}`}
+                                  className="k21-badge break-all px-2.5 py-1 text-[11px] text-white/75 hover:text-white"
+                                >
+                                  {row.email}
+                                </a>
+                              ) : null}
+                              {row.linkedinUrl ? (
+                                <a
+                                  href={row.linkedinUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="k21-badge px-2.5 py-1 text-[11px] text-white/75 hover:text-white"
+                                >
+                                  LinkedIn
+                                </a>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[290px] space-y-2">
-                          <div className="flex flex-wrap gap-2">
-                            <span className={compactTagClass("k21-pill-none")}>
-                              {row.businessLineLabel}
-                            </span>
-                            <span className={compactTagClass(stageTone(row.contactStatus))}>
-                              {row.contactStatusLabel}
-                            </span>
-                            <span className={compactTagClass(stageTone(row.pipelineStage))}>
-                              {row.pipelineStageLabel}
-                            </span>
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[290px] space-y-2">
+                            <div className="flex flex-wrap gap-2">
+                              <span className={compactTagClass("k21-pill-none")}>
+                                {row.businessLineLabel}
+                              </span>
+                              <span className={compactTagClass(stageTone(row.contactStatus))}>
+                                {row.contactStatusLabel}
+                              </span>
+                              <span className={compactTagClass(stageTone(row.pipelineStage))}>
+                                {row.pipelineStageLabel}
+                              </span>
+                            </div>
+                            <div className="text-xs text-white/45">
+                              Estado de email: {row.emailStatusLabel}
+                            </div>
                           </div>
-                          <div className="text-xs text-white/45">
-                            Estado de email: {row.emailStatusLabel}
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[320px]">
-                          <div className="font-medium leading-relaxed text-white">
-                            {row.effectiveNextAction}
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[320px]">
+                            <div className="font-medium leading-relaxed text-white">
+                              {row.effectiveNextAction}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className={actionTone(isDueNow, isManual)}>
+                                {isManual ? "Manual" : isDueNow ? "Vence hoy" : "Sugerida"}
+                              </span>
+                              <span className="text-white/55">{formatDate(effectiveActionAt)}</span>
+                            </div>
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className={actionTone(isDueNow, isManual)}>
-                              {isManual ? "Manual" : isDueNow ? "Vence hoy" : "Sugerida"}
-                            </span>
-                            <span className="text-white/55">{formatDate(effectiveActionAt)}</span>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-white/60">
+                          <div>{formatDate(row.lastActivityAt)}</div>
+                          <div className="mt-1.5 text-xs text-white/40">
+                            Última actualización {formatDate(row.updatedAt)}
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5 text-white/60">
-                        <div>{formatDate(row.lastActivityAt)}</div>
-                        <div className="mt-1.5 text-xs text-white/40">
-                          Última actualización {formatDate(row.updatedAt)}
-                        </div>
-                      </td>
+                        <td className="px-4 py-3.5">
+                          <Link
+                            href={`/backoffice/consulting/${row.id}`}
+                            className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
+                          >
+                            Editar
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                      <td className="px-4 py-3.5">
-                        <Link
-                          href={`/backoffice/consulting/${row.id}`}
-                          className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
-                        >
-                          Editar
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            <BackofficePagination
+              basePath="/backoffice/consulting"
+              countLabel="prospectos"
+              params={paginationParams}
+              pagination={data.pagination}
+            />
+          </>
         ) : (
           <div className="px-4 py-5">
             <div className="k21-empty mt-0">
@@ -390,23 +456,31 @@ export default async function BackofficeConsultingPage({
         </section>
 
         <section className="k21-card border-white/10 bg-white/[0.02] p-4">
-          <div className="text-base font-semibold text-white">Resumen de seguimiento</div>
+          <div className="text-base font-semibold text-white">Resumen de esta página</div>
           <div className="mt-3 grid gap-2 sm:grid-cols-3 2xl:grid-cols-1">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">
-                Pendientes visibles
+                Pendientes
               </div>
-              <div className="mt-1.5 text-2xl font-semibold text-white">{visiblePendingCount}</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">Urgentes</div>
-              <div className="mt-1.5 text-2xl font-semibold text-white">{dueNowCount}</div>
+              <div className="mt-1.5 text-2xl font-semibold text-white">
+                {currentPagePendingCount}
+              </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">
-                Próximas acciones manuales
+                Urgentes
               </div>
-              <div className="mt-1.5 text-2xl font-semibold text-white">{manualCount}</div>
+              <div className="mt-1.5 text-2xl font-semibold text-white">
+                {currentPageDueNowCount}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">
+                Manuales
+              </div>
+              <div className="mt-1.5 text-2xl font-semibold text-white">
+                {currentPageManualCount}
+              </div>
             </div>
           </div>
         </section>

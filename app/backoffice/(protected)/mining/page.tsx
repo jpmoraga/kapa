@@ -1,5 +1,7 @@
 import Link from "next/link";
 import BackofficePageHeader from "../_components/BackofficePageHeader";
+import BackofficePagination from "../_components/BackofficePagination";
+import { BACKOFFICE_PAGE_SIZE_OPTIONS } from "@/lib/backofficeList";
 import {
   getMiningPageData,
   MINING_ACTION_FILTER_OPTIONS,
@@ -35,6 +37,10 @@ function formatUsd(value: string | null) {
   }).format(Number(value));
 }
 
+function formatCount(value: number) {
+  return new Intl.NumberFormat("es-CL").format(value);
+}
+
 function actionTone(isDueNow: boolean, isManual: boolean) {
   if (isDueNow) return "k21-pill-pending";
   if (isManual) return "k21-pill-approved";
@@ -65,6 +71,9 @@ export default async function BackofficeMiningPage({
     status: readSearchValue(sp.status),
     country: readSearchValue(sp.country),
     actionFilter: readSearchValue(sp.actionFilter),
+    q: readSearchValue(sp.q),
+    page: readSearchValue(sp.page),
+    pageSize: readSearchValue(sp.pageSize),
   });
 
   const metricCards = [
@@ -78,6 +87,22 @@ export default async function BackofficeMiningPage({
     { label: "Descartados", value: data.metrics.discarded },
   ];
 
+  const paginationParams = {
+    source: data.filters.source,
+    interestType: data.filters.interestType,
+    status: data.filters.status,
+    country: data.filters.country,
+    actionFilter: data.filters.actionFilter,
+    q: data.filters.q,
+    pageSize: data.filters.pageSize,
+  };
+
+  const resultsSummary = data.pagination.totalFiltered
+    ? `Mostrando ${formatCount(data.pagination.start)}-${formatCount(data.pagination.end)} de ${formatCount(
+        data.pagination.totalFiltered
+      )} prospectos filtrados.`
+    : "No hay prospectos para la combinación actual.";
+
   return (
     <div className="mx-auto max-w-[1760px] px-5 py-5 lg:px-6">
       <BackofficePageHeader
@@ -88,15 +113,15 @@ export default async function BackofficeMiningPage({
 
       {operationFlowNotice ? (
         <div className="mt-5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          Para crear una operación, primero crea o selecciona un prospecto y luego usa
-          {" "}
+          Para crear una operación, primero crea o selecciona un prospecto y luego usa{" "}
           <span className="font-semibold">Promover a operación</span>.
         </div>
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-white/55">
-          {data.rows.length} prospectos visibles con los filtros actuales.
+          {resultsSummary} Base total {formatCount(data.pagination.totalGlobal)}. Página{" "}
+          {formatCount(data.pagination.page)} de {formatCount(data.pagination.totalPages)}.
         </div>
         <Link href="/backoffice/mining/new" className="k21-btn-primary">
           Nuevo prospecto
@@ -111,8 +136,7 @@ export default async function BackofficeMiningPage({
             </div>
             <p className="mt-1 max-w-3xl text-sm text-amber-100/75">
               Mantén aquí la base centralizada de contactos, seguimiento y contexto comercial.
-              Cuando el cliente pida contrato o esté listo para cierre, entra a su ficha y usa
-              {" "}
+              Cuando el cliente pida contrato o esté listo para cierre, entra a su ficha y usa{" "}
               <span className="font-semibold">Promover a operación</span>.
             </p>
           </div>
@@ -135,13 +159,39 @@ export default async function BackofficeMiningPage({
 
       <section className="mt-4 k21-card border-white/10 bg-white/[0.02] p-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-white">Filtros</div>
+          <div className="text-sm font-semibold text-white">Búsqueda y filtros</div>
           <Link href="/backoffice/mining" className="k21-btn-secondary px-3 py-2 text-xs">
             Limpiar
           </Link>
         </div>
 
-        <form className="mt-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[repeat(5,minmax(0,1fr))_auto_auto]">
+        <form className="mt-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <div className="md:col-span-2 xl:col-span-2">
+            <label className="text-sm font-medium text-white/80">Buscador</label>
+            <input
+              type="text"
+              name="q"
+              defaultValue={data.filters.q}
+              placeholder="Buscar por nombre, WhatsApp, Instagram, LinkedIn, origen, notas…"
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20 focus:ring-2 focus:ring-white/15"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-white/80">Filas</label>
+            <select
+              name="pageSize"
+              defaultValue={String(data.filters.pageSize)}
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/15"
+            >
+              {BACKOFFICE_PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option} className="bg-neutral-950">
+                  {option} por página
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="text-sm font-medium text-white/80">Origen</label>
             <select
@@ -229,8 +279,8 @@ export default async function BackofficeMiningPage({
             </select>
           </div>
 
-          <div className="flex items-end 2xl:justify-end">
-            <button type="submit" className="k21-btn-primary w-full px-3 py-2 text-xs 2xl:w-auto 2xl:min-w-28">
+          <div className="flex items-end">
+            <button type="submit" className="k21-btn-primary w-full px-3 py-2 text-xs">
               Aplicar
             </button>
           </div>
@@ -238,142 +288,154 @@ export default async function BackofficeMiningPage({
       </section>
 
       <section className="mt-4 k21-card overflow-hidden border-white/10 bg-white/[0.02]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div>
             <div className="text-base font-semibold text-white">Prospectos</div>
             <p className="mt-1 text-sm text-white/55">
               Seguimiento privado de interesados reales en minería.
             </p>
           </div>
+          <div className="text-right text-xs text-white/45">
+            Página {formatCount(data.pagination.page)} de {formatCount(data.pagination.totalPages)}
+          </div>
         </div>
 
         {data.rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1440px] text-left text-sm">
-              <thead className="bg-neutral-950/95 text-white/45 backdrop-blur">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Nombre</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Contacto principal</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Origen</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Modalidad</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Monto estimado</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Estado</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Próxima acción</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Última actividad</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((row) => {
-                  const effectiveActionAt = row.nextActionAt ?? row.suggestedAction.at;
-                  const isManual = Boolean(row.nextActionManual);
-                  const isDueNow = row.nextActionAt
-                    ? row.isNextActionDueNow
-                    : row.suggestedAction.isDueNow;
+          <>
+            <div className="max-h-[72vh] overflow-auto">
+              <table className="min-w-[1440px] text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-neutral-950/95 text-white/45 backdrop-blur">
+                  <tr>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Nombre</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Contacto principal</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Origen</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Modalidad</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Monto estimado</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Estado</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Próxima acción</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Última actividad</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.rows.map((row) => {
+                    const effectiveActionAt = row.nextActionAt ?? row.suggestedAction.at;
+                    const isManual = Boolean(row.nextActionManual);
+                    const isDueNow = row.nextActionAt
+                      ? row.isNextActionDueNow
+                      : row.suggestedAction.isDueNow;
 
-                  return (
-                    <tr key={row.id} className="border-t border-white/10 align-top">
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[240px]">
-                          <div className="font-semibold text-white">{row.name}</div>
-                          <div className="mt-1 text-sm text-white/60">
-                            {row.companyName || "Sin empresa"}
+                    return (
+                      <tr key={row.id} className="border-t border-white/10 align-top hover:bg-white/[0.02]">
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[240px]">
+                            <div className="font-semibold text-white">{row.name}</div>
+                            <div className="mt-1 text-sm text-white/60">
+                              {row.companyName || "Sin empresa"}
+                            </div>
+                            <div className="mt-1.5 text-xs text-white/45">País: {row.country}</div>
                           </div>
-                          <div className="mt-1.5 text-xs text-white/45">País: {row.country}</div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[260px]">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">
-                            {row.primaryContactLabel}
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[260px]">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">
+                              {row.primaryContactLabel}
+                            </div>
+                            <div className="mt-1.5 break-words font-medium text-white">
+                              {row.primaryContactValue}
+                            </div>
                           </div>
-                          <div className="mt-1.5 break-words font-medium text-white">
-                            {row.primaryContactValue}
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5">
-                        <span className={compactTagClass("k21-pill-none")}>
-                          {row.sourceLabel}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[230px]">
+                        <td className="px-4 py-3.5">
                           <span className={compactTagClass("k21-pill-none")}>
-                            {row.interestTypeLabel}
+                            {row.sourceLabel}
                           </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5 text-white/70">
-                        {formatUsd(row.estimatedAmountUsd)}
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[190px]">
-                          <span className={compactTagClass(statusTone(row.status))}>
-                            {row.statusLabel}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[330px]">
-                          <div className="font-medium leading-relaxed text-white">
-                            {row.effectiveNextAction}
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className={actionTone(isDueNow, isManual)}>
-                              {isManual ? "Manual" : isDueNow ? "Vence hoy" : "Sugerida"}
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[230px]">
+                            <span className={compactTagClass("k21-pill-none")}>
+                              {row.interestTypeLabel}
                             </span>
-                            <span className="text-white/55">{formatDate(effectiveActionAt)}</span>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5 text-white/60">
-                        <div>{formatDate(row.lastActivityAt)}</div>
-                        <div className="mt-1.5 text-xs text-white/40">
-                          Última actualización {formatDate(row.updatedAt)}
-                        </div>
-                      </td>
+                        <td className="px-4 py-3.5 text-white/70">
+                          {formatUsd(row.estimatedAmountUsd)}
+                        </td>
 
-                      <td className="px-4 py-3.5">
-                        <div className="flex min-w-[220px] flex-wrap gap-2">
-                          {row.linkedOperationId ? (
-                            <>
-                              <Link
-                                href={`/backoffice/mining/operations/${row.linkedOperationId}`}
-                                className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
-                              >
-                                Ver operación
-                              </Link>
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[190px]">
+                            <span className={compactTagClass(statusTone(row.status))}>
+                              {row.statusLabel}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[330px]">
+                            <div className="font-medium leading-relaxed text-white">
+                              {row.effectiveNextAction}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className={actionTone(isDueNow, isManual)}>
+                                {isManual ? "Manual" : isDueNow ? "Vence hoy" : "Sugerida"}
+                              </span>
+                              <span className="text-white/55">{formatDate(effectiveActionAt)}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-white/60">
+                          <div>{formatDate(row.lastActivityAt)}</div>
+                          <div className="mt-1.5 text-xs text-white/40">
+                            Última actualización {formatDate(row.updatedAt)}
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="flex min-w-[220px] flex-wrap gap-2">
+                            {row.linkedOperationId ? (
+                              <>
+                                <Link
+                                  href={`/backoffice/mining/operations/${row.linkedOperationId}`}
+                                  className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
+                                >
+                                  Ver operación
+                                </Link>
+                                <Link
+                                  href={`/backoffice/mining/${row.id}`}
+                                  className="inline-flex items-center text-xs text-white/55 underline underline-offset-4"
+                                >
+                                  Ver prospecto
+                                </Link>
+                              </>
+                            ) : (
                               <Link
                                 href={`/backoffice/mining/${row.id}`}
-                                className="inline-flex items-center text-xs text-white/55 underline underline-offset-4"
+                                className="k21-btn-primary inline-flex px-3 py-2 text-xs"
                               >
-                                Ver prospecto
+                                Promover a operación
                               </Link>
-                            </>
-                          ) : (
-                            <Link
-                              href={`/backoffice/mining/${row.id}`}
-                              className="k21-btn-primary inline-flex px-3 py-2 text-xs"
-                            >
-                              Promover a operación
-                            </Link>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <BackofficePagination
+              basePath="/backoffice/mining"
+              countLabel="prospectos"
+              params={paginationParams}
+              pagination={data.pagination}
+            />
+          </>
         ) : (
           <div className="px-4 py-5">
             <div className="k21-empty mt-0">

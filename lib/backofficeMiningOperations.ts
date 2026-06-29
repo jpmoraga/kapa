@@ -10,6 +10,12 @@ import {
   MiningPartnerLevel,
   Prisma,
 } from "@prisma/client";
+import {
+  type BackofficePaginationMeta,
+  matchesSearchQuery,
+  normalizeSearchQuery,
+  paginateItems,
+} from "@/lib/backofficeList";
 import { MINING_SOURCE_OPTIONS } from "@/lib/backofficeMining";
 import { prisma } from "@/lib/prisma";
 
@@ -99,6 +105,9 @@ export type MiningOperationFilters = {
   currency?: string | null;
   country?: string | null;
   actionFilter?: string | null;
+  q?: string | null;
+  page?: string | number | null;
+  pageSize?: string | number | null;
 };
 
 export type MiningOperationSuggestedAction = {
@@ -215,11 +224,14 @@ export type MiningOperationsPageData = {
     currency: string;
     country: string;
     actionFilter: MiningOperationActionFilter;
+    q: string;
+    pageSize: number;
   };
   rows: MiningOperationListItem[];
   metrics: MiningOperationMetrics;
   pendingActions: MiningOperationPendingActionItem[];
   countryOptions: string[];
+  pagination: BackofficePaginationMeta;
 };
 
 export type MiningOperationDetail = {
@@ -1286,6 +1298,40 @@ function filterByAction(row: MiningOperationListItem, actionFilter: MiningOperat
   return true;
 }
 
+function matchesMiningOperationSearch(
+  operation: MiningOperationRecord,
+  row: MiningOperationListItem,
+  query: string
+) {
+  return matchesSearchQuery(query, [
+    operation.clientName,
+    operation.clientCompanyName,
+    operation.country,
+    operation.whatsapp,
+    operation.email,
+    operation.productType,
+    operation.productDescription,
+    operation.asicModel,
+    operation.commercialStatus,
+    operation.operationalStatus,
+    operation.commissionStatus,
+    operation.internalNotes,
+    operation.andesOperationalNotes,
+    operation.commissionNotes,
+    operation.nextAction,
+    row.productTypeLabel,
+    row.commercialStatusLabel,
+    row.operationalStatusLabel,
+    row.commissionStatusLabel,
+    row.primaryContactLabel,
+    row.primaryContactValue,
+    row.effectiveNextAction,
+    row.suggestedAction.text,
+    row.commission.summary,
+    row.commission.partnerLevelLabel,
+  ]);
+}
+
 function buildWhere(filters: MiningOperationFilters): Prisma.MiningOperationWhereInput {
   const productType = normalizeEnumFilter(
     filters.productType,
@@ -1328,6 +1374,7 @@ export async function getMiningOperationsPageData(
   filters: MiningOperationFilters = {}
 ): Promise<MiningOperationsPageData> {
   const actionFilter = normalizeActionFilter(filters.actionFilter);
+  const q = normalizeSearchQuery(filters.q);
   const where = buildWhere(filters);
   const [filteredOperations, allOperations] = await Promise.all([
     fetchOperations(where),
@@ -1335,10 +1382,16 @@ export async function getMiningOperationsPageData(
   ]);
   const confirmedTimeline = buildConfirmedSalesTimeline(allOperations);
 
-  const rows = filteredOperations
-    .map((operation) => mapListItem(operation, confirmedTimeline))
-    .filter((row) => filterByAction(row, actionFilter));
-  const pendingActions = rows
+  const filteredRows = filteredOperations
+    .map((operation) => {
+      const row = mapListItem(operation, confirmedTimeline);
+      return { operation, row };
+    })
+    .filter(({ operation, row }) => matchesMiningOperationSearch(operation, row, q))
+    .filter(({ row }) => filterByAction(row, actionFilter))
+    .map(({ row }) => row);
+
+  const pendingActions = filteredRows
     .filter((row) => Boolean(row.nextActionManual) || row.suggestedAction.hasPendingAction)
     .map<MiningOperationPendingActionItem>((row) => ({
       id: row.id,
@@ -1358,6 +1411,13 @@ export async function getMiningOperationsPageData(
       return aAt - bAt;
     })
     .slice(0, 8);
+
+  const { items: rows, pagination } = paginateItems(
+    filteredRows,
+    filters.page,
+    filters.pageSize,
+    allOperations.length
+  );
 
   const metricsRows = allOperations.map((operation) => mapListItem(operation, confirmedTimeline));
   const metrics: MiningOperationMetrics = {
@@ -1409,11 +1469,14 @@ export async function getMiningOperationsPageData(
       currency: normalizeEnumFilter(filters.currency, Object.values(MiningMoneyCurrency)),
       country: String(filters.country ?? "").trim(),
       actionFilter,
+      q,
+      pageSize: pagination.pageSize,
     },
     rows,
     metrics,
     pendingActions,
     countryOptions,
+    pagination,
   };
 }
 

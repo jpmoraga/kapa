@@ -1,5 +1,7 @@
 import Link from "next/link";
 import BackofficePageHeader from "../../_components/BackofficePageHeader";
+import BackofficePagination from "../../_components/BackofficePagination";
+import { BACKOFFICE_PAGE_SIZE_OPTIONS } from "@/lib/backofficeList";
 import {
   getMiningOperationsPageData,
   MINING_COMMERCIAL_STATUS_OPTIONS,
@@ -25,6 +27,10 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("es-CL", {
     dateStyle: "medium",
   }).format(new Date(value));
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("es-CL").format(value);
 }
 
 function formatMoney(value: string | null, currency: string) {
@@ -105,6 +111,9 @@ export default async function BackofficeMiningOperationsPage({
     currency: readSearchValue(sp.currency),
     country: readSearchValue(sp.country),
     actionFilter: readSearchValue(sp.actionFilter),
+    q: readSearchValue(sp.q),
+    page: readSearchValue(sp.page),
+    pageSize: readSearchValue(sp.pageSize),
   });
 
   const metricCards = [
@@ -119,6 +128,24 @@ export default async function BackofficeMiningOperationsPage({
     { label: "Comisiones pagadas/recibidas", value: data.metrics.commissionsPaidOrReceived },
   ];
 
+  const paginationParams = {
+    productType: data.filters.productType,
+    commercialStatus: data.filters.commercialStatus,
+    operationalStatus: data.filters.operationalStatus,
+    commissionStatus: data.filters.commissionStatus,
+    currency: data.filters.currency,
+    country: data.filters.country,
+    actionFilter: data.filters.actionFilter,
+    q: data.filters.q,
+    pageSize: data.filters.pageSize,
+  };
+
+  const resultsSummary = data.pagination.totalFiltered
+    ? `Mostrando ${formatCount(data.pagination.start)}-${formatCount(data.pagination.end)} de ${formatCount(
+        data.pagination.totalFiltered
+      )} operaciones filtradas.`
+    : "No hay operaciones para la combinación actual.";
+
   return (
     <div className="mx-auto max-w-[1760px] px-5 py-5 lg:px-6">
       <BackofficePageHeader
@@ -129,7 +156,8 @@ export default async function BackofficeMiningOperationsPage({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-white/55">
-          {data.rows.length} operaciones visibles con los filtros actuales.
+          {resultsSummary} Base total {formatCount(data.pagination.totalGlobal)}. Página{" "}
+          {formatCount(data.pagination.page)} de {formatCount(data.pagination.totalPages)}.
         </div>
         <Link href="/backoffice/mining" className="k21-btn-secondary">
           Ir a Prospectos Mining
@@ -161,13 +189,39 @@ export default async function BackofficeMiningOperationsPage({
 
       <section className="mt-4 k21-card border-white/10 bg-white/[0.02] p-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-white">Filtros</div>
+          <div className="text-sm font-semibold text-white">Búsqueda y filtros</div>
           <Link href="/backoffice/mining/operations" className="k21-btn-secondary px-3 py-2 text-xs">
             Limpiar
           </Link>
         </div>
 
-        <form className="mt-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-[repeat(7,minmax(0,1fr))_auto_auto]">
+        <form className="mt-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
+          <div className="md:col-span-2 xl:col-span-2 2xl:col-span-3">
+            <label className="text-sm font-medium text-white/80">Buscador</label>
+            <input
+              type="text"
+              name="q"
+              defaultValue={data.filters.q}
+              placeholder="Buscar por cliente, producto, contrato, estado, comisión, notas…"
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20 focus:ring-2 focus:ring-white/15"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-white/80">Filas</label>
+            <select
+              name="pageSize"
+              defaultValue={String(data.filters.pageSize)}
+              className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-white/20 focus:ring-2 focus:ring-white/15"
+            >
+              {BACKOFFICE_PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option} className="bg-neutral-950">
+                  {option} por página
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <label className="text-sm font-medium text-white/80">Producto</label>
             <select
@@ -291,8 +345,8 @@ export default async function BackofficeMiningOperationsPage({
             </select>
           </div>
 
-          <div className="2xl:col-span-2 flex items-end 2xl:justify-end">
-            <button type="submit" className="k21-btn-primary w-full px-3 py-2 text-xs 2xl:w-auto 2xl:min-w-28">
+          <div className="flex items-end">
+            <button type="submit" className="k21-btn-primary w-full px-3 py-2 text-xs">
               Aplicar
             </button>
           </div>
@@ -300,161 +354,175 @@ export default async function BackofficeMiningOperationsPage({
       </section>
 
       <section className="mt-4 k21-card overflow-hidden border-white/10 bg-white/[0.02]">
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div>
             <div className="text-base font-semibold text-white">Operaciones</div>
             <p className="mt-1 text-sm text-white/55">
               Capa interna para contratos, pagos, activación y comisión.
             </p>
           </div>
+          <div className="text-right text-xs text-white/45">
+            Página {formatCount(data.pagination.page)} de {formatCount(data.pagination.totalPages)}
+          </div>
         </div>
 
         {data.rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1540px] text-left text-sm">
-              <thead className="bg-neutral-950/95 text-white/45 backdrop-blur">
-                <tr>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Cliente</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Origen</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Producto</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Monto</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Estado comercial</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Estado operativo</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Comisión sugerida / final</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Próxima acción</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((row) => {
-                  const effectiveActionAt = row.nextActionAt ?? row.suggestedAction.at;
-                  const isManual = Boolean(row.nextActionManual);
-                  const isDueNow = row.nextActionAt
-                    ? row.isNextActionDueNow
-                    : row.suggestedAction.isDueNow;
+          <>
+            <div className="max-h-[72vh] overflow-auto">
+              <table className="min-w-[1540px] text-left text-sm">
+                <thead className="sticky top-0 z-10 bg-neutral-950/95 text-white/45 backdrop-blur">
+                  <tr>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Cliente</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Origen</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Producto</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Monto</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Estado comercial</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Estado operativo</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      Comisión sugerida / final
+                    </th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Próxima acción</th>
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.rows.map((row) => {
+                    const effectiveActionAt = row.nextActionAt ?? row.suggestedAction.at;
+                    const isManual = Boolean(row.nextActionManual);
+                    const isDueNow = row.nextActionAt
+                      ? row.isNextActionDueNow
+                      : row.suggestedAction.isDueNow;
 
-                  return (
-                    <tr key={row.id} className="border-t border-white/10 align-top">
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[240px]">
-                          <div className="font-semibold text-white">{row.clientName}</div>
-                          <div className="mt-1 text-sm text-white/60">
-                            {row.clientCompanyName || "Sin empresa"}
+                    return (
+                      <tr key={row.id} className="border-t border-white/10 align-top hover:bg-white/[0.02]">
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[240px]">
+                            <div className="font-semibold text-white">{row.clientName}</div>
+                            <div className="mt-1 text-sm text-white/60">
+                              {row.clientCompanyName || "Sin empresa"}
+                            </div>
+                            <div className="mt-1.5 text-xs text-white/45">País: {row.country}</div>
                           </div>
-                          <div className="mt-1.5 text-xs text-white/45">País: {row.country}</div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[250px]">
-                          {row.prospect ? (
-                            <>
-                              <div className="font-medium text-white">Desde prospecto</div>
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[250px]">
+                            {row.prospect ? (
+                              <>
+                                <div className="font-medium text-white">Desde prospecto</div>
+                                <Link
+                                  href={`/backoffice/mining/${row.prospect.id}`}
+                                  className="mt-1.5 inline-flex text-sm text-amber-100 underline underline-offset-4"
+                                >
+                                  Ver prospecto original
+                                </Link>
+                              </>
+                            ) : (
+                              <>
+                                <div className="font-medium text-white/70">Sin prospecto</div>
+                                <div className="mt-1.5 text-xs text-white/45">
+                                  Operación creada antes de centralizar el flujo.
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[220px]">
+                            <span className={compactTagClass("k21-pill-none")}>
+                              {row.productTypeLabel}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-white/70">
+                          {formatMoney(row.grossSaleAmount, row.grossSaleCurrency)}
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[200px]">
+                            <span className={compactTagClass(commercialTone(row.commercialStatus))}>
+                              {row.commercialStatusLabel}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[220px]">
+                            <span className={compactTagClass(operationalTone(row.operationalStatus))}>
+                              {row.operationalStatusLabel}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-white/75">
+                          <div className="min-w-[320px]">
+                            <div className="leading-relaxed">{row.commission.summary}</div>
+                            <div className="mt-2 text-xs text-white/45">
+                              Nivel Kapa21: {row.commission.partnerLevelLabel} · Venta #
+                              {row.commission.saleSequence}
+                              {row.commission.isEstimated ? " estimada" : ""}
+                            </div>
+                            <div className="mt-2">
+                              <span className={compactTagClass(commissionTone(row.commissionStatus))}>
+                                {row.commissionStatusLabel}
+                              </span>
+                            </div>
+                            {row.commission.dueAt ? (
+                              <div className="mt-2 text-xs text-white/45">
+                                Vence {formatDate(row.commission.dueAt)}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="min-w-[320px]">
+                            <div className="font-medium leading-relaxed text-white">
+                              {row.effectiveNextAction}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className={actionTone(isDueNow, isManual)}>
+                                {isManual ? "Manual" : isDueNow ? "Vence hoy" : "Sugerida"}
+                              </span>
+                              <span className="text-white/55">{formatDate(effectiveActionAt)}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
+                          <div className="flex min-w-[190px] flex-wrap gap-2">
+                            <Link
+                              href={`/backoffice/mining/operations/${row.id}`}
+                              className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
+                            >
+                              Ver operación
+                            </Link>
+                            {row.prospect ? (
                               <Link
                                 href={`/backoffice/mining/${row.prospect.id}`}
-                                className="mt-1.5 inline-flex text-sm text-amber-100 underline underline-offset-4"
+                                className="inline-flex items-center text-xs text-white/55 underline underline-offset-4"
                               >
-                                Ver prospecto original
+                                Ver prospecto
                               </Link>
-                            </>
-                          ) : (
-                            <>
-                              <div className="font-medium text-white/70">Sin prospecto</div>
-                              <div className="mt-1.5 text-xs text-white/45">
-                                Operación creada antes de centralizar el flujo.
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[220px]">
-                          <span className={compactTagClass("k21-pill-none")}>
-                            {row.productTypeLabel}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-white/70">
-                        {formatMoney(row.grossSaleAmount, row.grossSaleCurrency)}
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[200px]">
-                          <span className={compactTagClass(commercialTone(row.commercialStatus))}>
-                            {row.commercialStatusLabel}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[220px]">
-                          <span className={compactTagClass(operationalTone(row.operationalStatus))}>
-                            {row.operationalStatusLabel}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-white/75">
-                        <div className="min-w-[320px]">
-                          <div className="leading-relaxed">{row.commission.summary}</div>
-                          <div className="mt-2 text-xs text-white/45">
-                            Nivel Kapa21: {row.commission.partnerLevelLabel} · Venta #
-                            {row.commission.saleSequence}
-                            {row.commission.isEstimated ? " estimada" : ""}
+                            ) : null}
                           </div>
-                          <div className="mt-2">
-                            <span className={compactTagClass(commissionTone(row.commissionStatus))}>
-                              {row.commissionStatusLabel}
-                            </span>
-                          </div>
-                          {row.commission.dueAt ? (
-                            <div className="mt-2 text-xs text-white/45">
-                              Vence {formatDate(row.commission.dueAt)}
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                      <td className="px-4 py-3.5">
-                        <div className="min-w-[320px]">
-                          <div className="font-medium leading-relaxed text-white">
-                            {row.effectiveNextAction}
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className={actionTone(isDueNow, isManual)}>
-                              {isManual ? "Manual" : isDueNow ? "Vence hoy" : "Sugerida"}
-                            </span>
-                            <span className="text-white/55">{formatDate(effectiveActionAt)}</span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5">
-                        <div className="flex min-w-[190px] flex-wrap gap-2">
-                          <Link
-                            href={`/backoffice/mining/operations/${row.id}`}
-                            className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
-                          >
-                            Ver operación
-                          </Link>
-                          {row.prospect ? (
-                            <Link
-                              href={`/backoffice/mining/${row.prospect.id}`}
-                              className="inline-flex items-center text-xs text-white/55 underline underline-offset-4"
-                            >
-                              Ver prospecto
-                            </Link>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            <BackofficePagination
+              basePath="/backoffice/mining/operations"
+              countLabel="operaciones"
+              params={paginationParams}
+              pagination={data.pagination}
+            />
+          </>
         ) : (
           <div className="px-4 py-5">
             <div className="k21-empty mt-0">
