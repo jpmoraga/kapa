@@ -113,9 +113,14 @@ export default async function BackofficeConsultingPage({
           {resultsSummary} Base total {formatCount(data.pagination.totalGlobal)}. Página{" "}
           {formatCount(data.pagination.page)} de {formatCount(data.pagination.totalPages)}.
         </div>
-        <Link href="/backoffice/consulting/new" className="k21-btn-primary">
-          Nuevo prospecto
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/backoffice/consulting/import" className="k21-btn-secondary">
+            Importar CSV
+          </Link>
+          <Link href="/backoffice/consulting/new" className="k21-btn-primary">
+            Nuevo prospecto
+          </Link>
+        </div>
       </div>
 
       <section className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
