@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BackofficePageHeader from "../_components/BackofficePageHeader";
 import BackofficePagination from "../_components/BackofficePagination";
+import DeleteConsultingProspectButton from "./_components/DeleteConsultingProspectButton";
 import { BACKOFFICE_PAGE_SIZE_OPTIONS } from "@/lib/backofficeList";
 import {
   CONSULTING_ACTION_FILTER_OPTIONS,
@@ -107,6 +108,12 @@ export default async function BackofficeConsultingPage({
         title="Pipeline de Consulting"
         description="Vista diaria de prospectos, estados comerciales y próximas acciones del equipo."
       />
+
+      {readSearchValue(sp.deleted) ? (
+        <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          Prospecto eliminado correctamente.
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="text-sm text-white/55">
@@ -381,12 +388,19 @@ export default async function BackofficeConsultingPage({
                         </td>
 
                         <td className="px-4 py-3.5">
-                          <Link
-                            href={`/backoffice/consulting/${row.id}`}
-                            className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
-                          >
-                            Editar
-                          </Link>
+                          <div className="flex min-w-[180px] flex-wrap gap-2">
+                            <Link
+                              href={`/backoffice/consulting/${row.id}`}
+                              className="k21-btn-secondary inline-flex px-3 py-2 text-xs"
+                            >
+                              Editar
+                            </Link>
+                            <DeleteConsultingProspectButton
+                              prospectId={row.id}
+                              companyName={row.companyName}
+                              contactName={row.contactName}
+                            />
+                          </div>
                         </td>
                       </tr>
                     );

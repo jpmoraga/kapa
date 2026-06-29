@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import BackofficePageHeader from "../../_components/BackofficePageHeader";
+import DeleteConsultingProspectButton from "../_components/DeleteConsultingProspectButton";
 import ConsultingProspectForm from "../_components/ConsultingProspectForm";
 import {
   CONSULTING_BUSINESS_LINE_OPTIONS,
@@ -132,6 +133,24 @@ export default async function BackofficeConsultingProspectPage({
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 Próxima acción manual: {prospect.nextAction || "No definida"}
               </div>
+            </div>
+          </section>
+
+          <section className="k21-card border-red-500/25 bg-red-500/10 p-5">
+            <div className="text-base font-semibold text-red-100">Eliminar prospecto</div>
+            <p className="mt-2 text-sm text-red-100/80">
+              Esta acción elimina la ficha de Consulting para {prospect.companyName} /{" "}
+              {prospect.contactName}. No se ejecuta sin confirmación explícita.
+            </p>
+
+            <div className="mt-4">
+              <DeleteConsultingProspectButton
+                prospectId={prospect.id}
+                companyName={prospect.companyName}
+                contactName={prospect.contactName}
+                redirectHref="/backoffice/consulting?deleted=1"
+                variant="danger"
+              />
             </div>
           </section>
         </aside>

@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import {
+  deleteConsultingProspect,
   getConsultingProspectById,
   updateConsultingProspect,
 } from "@/lib/backofficeConsulting";
@@ -68,6 +69,23 @@ export async function PATCH(
 
   try {
     const prospect = await updateConsultingProspect(id, body, auth.user.id);
+    return NextResponse.json({ ok: true, id: prospect.id });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+}
+
+export async function DELETE(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireBackofficeSectionAccess("consulting");
+  if (!auth.ok) return auth.response;
+
+  const { id } = await context.params;
+
+  try {
+    const prospect = await deleteConsultingProspect(id);
     return NextResponse.json({ ok: true, id: prospect.id });
   } catch (error) {
     return toErrorResponse(error);

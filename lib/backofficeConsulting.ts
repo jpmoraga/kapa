@@ -1064,3 +1064,25 @@ export async function updateConsultingProspect(
 
   return updated;
 }
+
+export async function deleteConsultingProspect(prospectId: string) {
+  const normalized = normalizeText(prospectId);
+  if (!normalized) {
+    throw new Error("prospect_not_found");
+  }
+
+  try {
+    const deleted = await prisma.consultingProspect.delete({
+      where: { id: normalized },
+      select: { id: true },
+    });
+
+    return deleted;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      throw new Error("prospect_not_found");
+    }
+
+    throw error;
+  }
+}
