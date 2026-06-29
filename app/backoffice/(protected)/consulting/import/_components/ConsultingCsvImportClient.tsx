@@ -20,6 +20,7 @@ type PreviewRow = {
   existingProspectId: string | null;
   companyName: string | null;
   contactName: string | null;
+  contactRole: string | null;
   country: string | null;
   businessLineLabel: string | null;
   contactStatusLabel: string | null;
@@ -367,8 +368,13 @@ export default function ConsultingCsvImportClient() {
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
-                          <div className="min-w-[220px] font-medium text-white">
-                            {row.companyName || "Sin empresa"}
+                          <div className="min-w-[220px]">
+                            <div className="font-medium text-white">
+                              {row.companyName || "Sin empresa"}
+                            </div>
+                            <div className="mt-1 text-white/55">
+                              {row.businessLineLabel || "Sin línea comercial"}
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3.5">
@@ -376,7 +382,9 @@ export default function ConsultingCsvImportClient() {
                             <div className="font-medium text-white">
                               {row.contactName || "Sin contacto"}
                             </div>
-                            <div className="mt-1 text-white/55">{row.country || "Sin país"}</div>
+                            <div className="mt-1 text-white/55">
+                              {row.contactRole || "Sin cargo"}
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-white/65">{row.country || "Sin país"}</td>

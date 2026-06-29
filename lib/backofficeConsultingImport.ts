@@ -39,6 +39,7 @@ export type ConsultingImportPreviewRow = {
   existingProspectId: string | null;
   companyName: string | null;
   contactName: string | null;
+  contactRole: string | null;
   country: string | null;
   businessLineLabel: string | null;
   contactStatusLabel: string | null;
@@ -194,6 +195,7 @@ type InternalImportRow = {
   existingProspectId: string | null;
   companyName: string | null;
   contactName: string | null;
+  contactRole: string | null;
   country: string | null;
   businessLineLabel: string | null;
   contactStatusLabel: string | null;
@@ -1337,6 +1339,7 @@ async function buildImportAnalysis(csvText: string): Promise<InternalImportAnaly
         existingProspectId: null,
         companyName: normalizeText(readRowValue(row, parsed.headers, columnMap, "companyName")),
         contactName: normalizeText(readRowValue(row, parsed.headers, columnMap, "contactName")),
+        contactRole: normalizeText(readRowValue(row, parsed.headers, columnMap, "contactRole")),
         country: normalizeText(readRowValue(row, parsed.headers, columnMap, "country")),
         businessLineLabel: null,
         contactStatusLabel: null,
@@ -1400,6 +1403,7 @@ async function buildImportAnalysis(csvText: string): Promise<InternalImportAnaly
       existingProspectId,
       companyName: preparedBase.prepared.companyName,
       contactName: preparedBase.prepared.contactName,
+      contactRole: preparedBase.prepared.contactRole,
       country: preparedBase.prepared.country,
       businessLineLabel: businessLineLabel(preparedBase.prepared.businessLine),
       contactStatusLabel: contactStatusLabel(preparedBase.prepared.contactStatus),
@@ -1444,6 +1448,7 @@ async function buildImportAnalysis(csvText: string): Promise<InternalImportAnaly
       existingProspectId: row.existingProspectId,
       companyName: row.companyName,
       contactName: row.contactName,
+      contactRole: row.contactRole,
       country: row.country,
       businessLineLabel: row.businessLineLabel,
       contactStatusLabel: row.contactStatusLabel,
