@@ -43,11 +43,25 @@ type PreviewPayload = {
   columns: PreviewColumn[];
 };
 
+type CommitRowError = {
+  rowNumber: number;
+  companyName: string | null;
+  contactName: string | null;
+  field: string | null;
+  reason: string;
+  message: string;
+  disposition: "skipped" | "failed";
+};
+
 type CommitPayload = {
   created: number;
   updated: number;
+  skipped: number;
+  failed: number;
+  rowErrors: CommitRowError[];
   omitted: number;
   errors: Array<{ rowNumber: number; message: string }>;
+  error?: string;
 };
 
 function statusTone(status: PreviewRow["status"]) {
@@ -76,6 +90,57 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("es-CL").format(value);
 }
 
+function isCommitPayload(value: unknown): value is CommitPayload {
+  if (!value || typeof value !== "object") return false;
+
+  return (
+    "created" in value &&
+    "updated" in value &&
+    "skipped" in value &&
+    "failed" in value &&
+    "rowErrors" in value
+  );
+}
+
+function commitResultTone(result: CommitPayload) {
+  if (result.failed > 0) {
+    return {
+      container: "border-red-500/30 bg-red-500/10",
+      eyebrow: "text-red-100/70",
+      title: "text-red-50",
+      card: "border-red-500/20 bg-black/10",
+      table: "border-red-500/20 bg-black/10",
+      body: "text-white/80",
+    };
+  }
+
+  if (result.rowErrors.length > 0) {
+    return {
+      container: "border-amber-500/30 bg-amber-500/10",
+      eyebrow: "text-amber-100/70",
+      title: "text-amber-50",
+      card: "border-amber-500/20 bg-black/10",
+      table: "border-amber-500/20 bg-black/10",
+      body: "text-white/80",
+    };
+  }
+
+  return {
+    container: "border-emerald-500/30 bg-emerald-500/10",
+    eyebrow: "text-emerald-100/70",
+    title: "text-emerald-50",
+    card: "border-emerald-500/20 bg-black/10",
+    table: "border-emerald-500/20 bg-black/10",
+    body: "text-white/80",
+  };
+}
+
+function commitResultTitle(result: CommitPayload) {
+  if (result.failed > 0) return "Importación finalizada con errores";
+  if (result.rowErrors.length > 0) return "Importación finalizada con observaciones";
+  return "Importación finalizada";
+}
+
 export default function ConsultingCsvImportClient() {
   const router = useRouter();
   const [csvText, setCsvText] = useState("");
@@ -93,6 +158,11 @@ export default function ConsultingCsvImportClient() {
       ? preview.newRows + preview.updateRows
       : preview.newRows;
   }, [mode, preview]);
+
+  const commitIssuesPreview = useMemo(() => {
+    if (!result) return [];
+    return result.rowErrors.slice(0, 12);
+  }, [result]);
 
   async function onFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -135,6 +205,7 @@ export default function ConsultingCsvImportClient() {
   async function confirmImport() {
     setLoadingCommit(true);
     setError(null);
+    setResult(null);
 
     const response = await fetch("/api/backoffice/consulting/import/commit", {
       method: "POST",
@@ -142,18 +213,23 @@ export default function ConsultingCsvImportClient() {
       body: JSON.stringify({ csvText, mode }),
     });
 
-    const payload = (await response.json().catch(() => ({}))) as CommitPayload & {
-      error?: string;
-    };
+    const payload = await response.json().catch(() => ({}));
 
     setLoadingCommit(false);
 
+    if (isCommitPayload(payload)) {
+      setResult(payload);
+    }
+
     if (!response.ok) {
-      setError(payload.error ?? "No fue posible confirmar la importación.");
+      setError(
+        payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string"
+          ? payload.error
+          : "No fue posible confirmar la importación."
+      );
       return;
     }
 
-    setResult(payload);
     router.refresh();
   }
 
@@ -466,46 +542,97 @@ export default function ConsultingCsvImportClient() {
         </section>
 
         {result ? (
-          <section className="k21-card border-emerald-500/30 bg-emerald-500/10 p-5">
-            <div className="text-base font-semibold text-emerald-50">Resultado final</div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3 2xl:grid-cols-1">
-              <div className="rounded-2xl border border-emerald-500/20 bg-black/10 px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-100/70">
+          <section className={`k21-card p-5 ${commitResultTone(result).container}`}>
+            <div className={`text-[11px] uppercase tracking-[0.16em] ${commitResultTone(result).eyebrow}`}>
+              Commit CSV
+            </div>
+            <div className={`mt-2 text-base font-semibold ${commitResultTone(result).title}`}>
+              {commitResultTitle(result)}
+            </div>
+            <p className={`mt-2 text-sm ${commitResultTone(result).body}`}>
+              En `create_only`, las coincidencias existentes se cuentan como omitidas y quedan
+              listas para reintentar sin duplicar registros.
+            </p>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-1">
+              <div className={`rounded-2xl border px-4 py-3 ${commitResultTone(result).card}`}>
+                <div className={`text-[11px] uppercase tracking-[0.16em] ${commitResultTone(result).eyebrow}`}>
                   Creados
                 </div>
                 <div className="mt-1.5 text-2xl font-semibold text-white">
                   {formatCount(result.created)}
                 </div>
               </div>
-              <div className="rounded-2xl border border-emerald-500/20 bg-black/10 px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-100/70">
+              <div className={`rounded-2xl border px-4 py-3 ${commitResultTone(result).card}`}>
+                <div className={`text-[11px] uppercase tracking-[0.16em] ${commitResultTone(result).eyebrow}`}>
                   Actualizados
                 </div>
                 <div className="mt-1.5 text-2xl font-semibold text-white">
                   {formatCount(result.updated)}
                 </div>
               </div>
-              <div className="rounded-2xl border border-emerald-500/20 bg-black/10 px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-emerald-100/70">
+              <div className={`rounded-2xl border px-4 py-3 ${commitResultTone(result).card}`}>
+                <div className={`text-[11px] uppercase tracking-[0.16em] ${commitResultTone(result).eyebrow}`}>
                   Omitidos
                 </div>
                 <div className="mt-1.5 text-2xl font-semibold text-white">
-                  {formatCount(result.omitted)}
+                  {formatCount(result.skipped)}
+                </div>
+              </div>
+              <div className={`rounded-2xl border px-4 py-3 ${commitResultTone(result).card}`}>
+                <div className={`text-[11px] uppercase tracking-[0.16em] ${commitResultTone(result).eyebrow}`}>
+                  Fallidos
+                </div>
+                <div className="mt-1.5 text-2xl font-semibold text-white">
+                  {formatCount(result.failed)}
                 </div>
               </div>
             </div>
 
-            {result.errors.length ? (
+            {commitIssuesPreview.length ? (
               <div className="mt-4 space-y-2">
-                <div className="text-sm font-medium text-emerald-50">Errores devueltos</div>
-                {result.errors.map((item) => (
-                  <div
-                    key={`${item.rowNumber}:${item.message}`}
-                    className="rounded-xl border border-white/10 bg-black/10 px-4 py-3 text-sm text-white/80"
-                  >
-                    Fila #{item.rowNumber}: {item.message}
+                <div className={`text-sm font-medium ${commitResultTone(result).title}`}>
+                  Primeras filas con observaciones
+                </div>
+                <div className={`overflow-hidden rounded-2xl border ${commitResultTone(result).table}`}>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[720px] text-left text-sm">
+                      <thead className="border-b border-white/10 bg-black/10 text-white/55">
+                        <tr>
+                          <th className="whitespace-nowrap px-4 py-3 font-medium">Fila</th>
+                          <th className="whitespace-nowrap px-4 py-3 font-medium">Tipo</th>
+                          <th className="whitespace-nowrap px-4 py-3 font-medium">Empresa</th>
+                          <th className="whitespace-nowrap px-4 py-3 font-medium">Contacto</th>
+                          <th className="whitespace-nowrap px-4 py-3 font-medium">Campo</th>
+                          <th className="whitespace-nowrap px-4 py-3 font-medium">Detalle</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {commitIssuesPreview.map((item) => (
+                          <tr
+                            key={`${item.rowNumber}:${item.reason}:${item.disposition}`}
+                            className="border-t border-white/10 align-top text-white/80"
+                          >
+                            <td className="whitespace-nowrap px-4 py-3">#{item.rowNumber}</td>
+                            <td className="whitespace-nowrap px-4 py-3">
+                              {item.disposition === "failed" ? "Fallida" : "Omitida"}
+                            </td>
+                            <td className="px-4 py-3">{item.companyName || "Sin empresa"}</td>
+                            <td className="px-4 py-3">{item.contactName || "Sin contacto"}</td>
+                            <td className="px-4 py-3">{item.field || "General"}</td>
+                            <td className="px-4 py-3">{item.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
+                </div>
+                {result.rowErrors.length > commitIssuesPreview.length ? (
+                  <div className={`text-xs ${commitResultTone(result).body}`}>
+                    Se muestran {formatCount(commitIssuesPreview.length)} de{" "}
+                    {formatCount(result.rowErrors.length)} filas con observaciones.
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </section>

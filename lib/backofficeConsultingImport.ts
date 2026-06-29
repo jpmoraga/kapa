@@ -64,14 +64,22 @@ export type ConsultingImportPreview = {
 
 export type ConsultingImportCommitError = {
   rowNumber: number;
+  companyName: string | null;
+  contactName: string | null;
+  field: string | null;
+  reason: string;
   message: string;
+  disposition: "skipped" | "failed";
 };
 
 export type ConsultingImportCommitResult = {
   created: number;
   updated: number;
+  skipped: number;
+  failed: number;
+  rowErrors: ConsultingImportCommitError[];
   omitted: number;
-  errors: ConsultingImportCommitError[];
+  errors: Array<{ rowNumber: number; message: string }>;
 };
 
 type ConsultingImportColumnKey =
@@ -211,6 +219,8 @@ type InternalImportAnalysis = {
   preview: ConsultingImportPreview;
   rows: InternalImportRow[];
 };
+
+const IMPORT_COMMIT_CONCURRENCY = 12;
 
 const COLUMN_DEFINITIONS: readonly ColumnDefinition[] = [
   {
@@ -1467,6 +1477,121 @@ export async function previewConsultingCsvImport(csvText: string) {
   return (await buildImportAnalysis(csvText)).preview;
 }
 
+function inferImportErrorField(message: string) {
+  const normalized = normalizeSearchText(message);
+
+  if (normalized.includes("linea comercial")) return "businessLine";
+  if (normalized.includes("empresa")) return "companyName";
+  if (normalized.includes("pais")) return "country";
+  if (normalized.includes("nombre")) return "contactName";
+  if (normalized.includes("cargo")) return "contactRole";
+  if (normalized.includes("linkedin")) return "linkedinUrl";
+  if (normalized.includes("email")) return "email";
+  if (normalized.includes("proxima accion")) return "nextAction";
+  if (normalized.includes("nota")) return "notes";
+  if (normalized.includes("fecha")) return "date";
+
+  return null;
+}
+
+function extractPrismaTargetField(target: unknown) {
+  if (Array.isArray(target)) {
+    const [first] = target;
+    return typeof first === "string" ? first : null;
+  }
+
+  return typeof target === "string" ? target : null;
+}
+
+function resolveCommitRowIssue(
+  row: Pick<InternalImportRow, "rowNumber" | "companyName" | "contactName">,
+  disposition: "skipped" | "failed",
+  reason: string,
+  field: string | null = null
+): ConsultingImportCommitError {
+  return {
+    rowNumber: row.rowNumber,
+    companyName: row.companyName,
+    contactName: row.contactName,
+    field,
+    reason,
+    message: reason,
+    disposition,
+  };
+}
+
+function resolveUnexpectedCommitError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const targetField = extractPrismaTargetField(error.meta?.target);
+
+    if (error.code === "P2002") {
+      return {
+        reason: "La fila viola una restricción única de la base de datos.",
+        field: targetField,
+      };
+    }
+
+    if (error.code === "P2003") {
+      return {
+        reason: "La fila referencia un registro relacionado que ya no existe.",
+        field: targetField,
+      };
+    }
+
+    if (error.code === "P2025") {
+      return {
+        reason: "El prospecto relacionado ya no está disponible.",
+        field: targetField,
+      };
+    }
+
+    return {
+      reason: `Error Prisma ${error.code} al procesar la fila.`,
+      field: targetField,
+    };
+  }
+
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    return {
+      reason: "La fila contiene datos incompatibles con el modelo Prisma.",
+      field: null,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      reason: error.message,
+      field: inferImportErrorField(error.message),
+    };
+  }
+
+  return {
+    reason: "No fue posible procesar la fila.",
+    field: null,
+  };
+}
+
+async function runWithConcurrency<T>(
+  items: readonly T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>
+) {
+  if (!items.length) return;
+
+  let cursor = 0;
+  const poolSize = Math.min(concurrency, items.length);
+
+  await Promise.all(
+    Array.from({ length: poolSize }, async () => {
+      while (cursor < items.length) {
+        const item = items[cursor];
+        cursor += 1;
+        await worker(item);
+      }
+    })
+  );
+}
+
 export async function commitConsultingCsvImport(
   csvText: string,
   modeInput: string | null | undefined,
@@ -1477,22 +1602,35 @@ export async function commitConsultingCsvImport(
 
   let created = 0;
   let updated = 0;
-  let omitted = 0;
-  const errors: ConsultingImportCommitError[] = [];
+  let skipped = 0;
+  let failed = 0;
+  const rowErrors: ConsultingImportCommitError[] = [];
 
-  for (const row of analysis.rows) {
+  await runWithConcurrency(analysis.rows, IMPORT_COMMIT_CONCURRENCY, async (row) => {
     if (row.status === "error" || !row.prepared) {
-      omitted += 1;
-      errors.push({
-        rowNumber: row.rowNumber,
-        message: row.errors[0] ?? "Fila inválida.",
-      });
-      continue;
+      skipped += 1;
+      rowErrors.push(
+        resolveCommitRowIssue(
+          row,
+          "skipped",
+          row.errors[0] ?? "Fila inválida.",
+          inferImportErrorField(row.errors[0] ?? "")
+        )
+      );
+      return;
     }
 
     if (row.status === "possible_duplicate") {
-      omitted += 1;
-      continue;
+      skipped += 1;
+      rowErrors.push(
+        resolveCommitRowIssue(
+          row,
+          "skipped",
+          row.warnings[0] ?? "La fila quedó omitida por duplicado posible.",
+          "duplicateMatch"
+        )
+      );
+      return;
     }
 
     try {
@@ -1502,17 +1640,25 @@ export async function commitConsultingCsvImport(
           select: { id: true },
         });
         created += 1;
-        continue;
+        return;
       }
 
       if (mode !== "create_and_update") {
-        omitted += 1;
-        continue;
+        skipped += 1;
+        return;
       }
 
       if (!row.existingProspectId) {
-        omitted += 1;
-        continue;
+        skipped += 1;
+        rowErrors.push(
+          resolveCommitRowIssue(
+            row,
+            "skipped",
+            "La fila quedó marcada para actualizar, pero no tiene un prospecto relacionado.",
+            null
+          )
+        );
+        return;
       }
 
       const current = await prisma.consultingProspect.findUnique({
@@ -1546,12 +1692,16 @@ export async function commitConsultingCsvImport(
       });
 
       if (!current) {
-        omitted += 1;
-        errors.push({
-          rowNumber: row.rowNumber,
-          message: "El prospecto existente ya no está disponible.",
-        });
-        continue;
+        skipped += 1;
+        rowErrors.push(
+          resolveCommitRowIssue(
+            row,
+            "skipped",
+            "El prospecto existente ya no está disponible.",
+            null
+          )
+        );
+        return;
       }
 
       await prisma.consultingProspect.update({
@@ -1561,18 +1711,25 @@ export async function commitConsultingCsvImport(
       });
       updated += 1;
     } catch (error) {
-      omitted += 1;
-      errors.push({
-        rowNumber: row.rowNumber,
-        message: error instanceof Error ? error.message : "No fue posible procesar la fila.",
-      });
+      failed += 1;
+      const issue = resolveUnexpectedCommitError(error);
+      rowErrors.push(resolveCommitRowIssue(row, "failed", issue.reason, issue.field));
     }
-  }
+  });
+
+  rowErrors.sort((left, right) => left.rowNumber - right.rowNumber);
+  const errors = rowErrors.map((item) => ({
+    rowNumber: item.rowNumber,
+    message: item.message,
+  }));
 
   return {
     created,
     updated,
-    omitted,
-    errors: errors.slice(0, 20),
+    skipped,
+    failed,
+    rowErrors,
+    omitted: skipped,
+    errors,
   };
 }
