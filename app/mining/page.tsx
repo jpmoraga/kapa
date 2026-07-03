@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AsicCatalog } from "@/components/mining/AsicCatalog";
+import { MiningAsicSimulator } from "@/components/mining/MiningAsicSimulator";
 import { Kapa21Role } from "@/components/mining/Kapa21Role";
 import { MiningClientProfile } from "@/components/mining/MiningClientProfile";
 import { MiningComparison } from "@/components/mining/MiningComparison";
@@ -134,6 +135,7 @@ export default function MiningPage() {
       <MiningModalities fractionalHref={fractionalHref} hostingHref={hostingHref} />
       <MiningFractionalSimulator ctaHref={fractionalHref} />
       <MiningComparison ctaHref={heroPrimaryHref} />
+      <MiningAsicSimulator />
       <AsicCatalog />
       <MiningProcess />
       <OperatingPartner />
