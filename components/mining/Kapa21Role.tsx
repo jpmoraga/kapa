@@ -10,7 +10,7 @@ const kapa21RoleBlocks = [
   },
   {
     title: "Comparar",
-    body: "Revisamos minería fraccionada, fracción de ASIC y ASIC propio con hosting internacional.",
+    body: "Revisamos planes de minería fraccionada y alternativas de ASIC propio con hosting internacional.",
   },
   {
     title: "Evaluar",
@@ -28,7 +28,7 @@ export function Kapa21Role() {
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="ACOMPAÑAMIENTO KAPA21"
-          title="Te ayudamos antes de elegir una modalidad"
+          title="Te ayudamos antes de elegir un camino"
           description="La minería combina tecnología, costos operativos y variables de red. Nuestro rol es ordenar esa información para que puedas evaluar con mayor claridad, sin promesas de rentabilidad."
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.02rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.08rem] [&_p]:max-w-3xl [&_p]:text-[0.98rem] [&_p]:leading-6 sm:[&_p]:text-base sm:[&_p]:leading-7"
         />

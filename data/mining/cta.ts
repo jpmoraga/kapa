@@ -1,19 +1,17 @@
-export type MiningModalityKey = "fractional" | "tokenized" | "asic-hosting";
+export type MiningModalityKey = "fractional" | "asic-hosting";
 
 export const GENERAL_MINING_WHATSAPP_TEXT =
   "Hola, quiero conocer las alternativas de minería Bitcoin disponibles a través de Kapa21.";
 
 export const MINING_MAIL_SUBJECT = "Minería Bitcoin | Kapa21";
-export const FRACTIONAL_LAUNCH_OFFER_WHATSAPP_TEXT =
-  "Hola, quiero acceder a la oferta de minería fraccionada de 15 meses por USD 15 para 1 TH/s.";
+export const FRACTIONAL_PLANS_WHATSAPP_TEXT =
+  "Hola, quiero consultar por los planes de minería fraccionada de 15 y 27 meses a través de Kapa21.";
 
 const modalityWhatsAppText: Record<MiningModalityKey, string> = {
   fractional:
-    "Hola, quiero consultar sobre minería fraccionada y entender cómo funciona esta alternativa a través de Kapa21.",
-  tokenized:
-    "Hola, quiero consultar sobre fracción de ASIC y conocer sus condiciones operativas a través de Kapa21.",
+    "Hola, quiero consultar por los planes de minería fraccionada y entender cómo funcionan a través de Kapa21.",
   "asic-hosting":
-    "Hola, quiero cotizar alternativas de ASIC propio con hosting y entender qué opción puede calzar conmigo.",
+    "Hola, quiero cotizar un ASIC propio con hosting internacional y entender qué opción puede calzar conmigo.",
 };
 
 export function getModalityWhatsAppText(key: MiningModalityKey) {

@@ -17,7 +17,7 @@ import { MarketingFooter } from "@/components/site/MarketingFooter";
 import { MarketingHeader } from "@/components/site/MarketingHeader";
 import { Section } from "@/components/site/Section";
 import {
-  FRACTIONAL_LAUNCH_OFFER_WHATSAPP_TEXT,
+  FRACTIONAL_PLANS_WHATSAPP_TEXT,
   GENERAL_MINING_WHATSAPP_TEXT,
   MINING_MAIL_SUBJECT,
   getModalityWhatsAppText,
@@ -33,12 +33,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.kapa21.cl";
 const PAGE_PATH = "/mining";
 const PAGE_TITLE = "Minería Bitcoin | Kapa21";
 const PAGE_DESCRIPTION =
-  "Kapa21 te ayuda a evaluar minería fraccionada, fracción de ASIC y ASIC propio con hosting internacional en Emiratos Árabes Unidos.";
+  "Kapa21 te ayuda a evaluar planes de minería fraccionada y ASIC propio con hosting internacional en Emiratos Árabes Unidos.";
 
 const heroPrimaryHref = buildWhatsAppUrl(GENERAL_MINING_WHATSAPP_TEXT);
 const heroSecondaryHref = "#modalidades";
-const fractionalHref = buildWhatsAppUrl(FRACTIONAL_LAUNCH_OFFER_WHATSAPP_TEXT);
-const tokenizedHref = buildWhatsAppUrl(getModalityWhatsAppText("tokenized"));
+const fractionalHref = buildWhatsAppUrl(FRACTIONAL_PLANS_WHATSAPP_TEXT);
 const hostingHref = buildWhatsAppUrl(getModalityWhatsAppText("asic-hosting"));
 const mailtoHref = buildMailtoUrl(MINING_MAIL_SUBJECT);
 const pageUrl = `${SITE_URL}${PAGE_PATH}`;
@@ -131,11 +130,7 @@ export default function MiningPage() {
 
       <MiningThesis />
       <Kapa21Role />
-      <MiningModalities
-        fractionalHref={fractionalHref}
-        tokenizedHref={tokenizedHref}
-        hostingHref={hostingHref}
-      />
+      <MiningModalities fractionalHref={fractionalHref} hostingHref={hostingHref} />
       <MiningComparison ctaHref={heroPrimaryHref} />
       <AsicCatalog />
       <MiningProcess />

@@ -38,7 +38,7 @@ export function MiningThesis() {
             </p>
             <p>
               Kapa21 te ayuda a comprender cómo funciona, qué variables importan y qué
-              modalidad puede calzar mejor con tus objetivos.
+              camino puede calzar mejor con tus objetivos.
             </p>
           </div>
 

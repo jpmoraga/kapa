@@ -7,7 +7,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Qué estoy contratando?",
     answer:
-      "Depende de la modalidad: minería fraccionada por 15 meses, una fracción de ASIC por vida útil del equipo o un ASIC propio con hosting.",
+      "Depende del camino elegido: un plan de minería fraccionada de 15 o 27 meses, o un ASIC propio con hosting.",
   },
   {
     question: "¿Quién firma el contrato?",
@@ -31,7 +31,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Cómo recibo el Bitcoin?",
     answer:
-      "Según la modalidad contratada, mediante distribución periódica o directamente desde el pool a la wallet indicada en el caso de ASIC propio.",
+      "En planes fraccionados, mediante distribución mensual en Bitcoin. En ASIC propio, mediante producción minera directa a la wallet indicada.",
   },
   {
     question: "¿Existe una rentabilidad garantizada?",
@@ -50,7 +50,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Qué equipo me conviene?",
     answer:
-      "Depende de presupuesto, eficiencia, escala, horizonte y modalidad operativa.",
+      "Depende de presupuesto, horizonte, ticket y de si prefieres un plan fraccionado o ASIC propio.",
   },
   {
     question: "¿Necesito una wallet?",

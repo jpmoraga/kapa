@@ -8,51 +8,63 @@ import { Card } from "@/components/ui/Card";
 const comparisonRows = [
   {
     label: "Qué contratas",
-    fractional: "Poder computacional por 15 meses",
-    tokenized: "Fracción estandarizada de hashrate",
-    hosting: "ASIC propio + hosting",
+    plan15: "Poder computacional por TH/s",
+    plan27: "Poder computacional por TH/s",
+    asic: "Equipo completo + hosting",
   },
   {
     label: "Plazo",
-    fractional: "15 meses",
-    tokenized: "Vida útil del equipo",
-    hosting: "Vida útil del equipo / equipo propio",
+    plan15: "15 meses promocionales",
+    plan27: "27 meses promocionales",
+    asic: "Vida útil del equipo / equipo propio",
+  },
+  {
+    label: "Activación",
+    plan15: "USD 15 por TH/s",
+    plan27: "USD 25 por TH/s",
+    asic: "Según equipo",
+  },
+  {
+    label: "Hosting",
+    plan15: "Mensual según TH/s contratado",
+    plan27: "Mensual según TH/s contratado",
+    asic: "Hosting internacional",
+  },
+  {
+    label: "Pago de hosting",
+    plan15: "USDT, USDC, Bitcoin o transferencia bancaria (Chile)",
+    plan27: "USDT, USDC, Bitcoin o transferencia bancaria (Chile)",
+    asic: "Según contrato",
   },
   {
     label: "Propiedad del hardware",
-    fractional: "Operador",
-    tokenized: "Operador",
-    hosting: "Cliente",
+    plan15: "Operador",
+    plan27: "Operador",
+    asic: "Cliente",
   },
   {
     label: "Nivel de entrada",
-    fractional: "Desde tickets bajos",
-    tokenized: "Intermedio",
-    hosting: "Mayor",
+    plan15: "Desde tickets bajos",
+    plan27: "Mayor plazo",
+    asic: "Mayor",
   },
   {
-    label: "Entrada desde",
-    fractional: "USD 15",
-    tokenized: "USD 60",
-    hosting: "Según equipo",
-  },
-  {
-    label: "Nivel de control",
-    fractional: "Inicial",
-    tokenized: "Intermedio",
-    hosting: "Alto",
+    label: "Producción / distribución",
+    plan15: "Distribución mensual en Bitcoin",
+    plan27: "Distribución mensual en Bitcoin",
+    asic: "Producción minera directa a tu wallet",
   },
   {
     label: "Operación técnica",
-    fractional: "Andes SolarHash",
-    tokenized: "Andes SolarHash",
-    hosting: "Andes SolarHash",
+    plan15: "Andes SolarHash",
+    plan27: "Andes SolarHash",
+    asic: "Andes SolarHash",
   },
   {
     label: "Acompañamiento comercial",
-    fractional: "Kapa21",
-    tokenized: "Kapa21",
-    hosting: "Kapa21",
+    plan15: "Kapa21",
+    plan27: "Kapa21",
+    asic: "Kapa21",
   },
 ] as const;
 
@@ -66,23 +78,23 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="ELIGE TU NIVEL DE PARTICIPACIÓN"
-          title="Tres alternativas, con una escalera desde tickets bajos hasta ASIC propio"
+          title="Compara los planes de minería y ASIC propio"
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.02rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.08rem]"
         />
 
         <div className="grid gap-3 lg:hidden">
           {[
             {
-              title: "Minería fraccionada",
-              entries: comparisonRows.map((row) => ({ label: row.label, value: row.fractional })),
+              title: "Plan 15 meses",
+              entries: comparisonRows.map((row) => ({ label: row.label, value: row.plan15 })),
             },
             {
-              title: "Fracción de ASIC",
-              entries: comparisonRows.map((row) => ({ label: row.label, value: row.tokenized })),
+              title: "Plan 27 meses",
+              entries: comparisonRows.map((row) => ({ label: row.label, value: row.plan27 })),
             },
             {
               title: "ASIC propio",
-              entries: comparisonRows.map((row) => ({ label: row.label, value: row.hosting })),
+              entries: comparisonRows.map((row) => ({ label: row.label, value: row.asic })),
             },
           ].map((card) => (
             <Card
@@ -120,8 +132,8 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
             <thead>
               <tr className="border-b border-border">
                 <th className="px-6 py-4 text-sm font-semibold text-foreground">Variable</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">Minería fraccionada</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">Fracción de ASIC</th>
+                <th className="px-6 py-4 text-sm font-semibold text-foreground">Plan 15 meses</th>
+                <th className="px-6 py-4 text-sm font-semibold text-foreground">Plan 27 meses</th>
                 <th className="px-6 py-4 text-sm font-semibold text-foreground">ASIC propio</th>
               </tr>
             </thead>
@@ -129,9 +141,9 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
               {comparisonRows.map((row) => (
                 <tr key={row.label} className="border-b border-border last:border-b-0">
                   <th className="px-6 py-4 text-sm font-semibold text-foreground">{row.label}</th>
-                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.fractional}</td>
-                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.tokenized}</td>
-                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.hosting}</td>
+                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.plan15}</td>
+                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.plan27}</td>
+                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.asic}</td>
                 </tr>
               ))}
             </tbody>

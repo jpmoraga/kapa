@@ -6,11 +6,11 @@ import { Card } from "@/components/ui/Card";
 const processSteps = [
   {
     title: "Eliges alternativa",
-    body: "Partimos por minería fraccionada, fracción de ASIC o ASIC propio según ticket y objetivo.",
+    body: "Partimos por un plan fraccionado de 15 o 27 meses, o por ASIC propio según ticket y objetivo.",
   },
   {
     title: "Revisamos condiciones",
-    body: "Kapa21 ordena modalidad, costos, plazos y criterios antes de avanzar.",
+    body: "Kapa21 ordena plan, costos, plazos y criterios antes de avanzar.",
   },
   {
     title: "Formalizas contrato y pago",
@@ -26,7 +26,7 @@ const processSteps = [
   },
   {
     title: "Seguimiento coordinado",
-    body: "Kapa21 acompaña el proceso comercial y Andes SolarHash reporta la operación según modalidad.",
+    body: "Kapa21 acompaña el proceso comercial y Andes SolarHash reporta la operación según el plan o equipo contratado.",
   },
 ] as const;
 

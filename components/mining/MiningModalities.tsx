@@ -1,20 +1,43 @@
 import { Section } from "@/components/site/Section";
 import { Container } from "@/components/site/Container";
 import { SectionHeading } from "@/components/site/SectionHeading";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 import { MiningModalityCard } from "./MiningModalityCard";
 
 type MiningModalitiesProps = {
   fractionalHref: string;
   hostingHref: string;
-  tokenizedHref: string;
 };
 
-export function MiningModalities({
-  fractionalHref,
-  hostingHref,
-  tokenizedHref,
-}: MiningModalitiesProps) {
+const fractionalPlans = [
+  {
+    title: "Plan 15 meses",
+    price: "USD 15 por TH/s",
+    subtitle: "Contrato base 12 meses · promoción inicial 15 meses",
+    keyPoints: [
+      "Ticket flexible según cantidad de TH/s",
+      "Hosting mensual asociado al hashrate contratado",
+      "Distribuciones mensuales en Bitcoin",
+      "Operación delegada a Andes SolarHash",
+    ],
+  },
+  {
+    title: "Plan 27 meses",
+    price: "USD 25 por TH/s",
+    subtitle: "Contrato base 24 meses · promoción inicial 27 meses",
+    keyPoints: [
+      "Mayor plazo de exposición minera",
+      "Segundo año sin nueva activación",
+      "Hosting mensual asociado al hashrate contratado",
+      "Distribuciones mensuales en Bitcoin",
+    ],
+  },
+] as const;
+
+export function MiningModalities({ fractionalHref, hostingHref }: MiningModalitiesProps) {
   return (
     <Section
       tone="inverse"
@@ -24,56 +47,97 @@ export function MiningModalities({
     >
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
-          eyebrow="TRES ALTERNATIVAS"
-          title="Tres alternativas, desde tickets bajos hasta ASIC propio"
+          eyebrow="DOS CAMINOS"
+          title="Minería fraccionada o ASIC propio"
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.04rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.1rem]"
         />
 
-        <div className="grid gap-3.5 xl:grid-cols-3 xl:gap-5">
-          <MiningModalityCard
-            title="Minería fraccionada"
-            subtitle="Arriendo de poder computacional por 15 meses"
-            body="Para entrar con tickets bajos, sin comprar un equipo completo."
-            commercialBadge="Oferta de lanzamiento"
-            commercialValue="Desde USD 15"
-            commercialCaption="1 TH/s de capacidad minera"
-            commercialHighlight="15 meses de contrato por el precio de 12"
-            keyPoints={[
-              "Desde tickets bajos",
-              "Plazo fijo de 15 meses",
-              "Operación delegada a Andes SolarHash",
-              "Distribución según condiciones contractuales",
-            ]}
-            ctaLabel="Ver minería fraccionada"
-            ctaHref={fractionalHref}
-          />
+        <div className="grid gap-3.5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] xl:gap-5">
+          <Card
+            variant="highlight"
+            className="grid gap-4 rounded-[1.08rem] p-4 shadow-none sm:gap-5 sm:p-6 sm:shadow-[var(--shadow)]"
+          >
+            <div className="grid gap-2.5">
+              <Badge variant="accent" className="justify-start">
+                Minería fraccionada
+              </Badge>
+              <div className="grid gap-2">
+                <p className="text-[1.08rem] font-semibold leading-[1.15] tracking-[-0.02em] text-foreground sm:text-[1.18rem]">
+                  Dos planes para entrar desde tickets bajos
+                </p>
+                <p className="text-[0.95rem] leading-6 text-foreground-muted sm:text-base sm:leading-7">
+                  Elige entre un plan de 15 o 27 meses, con ticket flexible por TH/s y
+                  hosting mensual asociado.
+                </p>
+              </div>
+            </div>
 
-          <MiningModalityCard
-            title="Fracción de ASIC"
-            subtitle="Arriendo de poder computacional por la vida útil del equipo"
-            body="Accedes a una fracción estandarizada del hashrate de un ASIC, con distribuciones mensuales en Bitcoin."
-            commercialValue="Desde USD 60"
-            commercialCaption="2,34 TH/s de hashrate estandarizado"
-            commercialHighlight="Acceso durante la vida útil del equipo"
-            keyPoints={[
-              "Fracción estandarizada de hashrate",
-              "Distribuciones mensuales en Bitcoin",
-              "Contrato y distribución mensual",
-              "Operación técnica delegada",
-            ]}
-            ctaLabel="Consultar fracción de ASIC"
-            ctaHref={tokenizedHref}
-            highlight
-          />
+            <div className="grid gap-3 lg:grid-cols-2">
+              {fractionalPlans.map((plan) => (
+                <div
+                  key={plan.title}
+                  className="grid gap-3 rounded-[1rem] border border-accent/20 bg-background/70 p-3.5 sm:p-4"
+                >
+                  <div className="grid gap-1.5">
+                    <Badge
+                      variant="outline"
+                      className="w-fit justify-start border-accent/30 text-accent"
+                    >
+                      {plan.title}
+                    </Badge>
+                    <p className="text-[1.24rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[1.45rem]">
+                      {plan.price}
+                    </p>
+                    <p className="text-[0.92rem] leading-6 text-foreground-muted sm:text-[0.98rem] sm:leading-6">
+                      {plan.subtitle}
+                    </p>
+                  </div>
+
+                  <ul className="grid gap-2 text-[0.98rem] leading-6 text-foreground-muted sm:text-base sm:leading-7">
+                    {plan.keyPoints.map((item) => (
+                      <li key={item} className="grid grid-cols-[auto_1fr] gap-2.5">
+                        <span
+                          aria-hidden="true"
+                          className="mt-[0.55rem] size-1.5 rounded-full bg-accent"
+                        />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-2 rounded-[1rem] border border-accent/18 bg-background/70 px-3.5 py-3 sm:px-4 sm:py-3.5">
+              <p className="text-[0.95rem] leading-6 text-foreground sm:text-base sm:leading-7">
+                El monto final depende del hashrate contratado y del hosting asociado.
+              </p>
+              <p className="text-[0.92rem] leading-6 text-foreground-muted sm:text-[0.98rem] sm:leading-6">
+                Hosting pagadero en USDT, USDC, Bitcoin o transferencia bancaria (Chile).
+              </p>
+            </div>
+
+            <div className="mt-auto">
+              <Button
+                href={fractionalHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="primary"
+                className="min-h-11 w-full rounded-full px-4 text-sm lg:w-auto"
+              >
+                Consultar planes fraccionados
+              </Button>
+            </div>
+          </Card>
 
           <MiningModalityCard
             title="ASIC propio"
             subtitle="Compra de equipo completo + hosting internacional"
-            body="El equipo es tuyo y la producción minera va directo desde el pool a tu wallet."
+            body="El equipo es tuyo y la producción minera va directa a tu wallet."
             commercialCaption="Según equipo, stock y configuración"
             keyPoints={[
               "Propiedad del hardware",
-              "Hosting internacional",
+              "Hosting internacional en Emiratos Árabes Unidos",
               "Producción minera directa a tu wallet",
               "Operación técnica delegada",
             ]}
