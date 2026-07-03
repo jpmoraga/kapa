@@ -6,6 +6,7 @@ import { MiningClientProfile } from "@/components/mining/MiningClientProfile";
 import { MiningComparison } from "@/components/mining/MiningComparison";
 import { MiningFaq } from "@/components/mining/MiningFaq";
 import { MiningFinalCta } from "@/components/mining/MiningFinalCta";
+import { MiningFractionalSimulator } from "@/components/mining/MiningFractionalSimulator";
 import { MiningHero } from "@/components/mining/MiningHero";
 import { MiningModalities } from "@/components/mining/MiningModalities";
 import { MiningProcess } from "@/components/mining/MiningProcess";
@@ -131,6 +132,7 @@ export default function MiningPage() {
       <MiningThesis />
       <Kapa21Role />
       <MiningModalities fractionalHref={fractionalHref} hostingHref={hostingHref} />
+      <MiningFractionalSimulator ctaHref={fractionalHref} />
       <MiningComparison ctaHref={heroPrimaryHref} />
       <AsicCatalog />
       <MiningProcess />
