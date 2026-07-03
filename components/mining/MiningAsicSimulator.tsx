@@ -92,6 +92,11 @@ const simulatableAsics: SimulatableAsic[] = asicModels.flatMap((model) => {
   ];
 });
 
+const defaultAsicSlug =
+  simulatableAsics.find((model) => model.model === "Antminer S21 Pro")?.slug ??
+  simulatableAsics[0]?.slug ??
+  "";
+
 function formatUsd(value: number) {
   return `USD ${usdFormatter.format(value)}`;
 }
@@ -122,7 +127,7 @@ function calculateScenario(model: SimulatableAsic, quantity: number) {
 }
 
 export function MiningAsicSimulator() {
-  const [selectedSlug, setSelectedSlug] = useState(simulatableAsics[0]?.slug ?? "");
+  const [selectedSlug, setSelectedSlug] = useState(defaultAsicSlug);
   const [quantity, setQuantity] = useState(1);
 
   const selectedAsic =
@@ -151,7 +156,7 @@ export function MiningAsicSimulator() {
           variant="elevated"
           className="grid gap-5 rounded-[1.15rem] p-4 shadow-none sm:p-6 sm:shadow-[var(--shadow)] lg:gap-6 lg:p-7"
         >
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(320px,1.08fr)] lg:items-start">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)] lg:items-start">
             <div className="grid gap-4">
               <div className="grid gap-2 rounded-[1rem] border border-border bg-background/70 p-3.5 sm:p-4">
                 <label
@@ -351,73 +356,6 @@ export function MiningAsicSimulator() {
                 </div>
               </div>
 
-              <div className="grid gap-2.5 rounded-[1rem] border border-border bg-background/72 px-4 py-3.5">
-                {[
-                  {
-                    label: "Equipo seleccionado",
-                    value: `${selectedAsic.manufacturer} ${selectedAsic.model}`,
-                  },
-                  { label: "Cantidad", value: String(quantity) },
-                  { label: "Hashrate total", value: formatThs(scenario.hashrateTotal) },
-                  { label: "Consumo total", value: formatPower(scenario.consumptionTotalW) },
-                  {
-                    label: "Eficiencia",
-                    value:
-                      selectedAsic.efficiencyJTh !== null
-                        ? `${decimalFormatter.format(selectedAsic.efficiencyJTh)} J/TH`
-                        : "Según ficha técnica",
-                  },
-                  {
-                    label: "Refrigeración",
-                    value: selectedAsic.coolingLabel ?? "Según configuración",
-                  },
-                  {
-                    label: "Precio equipos",
-                    value: formatUsd(scenario.priceEquipmentTotal),
-                  },
-                  {
-                    label: "Garantía estimada",
-                    value: formatUsd(scenario.guaranteeTotal),
-                  },
-                  {
-                    label: "Costo inicial estimado",
-                    value: formatUsd(scenario.costInitialTotal),
-                  },
-                  {
-                    label: "Hosting mensual estimado",
-                    value: formatUsd(scenario.hostingMonthlyTotal),
-                  },
-                  {
-                    label: "Pago mensual estimado",
-                    value: formatUsd(scenario.monthlyPaymentTotal),
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.label}
-                    className="grid gap-1 border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0 min-[420px]:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] min-[420px]:items-start min-[420px]:gap-3"
-                  >
-                    <div className="text-[0.88rem] font-medium leading-5 text-foreground sm:text-sm">
-                      {item.label}
-                    </div>
-                    <div className="text-[0.95rem] leading-6 text-foreground-muted min-[420px]:text-right sm:text-base sm:leading-7">
-                      {item.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-2 rounded-[1rem] border border-border/80 bg-background/78 px-4 py-3.5">
-                <p className="text-[0.88rem] leading-6 text-foreground-muted sm:text-sm sm:leading-6">
-                  La garantía corresponde a dos meses estimados de hosting y es reembolsable al término del contrato según condiciones contractuales.
-                </p>
-                <p className="text-[0.88rem] leading-6 text-foreground-muted sm:text-sm sm:leading-6">
-                  El hosting se factura mes vencido según consumo efectivo del equipo.
-                </p>
-                <p className="text-[0.88rem] leading-6 text-foreground-muted sm:text-sm sm:leading-6">
-                  La producción minera va directa a tu wallet. La simulación estima costos de equipo, garantía y hosting. La producción minera depende del equipo, el pool, el uptime efectivo y las condiciones de red.
-                </p>
-              </div>
-
               <div className="pt-1">
                 <Button
                   href={ctaHref}
@@ -430,6 +368,84 @@ export function MiningAsicSimulator() {
                 </Button>
               </div>
             </Card>
+          </div>
+
+          <div className="grid gap-4 rounded-[1rem] border border-border bg-background/72 px-4 py-4 sm:px-5 sm:py-5">
+            <div className="grid gap-1">
+              <p className="text-[0.92rem] font-medium text-foreground sm:text-[0.98rem]">
+                Detalle operativo
+              </p>
+              <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-sm">
+                Resumen del equipo seleccionado, la cantidad elegida y los costos operativos estimados.
+              </p>
+            </div>
+
+            <div className="grid gap-2.5 rounded-[0.95rem] border border-border bg-background/78 px-3.5 py-3.5 sm:px-4 sm:py-4">
+              {[
+                {
+                  label: "Equipo seleccionado",
+                  value: `${selectedAsic.manufacturer} ${selectedAsic.model}`,
+                },
+                { label: "Cantidad", value: String(quantity) },
+                { label: "Hashrate total", value: formatThs(scenario.hashrateTotal) },
+                { label: "Consumo total", value: formatPower(scenario.consumptionTotalW) },
+                {
+                  label: "Eficiencia",
+                  value:
+                    selectedAsic.efficiencyJTh !== null
+                      ? `${decimalFormatter.format(selectedAsic.efficiencyJTh)} J/TH`
+                      : "Según ficha técnica",
+                },
+                {
+                  label: "Refrigeración",
+                  value: selectedAsic.coolingLabel ?? "Según configuración",
+                },
+                {
+                  label: "Precio equipos",
+                  value: formatUsd(scenario.priceEquipmentTotal),
+                },
+                {
+                  label: "Garantía estimada",
+                  value: formatUsd(scenario.guaranteeTotal),
+                },
+                {
+                  label: "Costo inicial estimado",
+                  value: formatUsd(scenario.costInitialTotal),
+                },
+                {
+                  label: "Hosting mensual estimado",
+                  value: formatUsd(scenario.hostingMonthlyTotal),
+                },
+                {
+                  label: "Pago mensual estimado",
+                  value: formatUsd(scenario.monthlyPaymentTotal),
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="grid gap-1 border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] sm:items-start sm:gap-4"
+                >
+                  <div className="text-[0.88rem] font-medium leading-5 text-foreground sm:text-sm">
+                    {item.label}
+                  </div>
+                  <div className="text-[0.95rem] leading-6 text-foreground-muted sm:text-right sm:text-base sm:leading-7">
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-2 rounded-[0.95rem] border border-border/80 bg-background/78 px-3.5 py-3.5 sm:px-4 sm:py-4">
+              <p className="text-[0.88rem] leading-6 text-foreground-muted sm:text-sm sm:leading-6">
+                La garantía corresponde a dos meses estimados de hosting y es reembolsable al término del contrato según condiciones contractuales.
+              </p>
+              <p className="text-[0.88rem] leading-6 text-foreground-muted sm:text-sm sm:leading-6">
+                El hosting se factura mes vencido según consumo efectivo del equipo.
+              </p>
+              <p className="text-[0.88rem] leading-6 text-foreground-muted sm:text-sm sm:leading-6">
+                La producción minera va directa a tu wallet. La simulación estima costos de equipo, garantía y hosting. La producción minera depende del equipo, el pool, el uptime efectivo y las condiciones de red.
+              </p>
+            </div>
           </div>
         </Card>
       </Container>
