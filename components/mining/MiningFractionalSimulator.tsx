@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Container } from "@/components/site/Container";
 import { Section } from "@/components/site/Section";
@@ -78,6 +78,24 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
   const [activationInput, setActivationInput] = useState("1000");
   const [selectedPlanKey, setSelectedPlanKey] = useState<FractionalPlanKey>("plan15");
 
+  const handleActivationInputChange = (nextValue: string) => {
+    const nextNormalizedInput = nextValue.replace(",", ".");
+    const nextParsedActivationAmount = Number.parseFloat(nextNormalizedInput);
+    const nextActivationAmount =
+      Number.isFinite(nextParsedActivationAmount) && nextParsedActivationAmount > 0
+        ? nextParsedActivationAmount
+        : 0;
+
+    if (
+      selectedPlanKey === "plan27" &&
+      nextActivationAmount < plans.plan27.activationUsdPerTh
+    ) {
+      setSelectedPlanKey("plan15");
+    }
+
+    setActivationInput(nextValue);
+  };
+
   const normalizedInput = activationInput.replace(",", ".");
   const parsedActivationAmount = Number.parseFloat(normalizedInput);
   const activationAmount =
@@ -86,12 +104,6 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
       : 0;
   const meetsGeneralMinimum = activationAmount >= plans.plan15.activationUsdPerTh;
   const plan27Enabled = activationAmount >= plans.plan27.activationUsdPerTh;
-
-  useEffect(() => {
-    if (selectedPlanKey === "plan27" && !plan27Enabled) {
-      setSelectedPlanKey("plan15");
-    }
-  }, [plan27Enabled, selectedPlanKey]);
 
   const currentPlan = plans[selectedPlanKey];
   const scenarioValid = meetsGeneralMinimum;
@@ -135,7 +147,7 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                     step="0.01"
                     value={activationInput}
                     placeholder="1000"
-                    onChange={(event) => setActivationInput(event.target.value)}
+                    onChange={(event) => handleActivationInputChange(event.target.value)}
                     className="h-11 rounded-[0.9rem] border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-accent"
                   />
                 </div>
@@ -198,15 +210,26 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
               </div>
 
               <div className="pt-1">
-                <Button
-                  href={ctaHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="primary"
-                  className="min-h-11 w-full rounded-full px-4 text-sm lg:w-auto"
-                >
-                  Consultar este escenario
-                </Button>
+                {scenarioValid ? (
+                  <Button
+                    href={ctaHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="primary"
+                    className="min-h-11 w-full rounded-full px-4 text-sm lg:w-auto"
+                  >
+                    Consultar este escenario
+                  </Button>
+                ) : (
+                  <Button
+                    disabled
+                    aria-disabled="true"
+                    variant="primary"
+                    className="min-h-11 w-full rounded-full px-4 text-sm lg:w-auto"
+                  >
+                    Ingresa al menos USD 15
+                  </Button>
+                )}
               </div>
             </div>
 
