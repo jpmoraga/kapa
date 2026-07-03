@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Container } from "@/components/site/Container";
 import { Section } from "@/components/site/Section";
@@ -63,10 +63,11 @@ function formatThs(value: number) {
   return `${currencyFormatter.format(value)} TH/s`;
 }
 
-function selectorButtonClass(selected: boolean) {
+function selectorButtonClass(selected: boolean, disabled: boolean) {
   return cn(
     "flex-1 rounded-[0.95rem] border px-3.5 py-3 text-left transition-colors transition-shadow duration-200",
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
+    disabled && "cursor-not-allowed opacity-55",
     selected
       ? "border-accent bg-accent text-accent-foreground shadow-[var(--shadow)]"
       : "border-border bg-background/70 text-foreground hover:bg-surface",
@@ -74,20 +75,30 @@ function selectorButtonClass(selected: boolean) {
 }
 
 export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulatorProps) {
-  const [activationInput, setActivationInput] = useState("500");
+  const [activationInput, setActivationInput] = useState("1000");
   const [selectedPlanKey, setSelectedPlanKey] = useState<FractionalPlanKey>("plan15");
 
-  const currentPlan = plans[selectedPlanKey];
   const normalizedInput = activationInput.replace(",", ".");
   const parsedActivationAmount = Number.parseFloat(normalizedInput);
   const activationAmount =
     Number.isFinite(parsedActivationAmount) && parsedActivationAmount > 0
       ? parsedActivationAmount
       : 0;
-  const ths = activationAmount / currentPlan.activationUsdPerTh;
-  const monthlyHosting = ths * currentPlan.hostingMonthlyUsdPerTh;
-  const totalHosting = monthlyHosting * currentPlan.months;
-  const totalEstimatedCost = activationAmount + totalHosting;
+  const meetsGeneralMinimum = activationAmount >= plans.plan15.activationUsdPerTh;
+  const plan27Enabled = activationAmount >= plans.plan27.activationUsdPerTh;
+
+  useEffect(() => {
+    if (selectedPlanKey === "plan27" && !plan27Enabled) {
+      setSelectedPlanKey("plan15");
+    }
+  }, [plan27Enabled, selectedPlanKey]);
+
+  const currentPlan = plans[selectedPlanKey];
+  const scenarioValid = meetsGeneralMinimum;
+  const ths = scenarioValid ? activationAmount / currentPlan.activationUsdPerTh : 0;
+  const monthlyHosting = scenarioValid ? ths * currentPlan.hostingMonthlyUsdPerTh : 0;
+  const totalHosting = scenarioValid ? monthlyHosting * currentPlan.months : 0;
+  const totalEstimatedCost = scenarioValid ? activationAmount + totalHosting : 0;
 
   return (
     <Section tone="default" spacing="md" id="simulador" className="py-12 sm:py-16 lg:py-24">
@@ -123,7 +134,7 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                     min="15"
                     step="0.01"
                     value={activationInput}
-                    placeholder="500"
+                    placeholder="1000"
                     onChange={(event) => setActivationInput(event.target.value)}
                     className="h-11 rounded-[0.9rem] border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-accent"
                   />
@@ -131,6 +142,11 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                 <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-sm">
                   Valor referencial para estimar acceso por TH/s. El hosting mensual se calcula por separado.
                 </p>
+                {!meetsGeneralMinimum ? (
+                  <div className="rounded-[0.9rem] border border-accent/20 bg-accent/[0.08] px-3 py-2 text-[0.82rem] leading-5 text-foreground sm:text-sm">
+                    El monto mínimo de activación/acceso es USD 15.
+                  </div>
+                ) : null}
               </div>
 
               <div className="grid gap-2 rounded-[1rem] border border-border bg-background/70 p-3.5 sm:p-4">
@@ -140,14 +156,21 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                 <div className="flex flex-col gap-2 sm:flex-row">
                   {planOptions.map((plan) => {
                     const selected = plan.key === selectedPlanKey;
+                    const disabled = plan.key === "plan27" && !plan27Enabled;
 
                     return (
                       <button
                         key={plan.key}
                         type="button"
-                        onClick={() => setSelectedPlanKey(plan.key)}
+                        onClick={() => {
+                          if (!disabled) {
+                            setSelectedPlanKey(plan.key);
+                          }
+                        }}
                         aria-pressed={selected}
-                        className={selectorButtonClass(selected)}
+                        aria-disabled={disabled}
+                        disabled={disabled}
+                        className={selectorButtonClass(selected, disabled)}
                       >
                         <div className="text-sm font-semibold">{plan.label}</div>
                         <div
@@ -158,10 +181,20 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                         >
                           {formatUsd(plan.activationUsdPerTh)} por TH/s
                         </div>
+                        {disabled ? (
+                          <div className="mt-1 text-[0.78rem] leading-5 text-foreground-muted sm:text-[0.82rem]">
+                            Disponible desde USD 25.
+                          </div>
+                        ) : null}
                       </button>
                     );
                   })}
                 </div>
+                {!plan27Enabled ? (
+                  <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-sm">
+                    El Plan 27 meses requiere un mínimo de USD 25 de activación/acceso.
+                  </p>
+                ) : null}
               </div>
 
               <div className="pt-1">
@@ -196,7 +229,7 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                     TH/s estimados
                   </div>
                   <div className="mt-1.5 text-[1.72rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[2.02rem]">
-                    {formatThs(ths)}
+                    {scenarioValid ? formatThs(ths) : "No disponible"}
                   </div>
                 </div>
                 <div className="rounded-[1rem] border border-accent/22 bg-accent/[0.08] px-4 py-3.5">
@@ -204,17 +237,29 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                     Costo total estimado
                   </div>
                   <div className="mt-1.5 text-[1.72rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[2.02rem]">
-                    {formatUsd(totalEstimatedCost)}
+                    {scenarioValid ? formatUsd(totalEstimatedCost) : "No disponible"}
                   </div>
                 </div>
               </div>
+
+              {!scenarioValid ? (
+                <div className="rounded-[1rem] border border-accent/20 bg-accent/[0.08] px-4 py-3 text-[0.92rem] leading-6 text-foreground sm:text-[0.98rem] sm:leading-6">
+                  Ingresa al menos USD 15 para ver un escenario válido.
+                </div>
+              ) : null}
 
               <div className="grid gap-2.5 rounded-[1rem] border border-border bg-background/72 px-4 py-3.5">
                 {[
                   { label: "Plan seleccionado", value: currentPlan.label },
                   { label: "Activación / acceso", value: formatUsd(activationAmount) },
-                  { label: "Hosting mensual estimado", value: formatUsd(monthlyHosting) },
-                  { label: "Hosting total del periodo", value: formatUsd(totalHosting) },
+                  {
+                    label: "Hosting mensual estimado",
+                    value: scenarioValid ? formatUsd(monthlyHosting) : "No disponible",
+                  },
+                  {
+                    label: "Hosting total del periodo",
+                    value: scenarioValid ? formatUsd(totalHosting) : "No disponible",
+                  },
                   { label: "Plazo promocional aplicado", value: currentPlan.termLabel },
                 ].map((item) => (
                   <div
