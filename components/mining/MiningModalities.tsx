@@ -16,7 +16,7 @@ const fractionalPlans = [
   {
     title: "Plan 15 meses",
     price: "USD 15 por TH/s",
-    subtitle: "Contrato base 12 meses · promoción inicial 15 meses",
+    subtitle: "Contrato base 12 meses · hoy con 15 meses de acceso",
     keyPoints: [
       "Ticket flexible según cantidad de TH/s",
       "Hosting mensual asociado al hashrate contratado",
@@ -27,7 +27,7 @@ const fractionalPlans = [
   {
     title: "Plan 27 meses",
     price: "USD 25 por TH/s",
-    subtitle: "Contrato base 24 meses · promoción inicial 27 meses",
+    subtitle: "Contrato base 24 meses · hoy con 27 meses de acceso",
     keyPoints: [
       "Mayor plazo de exposición minera",
       "Segundo año sin nueva activación",
@@ -48,7 +48,8 @@ export function MiningModalities({ fractionalHref, hostingHref }: MiningModaliti
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="DOS CAMINOS"
-          title="Minería fraccionada o ASIC propio"
+          title="Dos caminos para acceder a minería Bitcoin"
+          description="Elige entre planes fraccionados por TH/s o compra de ASIC propio con hosting internacional."
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.04rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.1rem]"
         />
 
@@ -134,7 +135,7 @@ export function MiningModalities({ fractionalHref, hostingHref }: MiningModaliti
             title="ASIC propio"
             subtitle="Compra de equipo completo + hosting internacional"
             body="El equipo es tuyo y la producción minera va directa a tu wallet."
-            commercialCaption="Según equipo, stock y configuración"
+            commercialCaption="Según equipo disponible, stock y configuración"
             keyPoints={[
               "Propiedad del hardware",
               "Hosting internacional en Emiratos Árabes Unidos",

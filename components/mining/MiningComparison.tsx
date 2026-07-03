@@ -19,7 +19,7 @@ const comparisonRows = [
     asic: "Vida útil del equipo / equipo propio",
   },
   {
-    label: "Activación",
+    label: "Activación / acceso",
     plan15: "USD 15 por TH/s",
     plan27: "USD 25 por TH/s",
     asic: "Según equipo",
@@ -32,8 +32,8 @@ const comparisonRows = [
   },
   {
     label: "Pago de hosting",
-    plan15: "USDT, USDC, Bitcoin o transferencia bancaria (Chile)",
-    plan27: "USDT, USDC, Bitcoin o transferencia bancaria (Chile)",
+    plan15: "USDT, USDC, Bitcoin o transferencia (Chile)",
+    plan27: "USDT, USDC, Bitcoin o transferencia (Chile)",
     asic: "Según contrato",
   },
   {
@@ -45,8 +45,8 @@ const comparisonRows = [
   {
     label: "Nivel de entrada",
     plan15: "Desde tickets bajos",
-    plan27: "Mayor plazo",
-    asic: "Mayor",
+    plan27: "Intermedio",
+    asic: "Mayor ticket",
   },
   {
     label: "Producción / distribución",
@@ -78,7 +78,7 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="ELIGE TU NIVEL DE PARTICIPACIÓN"
-          title="Compara los planes de minería y ASIC propio"
+          title="Compara minería fraccionada y ASIC propio"
           className="gap-3 [&_h2]:max-w-4xl [&_h2]:text-[2.02rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.08rem]"
         />
 
