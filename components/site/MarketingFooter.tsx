@@ -1,5 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  Building2,
+  Instagram,
+  Linkedin,
+  Newspaper,
+  User,
+} from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import { Container } from "@/components/site/Container";
@@ -9,11 +19,6 @@ type FooterTone = "dark" | "light";
 type FooterLink = {
   href: string;
   label: string;
-};
-
-type ReferenceGroup = {
-  items: FooterLink[];
-  title: string;
 };
 
 type MarketingFooterProps = {
@@ -33,34 +38,17 @@ const defaultNavLinks: FooterLink[] = [
   { href: "/auth/login", label: "Entrar" },
 ];
 
-const defaultReferenceGroups: ReferenceGroup[] = [
-  {
-    title: "Kapa21",
-    items: [
-      { href: "https://www.linkedin.com/company/kapa21/", label: "LinkedIn" },
-      { href: "https://www.instagram.com/kapa21_cl/", label: "Instagram" },
-    ],
-  },
-  {
-    title: "Juan Pablo Moraga",
-    items: [
-      { href: "https://www.linkedin.com/in/juanpablomoraga/", label: "LinkedIn" },
-      { href: "https://www.instagram.com/jpmoraga/", label: "Instagram" },
-      { href: "https://x.com/jp_moraga", label: "X" },
-      {
-        href: "https://www.linkedin.com/newsletters/bitcoin-ia-y-m%C3%A1s-all%C3%A1-7312143641307709440/",
-        label: "Newsletter",
-      },
-    ],
-  },
-  {
-    title: "Libro",
-    items: [
-      { href: "https://a.co/d/0b5iYtrn", label: "Amazon físico" },
-      { href: "https://a.co/d/02tdNI0l", label: "Kindle" },
-    ],
-  },
-];
+const ecosystemLinks = {
+  bookKindle: "https://a.co/d/02tdNI0l",
+  bookPrint: "https://a.co/d/0b5iYtrn",
+  juanInstagram: "https://www.instagram.com/jpmoraga/",
+  juanLinkedin: "https://www.linkedin.com/in/juanpablomoraga/",
+  juanNewsletter:
+    "https://www.linkedin.com/newsletters/bitcoin-ia-y-m%C3%A1s-all%C3%A1-7312143641307709440/",
+  juanX: "https://x.com/jp_moraga",
+  kapa21Instagram: "https://www.instagram.com/kapa21_cl/",
+  kapa21Linkedin: "https://www.linkedin.com/company/kapa21/",
+} as const;
 
 function FooterLinkItem({ href, label }: FooterLink) {
   return (
@@ -73,15 +61,27 @@ function FooterLinkItem({ href, label }: FooterLink) {
   );
 }
 
-function FooterExternalLinkItem({ href, label }: FooterLink) {
+function FooterExternalPill({
+  href,
+  icon,
+  label,
+}: FooterLink & { icon: ReactNode }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-sm text-foreground-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/78 px-3 py-2 text-sm text-foreground-muted transition-colors transition-shadow duration-200",
+        "hover:border-accent/30 hover:bg-surface hover:text-foreground",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
+      )}
     >
-      {label}
+      <span className="inline-flex size-6 items-center justify-center rounded-full border border-border/70 bg-surface-elevated text-foreground-muted">
+        {icon}
+      </span>
+      <span>{label}</span>
+      <ArrowUpRight className="size-3.5 text-foreground-muted/80" strokeWidth={2} />
     </a>
   );
 }
@@ -112,33 +112,138 @@ export function MarketingFooter({
       >
         <div
           className={cn(
-            "grid gap-4 rounded-[1rem] border border-border/80 bg-surface/45 px-4 py-4 sm:px-5 sm:py-5 lg:col-span-3",
+            "grid gap-4 rounded-[1.15rem] border border-border/80 bg-surface/45 px-4 py-4 sm:px-5 sm:py-5 lg:col-span-3",
             compactMobile ? "sm:gap-5" : "sm:gap-6",
           )}
         >
           <div className="grid gap-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground-muted">
-              Redes, contenidos y referencias
+              Ecosistema Kapa21
             </p>
             <p className="max-w-3xl text-sm leading-6 text-foreground-muted">
-              Canales oficiales de Kapa21, contenidos públicos de Juan Pablo Moraga y referencias editoriales relacionadas con la tesis del sitio.
+              Canales oficiales, contenidos públicos y referencias editoriales sobre Bitcoin, IA y tesorería.
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-            {defaultReferenceGroups.map((group) => (
-              <div key={group.title} className="grid gap-2.5">
-                <p className="text-sm font-semibold text-foreground">{group.title}</p>
-                <div className="grid gap-1.5">
-                  {group.items.map((item) => (
-                    <FooterExternalLinkItem
-                      key={`${group.title}-${item.href}`}
-                      {...item}
-                    />
-                  ))}
+          <div className="grid gap-3.5 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)_minmax(0,0.96fr)] lg:gap-4">
+            <div className="grid gap-4 rounded-[1rem] border border-border/75 bg-background/72 p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="grid gap-1">
+                  <p className="text-sm font-semibold text-foreground">Kapa21</p>
+                  <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-sm">
+                    Canales oficiales
+                  </p>
                 </div>
+                <span className="inline-flex size-9 items-center justify-center rounded-full border border-accent/20 bg-accent/[0.08] text-accent">
+                  <Building2 className="size-4" strokeWidth={2} />
+                </span>
               </div>
-            ))}
+
+              <div className="flex flex-wrap gap-2">
+                <FooterExternalPill
+                  href={ecosystemLinks.kapa21Linkedin}
+                  label="LinkedIn"
+                  icon={<Linkedin className="size-3.5" strokeWidth={2} />}
+                />
+                <FooterExternalPill
+                  href={ecosystemLinks.kapa21Instagram}
+                  label="Instagram"
+                  icon={<Instagram className="size-3.5" strokeWidth={2} />}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 rounded-[1rem] border border-border/75 bg-background/72 p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="grid gap-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Juan Pablo Moraga
+                  </p>
+                  <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-sm">
+                    Contenidos y redes personales
+                  </p>
+                </div>
+                <span className="inline-flex size-9 items-center justify-center rounded-full border border-accent/20 bg-accent/[0.08] text-accent">
+                  <User className="size-4" strokeWidth={2} />
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <FooterExternalPill
+                  href={ecosystemLinks.juanLinkedin}
+                  label="LinkedIn"
+                  icon={<Linkedin className="size-3.5" strokeWidth={2} />}
+                />
+                <FooterExternalPill
+                  href={ecosystemLinks.juanInstagram}
+                  label="Instagram"
+                  icon={<Instagram className="size-3.5" strokeWidth={2} />}
+                />
+                <FooterExternalPill
+                  href={ecosystemLinks.juanX}
+                  label="X"
+                  icon={
+                    <span className="text-[0.68rem] font-semibold leading-none tracking-[0.12em] text-foreground-muted">
+                      X
+                    </span>
+                  }
+                />
+              </div>
+
+              <a
+                href={ecosystemLinks.juanNewsletter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "grid gap-1 rounded-[0.95rem] border border-accent/20 bg-accent/[0.08] px-3.5 py-3 transition-colors duration-200",
+                  "hover:border-accent/30 hover:bg-accent/[0.12]",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="grid gap-0.5">
+                    <span className="text-sm font-semibold text-foreground">
+                      Bitcoin, IA y m&aacute;s all&aacute;
+                    </span>
+                    <span className="text-[0.78rem] leading-5 text-foreground-muted sm:text-[0.82rem]">
+                      Newsletter en LinkedIn
+                    </span>
+                  </div>
+                  <span className="inline-flex size-8 items-center justify-center rounded-full border border-accent/20 bg-background/78 text-accent">
+                    <Newspaper className="size-3.5" strokeWidth={2} />
+                  </span>
+                </div>
+              </a>
+            </div>
+
+            <div className="grid gap-4 rounded-[1rem] border border-border/75 bg-background/72 p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="grid gap-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Bitcoin, un imperativo moral
+                  </p>
+                  <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-sm">
+                    Libro de Juan Pablo Moraga
+                  </p>
+                </div>
+                <span className="inline-flex size-9 items-center justify-center rounded-full border border-accent/20 bg-accent/[0.08] text-accent">
+                  <BookOpen className="size-4" strokeWidth={2} />
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <FooterExternalPill
+                  href={ecosystemLinks.bookPrint}
+                  label="Amazon físico"
+                  icon={<BookOpen className="size-3.5" strokeWidth={2} />}
+                />
+                <FooterExternalPill
+                  href={ecosystemLinks.bookKindle}
+                  label="Kindle"
+                  icon={<BookOpen className="size-3.5" strokeWidth={2} />}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
