@@ -154,10 +154,10 @@ export function MiningAsicSimulator() {
 
         <Card
           variant="elevated"
-          className="grid gap-5 rounded-[1.15rem] p-4 shadow-none sm:p-6 sm:shadow-[var(--shadow)] lg:gap-6 lg:p-7"
+          className="grid min-w-0 gap-5 rounded-[1.15rem] p-4 shadow-none sm:p-6 sm:shadow-[var(--shadow)] lg:gap-6 lg:p-7"
         >
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)] lg:items-start">
-            <div className="grid gap-4">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(320px,1.1fr)] lg:items-start">
+            <div className="grid min-w-0 gap-4">
               <div className="grid gap-2 rounded-[1rem] border border-border bg-background/70 p-3.5 sm:p-4">
                 <label
                   htmlFor="asic-simulator-model"
@@ -169,7 +169,7 @@ export function MiningAsicSimulator() {
                   id="asic-simulator-model"
                   value={selectedAsic.slug}
                   onChange={(event) => setSelectedSlug(event.target.value)}
-                  className="h-11 rounded-[0.9rem] border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-accent"
+                  className="h-11 w-full min-w-0 max-w-full rounded-[0.9rem] border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-accent"
                 >
                   {simulatableAsics.map((model) => (
                     <option key={model.slug} value={model.slug}>
@@ -206,7 +206,7 @@ export function MiningAsicSimulator() {
 
                     setQuantity(parsedQuantity);
                   }}
-                  className="h-11 rounded-[0.9rem] border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-accent"
+                  className="h-11 w-full min-w-0 max-w-full rounded-[0.9rem] border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-accent"
                 />
                 <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-sm">
                   La cantidad mínima es 1. Al aumentar la cantidad se multiplica precio, hashrate, consumo, garantía y hosting.
@@ -254,7 +254,7 @@ export function MiningAsicSimulator() {
 
             <Card
               variant="highlight"
-              className="grid gap-4 rounded-[1rem] border-accent/30 bg-surface-elevated/92 p-4 shadow-none sm:p-5 sm:shadow-[var(--shadow)]"
+              className="grid min-w-0 gap-4 rounded-[1rem] border-accent/30 bg-surface-elevated/92 p-4 shadow-none sm:p-5 sm:shadow-[var(--shadow)]"
             >
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex flex-wrap gap-2">
@@ -284,7 +284,7 @@ export function MiningAsicSimulator() {
                 </span>
               </div>
 
-              <div className="grid gap-3.5">
+              <div className="grid min-w-0 gap-3.5">
                 <div className="overflow-hidden rounded-[1rem] border border-border bg-background/72 p-2.5 sm:p-3.5">
                   {selectedAsic.imageSrc ? (
                     <div className="relative aspect-[16/10] overflow-hidden rounded-[0.85rem] border border-border bg-white p-3 sm:aspect-[4/3] sm:rounded-[0.95rem] sm:p-4">
@@ -370,7 +370,7 @@ export function MiningAsicSimulator() {
             </Card>
           </div>
 
-          <div className="grid gap-4 rounded-[1rem] border border-border bg-background/72 px-4 py-4 sm:px-5 sm:py-5">
+          <div className="grid min-w-0 gap-4 rounded-[1rem] border border-border bg-background/72 px-4 py-4 sm:px-5 sm:py-5">
             <div className="grid gap-1">
               <p className="text-[0.92rem] font-medium text-foreground sm:text-[0.98rem]">
                 Detalle operativo
