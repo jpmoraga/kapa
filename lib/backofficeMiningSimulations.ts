@@ -190,12 +190,10 @@ function formatUsd(value: Prisma.Decimal | null) {
     return `USD ${value.toString()}`;
   }
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return `USD ${new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(amount)}`;
 }
 
 function formatThs(value: Prisma.Decimal | null) {

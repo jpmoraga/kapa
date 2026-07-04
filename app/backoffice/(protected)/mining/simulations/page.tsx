@@ -65,7 +65,7 @@ export default async function BackofficeMiningSimulationsPage({
     {
       label: "Sesiones únicas",
       value: formatCount(data.metrics.uniqueSessions),
-      helper: "SessionId anónimo único",
+      helper: "Sesiones anónimas únicas",
     },
     {
       label: "Clicks CTA",
