@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,13 @@ import { SectionHeading } from "@/components/site/SectionHeading";
 import type { AsicModel, CoolingType } from "@/data/mining/asic-models";
 import { asicModels } from "@/data/mining/asic-models";
 import { buildAsicQuoteText } from "@/data/mining/cta";
+import {
+  MINING_SIMULATION_INTERACTION_DEBOUNCE_MS,
+  getMiningSimulationEventSignature,
+  roundMiningSimulationValue,
+  trackMiningSimulationEvent,
+  type MiningAsicSimulationTrackingPayload,
+} from "@/lib/miningSimulationTracking";
 import { buildWhatsAppUrl } from "@/lib/publicContact";
 
 type SimulatableAsic = {
@@ -129,18 +136,82 @@ function calculateScenario(model: SimulatableAsic, quantity: number) {
 export function MiningAsicSimulator() {
   const [selectedSlug, setSelectedSlug] = useState(defaultAsicSlug);
   const [quantity, setQuantity] = useState(1);
+  const hasTrackedInteractionRef = useRef(false);
+  const lastInteractionSignatureRef = useRef<string | null>(null);
+  const skipNextInteractionRef = useRef(false);
 
   const selectedAsic =
     simulatableAsics.find((model) => model.slug === selectedSlug) ??
     simulatableAsics[0] ??
     null;
+  const scenario = selectedAsic ? calculateScenario(selectedAsic, quantity) : null;
+  const ctaHref = selectedAsic
+    ? buildWhatsAppUrl(buildAsicQuoteText(selectedAsic.model))
+    : "";
+  const interactionPayload: MiningAsicSimulationTrackingPayload | null =
+    selectedAsic && scenario
+      ? {
+          eventType: "SIMULATION_INTERACTION",
+          simulatorType: "ASIC",
+          asicModel: selectedAsic.model,
+          asicQuantity: quantity,
+          hashrateTotalThs: roundMiningSimulationValue(scenario.hashrateTotal),
+          consumptionTotalW: roundMiningSimulationValue(scenario.consumptionTotalW),
+          equipmentPriceUsd: roundMiningSimulationValue(scenario.priceEquipmentTotal),
+          hostingMonthlyUsd: roundMiningSimulationValue(scenario.hostingMonthlyTotal),
+          guaranteeUsd: roundMiningSimulationValue(scenario.guaranteeTotal),
+          initialCostUsd: roundMiningSimulationValue(scenario.costInitialTotal),
+        }
+      : null;
+  const interactionSignature = interactionPayload
+    ? getMiningSimulationEventSignature(interactionPayload)
+    : null;
 
-  if (!selectedAsic) {
+  useEffect(() => {
+    if (skipNextInteractionRef.current) {
+      skipNextInteractionRef.current = false;
+      return;
+    }
+
+    if (!hasTrackedInteractionRef.current || !interactionSignature) {
+      return;
+    }
+
+    if (lastInteractionSignatureRef.current === interactionSignature) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (lastInteractionSignatureRef.current === interactionSignature) {
+        return;
+      }
+
+      lastInteractionSignatureRef.current = interactionSignature;
+      void trackMiningSimulationEvent(
+        JSON.parse(interactionSignature) as MiningAsicSimulationTrackingPayload,
+      );
+    }, MINING_SIMULATION_INTERACTION_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [interactionSignature]);
+
+  const handleCtaClick = () => {
+    if (!interactionPayload) {
+      return;
+    }
+
+    void trackMiningSimulationEvent(
+      {
+        ...interactionPayload,
+        eventType: "CTA_CLICKED",
+      },
+      { keepalive: true },
+    );
+  };
+
+  if (!selectedAsic || !scenario) {
     return null;
   }
-
-  const scenario = calculateScenario(selectedAsic, quantity);
-  const ctaHref = buildWhatsAppUrl(buildAsicQuoteText(selectedAsic.model));
 
   return (
     <Section tone="default" spacing="md" id="simulador-asic" className="py-12 sm:py-16 lg:py-24">
@@ -168,7 +239,13 @@ export function MiningAsicSimulator() {
                 <select
                   id="asic-simulator-model"
                   value={selectedAsic.slug}
-                  onChange={(event) => setSelectedSlug(event.target.value)}
+                  onChange={(event) => {
+                    if (event.target.value !== selectedSlug) {
+                      hasTrackedInteractionRef.current = true;
+                    }
+
+                    setSelectedSlug(event.target.value);
+                  }}
                   className="h-11 w-full min-w-0 max-w-full rounded-[0.9rem] border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-accent"
                 >
                   {simulatableAsics.map((model) => (
@@ -200,8 +277,13 @@ export function MiningAsicSimulator() {
                     const parsedQuantity = Number.parseInt(event.target.value, 10);
 
                     if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+                      skipNextInteractionRef.current = quantity !== 1;
                       setQuantity(1);
                       return;
+                    }
+
+                    if (parsedQuantity !== quantity) {
+                      hasTrackedInteractionRef.current = true;
                     }
 
                     setQuantity(parsedQuantity);
@@ -361,6 +443,7 @@ export function MiningAsicSimulator() {
                   href={ctaHref}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={handleCtaClick}
                   variant="primary"
                   className="min-h-11 w-full rounded-full px-4 text-sm lg:w-auto"
                 >

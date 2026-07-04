@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Container } from "@/components/site/Container";
 import { Section } from "@/components/site/Section";
@@ -9,6 +9,13 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
+import {
+  MINING_SIMULATION_INTERACTION_DEBOUNCE_MS,
+  getMiningSimulationEventSignature,
+  roundMiningSimulationValue,
+  trackMiningSimulationEvent,
+  type MiningFractionalSimulationTrackingPayload,
+} from "@/lib/miningSimulationTracking";
 
 type MiningFractionalSimulatorProps = {
   ctaHref: string;
@@ -54,6 +61,10 @@ const plans = {
 >;
 
 const planOptions = [plans.plan15, plans.plan27] as const;
+const planTrackingMap: Record<FractionalPlanKey, "PLAN_15_MONTHS" | "PLAN_27_MONTHS"> = {
+  plan15: "PLAN_15_MONTHS",
+  plan27: "PLAN_27_MONTHS",
+};
 
 function formatUsd(value: number) {
   return `USD ${currencyFormatter.format(value)}`;
@@ -77,8 +88,14 @@ function selectorButtonClass(selected: boolean, disabled: boolean) {
 export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulatorProps) {
   const [activationInput, setActivationInput] = useState("1000");
   const [selectedPlanKey, setSelectedPlanKey] = useState<FractionalPlanKey>("plan15");
+  const hasTrackedInteractionRef = useRef(false);
+  const lastInteractionSignatureRef = useRef<string | null>(null);
 
   const handleActivationInputChange = (nextValue: string) => {
+    if (nextValue !== activationInput) {
+      hasTrackedInteractionRef.current = true;
+    }
+
     const nextNormalizedInput = nextValue.replace(",", ".");
     const nextParsedActivationAmount = Number.parseFloat(nextNormalizedInput);
     const nextActivationAmount =
@@ -111,6 +128,59 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
   const monthlyHosting = scenarioValid ? ths * currentPlan.hostingMonthlyUsdPerTh : 0;
   const totalHosting = scenarioValid ? monthlyHosting * currentPlan.months : 0;
   const totalEstimatedCost = scenarioValid ? activationAmount + totalHosting : 0;
+  const interactionPayload: MiningFractionalSimulationTrackingPayload | null =
+    scenarioValid
+      ? {
+          eventType: "SIMULATION_INTERACTION",
+          simulatorType: "FRACTIONAL",
+          fractionalPlan: planTrackingMap[selectedPlanKey],
+          activationAmountUsd: roundMiningSimulationValue(activationAmount),
+          estimatedThs: roundMiningSimulationValue(ths),
+          hostingMonthlyUsd: roundMiningSimulationValue(monthlyHosting),
+          hostingTotalUsd: roundMiningSimulationValue(totalHosting),
+          totalEstimatedUsd: roundMiningSimulationValue(totalEstimatedCost),
+        }
+      : null;
+  const interactionSignature = interactionPayload
+    ? getMiningSimulationEventSignature(interactionPayload)
+    : null;
+
+  useEffect(() => {
+    if (!hasTrackedInteractionRef.current || !interactionSignature) {
+      return;
+    }
+
+    if (lastInteractionSignatureRef.current === interactionSignature) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (lastInteractionSignatureRef.current === interactionSignature) {
+        return;
+      }
+
+      lastInteractionSignatureRef.current = interactionSignature;
+      void trackMiningSimulationEvent(
+        JSON.parse(interactionSignature) as MiningFractionalSimulationTrackingPayload,
+      );
+    }, MINING_SIMULATION_INTERACTION_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [interactionSignature]);
+
+  const handleCtaClick = () => {
+    if (!interactionPayload) {
+      return;
+    }
+
+    void trackMiningSimulationEvent(
+      {
+        ...interactionPayload,
+        eventType: "CTA_CLICKED",
+      },
+      { keepalive: true },
+    );
+  };
 
   return (
     <Section tone="default" spacing="md" id="simulador" className="py-12 sm:py-16 lg:py-24">
@@ -176,6 +246,10 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                         type="button"
                         onClick={() => {
                           if (!disabled) {
+                            if (plan.key !== selectedPlanKey) {
+                              hasTrackedInteractionRef.current = true;
+                            }
+
                             setSelectedPlanKey(plan.key);
                           }
                         }}
@@ -215,6 +289,7 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
                     href={ctaHref}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={handleCtaClick}
                     variant="primary"
                     className="min-h-11 w-full rounded-full px-4 text-sm lg:w-auto"
                   >
