@@ -8,13 +8,22 @@ const TABS = [
     href: "/backoffice/mining",
     title: "Prospectos Mining",
     description: "Pipeline privado",
-    isActive: (pathname: string) => !pathname.startsWith("/backoffice/mining/operations"),
+    isActive: (pathname: string) =>
+      pathname.startsWith("/backoffice/mining") &&
+      !pathname.startsWith("/backoffice/mining/operations") &&
+      !pathname.startsWith("/backoffice/mining/simulations"),
   },
   {
     href: "/backoffice/mining/operations",
     title: "Operaciones Mining",
     description: "Ventas en cierre o activación",
     isActive: (pathname: string) => pathname.startsWith("/backoffice/mining/operations"),
+  },
+  {
+    href: "/backoffice/mining/simulations",
+    title: "Simulaciones Mining",
+    description: "Reporte anónimo",
+    isActive: (pathname: string) => pathname.startsWith("/backoffice/mining/simulations"),
   },
 ];
 
