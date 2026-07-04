@@ -293,6 +293,38 @@ model MiningOperation {
   @@index([updatedById])
 }
 
+model MiningSimulationEvent {
+  id                  String                     @id @default(cuid())
+  createdAt           DateTime                   @default(now())
+  sessionId           String
+  eventType           MiningSimulationEventType
+  simulatorType       MiningSimulatorType
+  sourcePath          String?                    @default("/mining")
+  referrer            String?
+  userAgent           String?
+  fractionalPlan      MiningFractionalPlan?
+  activationAmountUsd Decimal?                   @db.Decimal(12, 2)
+  estimatedThs        Decimal?                   @db.Decimal(12, 2)
+  hostingMonthlyUsd   Decimal?                   @db.Decimal(12, 2)
+  hostingTotalUsd     Decimal?                   @db.Decimal(12, 2)
+  totalEstimatedUsd   Decimal?                   @db.Decimal(12, 2)
+  asicModel           String?
+  asicQuantity        Int?
+  hashrateTotalThs    Decimal?                   @db.Decimal(12, 2)
+  consumptionTotalW   Decimal?                   @db.Decimal(12, 2)
+  equipmentPriceUsd   Decimal?                   @db.Decimal(12, 2)
+  guaranteeUsd        Decimal?                   @db.Decimal(12, 2)
+  initialCostUsd      Decimal?                   @db.Decimal(12, 2)
+  metadata            Json?
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([simulatorType])
+  @@index([fractionalPlan])
+  @@index([asicModel])
+}
+
 model Company {
   id                     String                       @id @default(cuid())
   name                   String
@@ -1082,6 +1114,21 @@ enum MiningCommissionStatus {
   PAID
   RECEIVED
   DISPUTED
+}
+
+enum MiningSimulationEventType {
+  SIMULATION_INTERACTION
+  CTA_CLICKED
+}
+
+enum MiningSimulatorType {
+  FRACTIONAL
+  ASIC
+}
+
+enum MiningFractionalPlan {
+  PLAN_15_MONTHS
+  PLAN_27_MONTHS
 }
 
 model EmailVerificationToken {
