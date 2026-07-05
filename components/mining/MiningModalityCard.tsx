@@ -6,6 +6,8 @@ type MiningModalityCardProps = {
   body: string;
   ctaHref: string;
   ctaLabel: string;
+  secondaryCtaHref?: string;
+  secondaryCtaLabel?: string;
   commercialBadge?: string;
   commercialCaption?: string;
   commercialHighlight?: string;
@@ -20,6 +22,8 @@ export function MiningModalityCard({
   body,
   ctaHref,
   ctaLabel,
+  secondaryCtaHref,
+  secondaryCtaLabel,
   commercialBadge,
   commercialCaption,
   commercialHighlight,
@@ -111,16 +115,25 @@ export function MiningModalityCard({
         </ul>
       </div>
 
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Button
           href={ctaHref}
           target="_blank"
           rel="noopener noreferrer"
           variant={highlight ? "primary" : "secondary"}
-          className="min-h-11 w-full rounded-full px-4 text-sm"
+          className="min-h-11 w-full rounded-full px-4 text-sm sm:w-auto"
         >
           {ctaLabel}
         </Button>
+        {secondaryCtaHref && secondaryCtaLabel ? (
+          <Button
+            href={secondaryCtaHref}
+            variant="ghost"
+            className="min-h-10 w-full rounded-full px-4 text-xs sm:w-auto"
+          >
+            {secondaryCtaLabel}
+          </Button>
+        ) : null}
       </div>
     </Card>
   );

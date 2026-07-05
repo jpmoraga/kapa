@@ -118,7 +118,7 @@ export function MiningModalities({ fractionalHref, hostingHref }: MiningModaliti
               </p>
             </div>
 
-            <div className="mt-auto">
+            <div className="mt-auto flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
                 href={fractionalHref}
                 target="_blank"
@@ -127,6 +127,13 @@ export function MiningModalities({ fractionalHref, hostingHref }: MiningModaliti
                 className="min-h-11 w-full rounded-full px-4 text-sm lg:w-auto"
               >
                 Consultar planes fraccionados
+              </Button>
+              <Button
+                href="#simulador-fraccionado"
+                variant="ghost"
+                className="min-h-10 w-full rounded-full px-4 text-xs lg:w-auto"
+              >
+                Simular plan
               </Button>
             </div>
           </Card>
@@ -144,6 +151,8 @@ export function MiningModalities({ fractionalHref, hostingHref }: MiningModaliti
             ]}
             ctaLabel="Cotizar ASIC propio"
             ctaHref={hostingHref}
+            secondaryCtaLabel="Simular ASIC"
+            secondaryCtaHref="#simulador-asic"
           />
         </div>
       </Container>

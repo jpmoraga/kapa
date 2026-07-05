@@ -51,8 +51,8 @@ export function MiningHero({ primaryCtaHref, secondaryCtaHref }: MiningHeroProps
             Minería de Bitcoin en Emiratos Árabes, con energía competitiva
           </h1>
           <p className="max-w-[34rem] text-[1rem] leading-6 text-foreground-muted sm:text-[1.08rem] sm:leading-7 lg:max-w-[43rem] lg:text-[1.26rem] lg:leading-9">
-            Accede a minería fraccionada, fracción de ASIC por vida útil del equipo o
-            ASIC propio con hosting internacional.
+            Accede a minería fraccionada por TH/s o compra un ASIC propio con
+            hosting internacional en Emiratos Árabes Unidos.
           </p>
         </div>
 

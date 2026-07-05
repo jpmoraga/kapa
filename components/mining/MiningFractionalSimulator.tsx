@@ -183,7 +183,12 @@ export function MiningFractionalSimulator({ ctaHref }: MiningFractionalSimulator
   };
 
   return (
-    <Section tone="default" spacing="md" id="simulador" className="py-12 sm:py-16 lg:py-24">
+    <Section
+      tone="default"
+      spacing="md"
+      id="simulador-fraccionado"
+      className="py-12 sm:py-16 lg:py-24"
+    >
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
           eyebrow="SIMULADOR SIMPLE"
