@@ -44,7 +44,7 @@ export function MiningFinalCta({
           />
 
           <p className="max-w-3xl text-[0.98rem] leading-6 text-foreground-muted sm:text-[1.05rem] sm:leading-8">
-            Kapa21 te ayudará a comparar las alternativas disponibles y coordinar el siguiente paso con Andes SolarHash.
+            Kapa21 te ayudará a comparar las alternativas disponibles y coordinar el siguiente paso operativo.
           </p>
 
           <div className="grid max-w-sm gap-2 sm:flex sm:max-w-none sm:flex-wrap sm:gap-3">

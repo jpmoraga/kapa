@@ -21,7 +21,7 @@ const fractionalPlans = [
       "Ticket flexible según cantidad de TH/s",
       "Hosting mensual asociado al hashrate contratado",
       "Distribuciones mensuales en Bitcoin",
-      "Operación delegada a Andes SolarHash",
+      "Operación técnica internacional",
     ],
   },
   {

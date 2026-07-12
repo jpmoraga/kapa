@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { Container } from "@/components/site/Container";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -76,15 +74,11 @@ export function MiningHero({ primaryCtaHref, secondaryCtaHref }: MiningHeroProps
         </div>
 
         <div className="flex max-w-[23rem] items-center gap-2 rounded-[1.05rem] border border-[#ffb31e]/20 bg-[#23264f]/70 px-3 py-2 text-[0.84rem] leading-5 text-foreground shadow-none sm:max-w-fit sm:gap-3 sm:rounded-full sm:px-3.5 sm:py-2.5 sm:text-sm sm:shadow-[var(--shadow)]">
-          <Image
-            src="/mining/partners/andes-solarhash-symbol-blue-bg.jpg"
-            alt="Símbolo Andes SolarHash"
-            width={32}
-            height={32}
-            className="size-7 rounded-full border border-white/8 object-cover sm:size-8"
-            sizes="32px"
+          <span
+            aria-hidden="true"
+            className="inline-flex size-7 shrink-0 rounded-full border border-white/8 bg-[radial-gradient(circle_at_32%_30%,rgba(255,179,30,0.9),rgba(255,179,30,0.16)_42%,rgba(35,38,79,0.96)_100%)] sm:size-8"
           />
-          <span className="font-medium">Operación minera junto a Andes SolarHash</span>
+          <span className="font-medium">Operación minera en Emiratos Árabes Unidos</span>
         </div>
       </div>
 
@@ -108,7 +102,7 @@ export function MiningHero({ primaryCtaHref, secondaryCtaHref }: MiningHeroProps
             >
               Kapa21 primero
             </Badge>
-            <span className="text-[0.82rem] text-foreground-muted sm:text-sm">Partner operativo coordinado</span>
+            <span className="text-[0.82rem] text-foreground-muted sm:text-sm">Infraestructura operativa internacional</span>
           </div>
 
           <div className="flex flex-wrap gap-2">

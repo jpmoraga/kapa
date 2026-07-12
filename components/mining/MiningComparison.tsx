@@ -56,9 +56,9 @@ const comparisonRows = [
   },
   {
     label: "Operación técnica",
-    plan15: "Andes SolarHash",
-    plan27: "Andes SolarHash",
-    asic: "Andes SolarHash",
+    plan15: "Operador especializado",
+    plan27: "Operador especializado",
+    asic: "Operador especializado",
   },
   {
     label: "Acompañamiento comercial",

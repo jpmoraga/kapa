@@ -184,7 +184,7 @@ export function AsicCard({ ctaHref, model }: AsicCardProps) {
                 </p>
               ) : null}
               <p className="text-[0.82rem] leading-5 text-foreground-muted sm:text-[0.86rem]">
-                Precio y hosting referenciales según catálogo Andes SolarHash Junio 2026.
+                Precio y hosting referenciales según catálogo operativo Junio 2026.
               </p>
             </div>
           </div>

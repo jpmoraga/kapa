@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { Container } from "@/components/site/Container";
 import { Section } from "@/components/site/Section";
 import { SectionHeading } from "@/components/site/SectionHeading";
@@ -15,12 +13,12 @@ const kapa21Responsibilities = [
 ] as const;
 
 const operatorResponsibilities = [
-  "Contrato y formalización",
-  "Recepción del pago",
+  "Formalización operativa según modalidad",
+  "Recepción de pagos según contrato",
   "Hosting internacional en Emiratos Árabes Unidos",
-  "Operación de equipos",
+  "Operación técnica de equipos",
   "Hosting y mantenimiento",
-  "Producción y reportes",
+  "Monitoreo y reportes operativos",
 ] as const;
 
 export function OperatingPartner() {
@@ -37,8 +35,8 @@ export function OperatingPartner() {
     >
       <Container width="wide" className="grid gap-6 px-5 sm:px-6 lg:gap-10 lg:px-8">
         <SectionHeading
-          eyebrow="PARTNER OPERATIVO"
-          title="Kapa21 acompaña la evaluación. Andes SolarHash opera la infraestructura."
+          eyebrow="INFRAESTRUCTURA OPERATIVA"
+          title="Kapa21 acompaña la evaluación. La operación técnica se coordina con infraestructura internacional."
           description="La operación minera se realiza en Emiratos Árabes Unidos, con hosting internacional y costos energéticos competitivos."
           className="gap-3 [&_h2]:max-w-5xl [&_h2]:text-[2.04rem] [&_h2]:leading-[1.02] [&_h2]:tracking-[-0.04em] sm:[&_h2]:text-[2.38rem] lg:[&_h2]:text-[3.12rem] [&_p]:max-w-4xl [&_p]:text-[0.98rem] [&_p]:leading-6 sm:[&_p]:text-base sm:[&_p]:leading-7"
         />
@@ -83,29 +81,29 @@ export function OperatingPartner() {
           >
             <div className="grid gap-3 sm:gap-4">
               <div className="inline-flex w-fit rounded-[1rem] border border-white/8 bg-[#12172f] p-2.5 shadow-[var(--shadow)] sm:rounded-[1.15rem] sm:p-3">
-                <Image
-                  src="/mining/partners/andes-solarhash-logo-blue-bg.jpg"
-                  alt="Logo Andes SolarHash"
-                  width={1042}
-                  height={1042}
-                  className="h-auto w-20 rounded-[0.75rem] object-cover sm:w-28 sm:rounded-[0.85rem]"
-                  sizes="(min-width: 1024px) 7rem, 5rem"
-                />
+                <div className="grid gap-2 rounded-[0.75rem] border border-[#ffb31e]/20 bg-[linear-gradient(180deg,rgba(255,179,30,0.12),rgba(18,23,47,0.92))] px-3 py-3 text-left sm:rounded-[0.85rem] sm:px-3.5">
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[#ffb31e]">
+                    EAU
+                  </span>
+                  <p className="text-sm font-semibold leading-5 text-foreground sm:text-[0.95rem]">
+                    Hosting internacional y operación técnica especializada
+                  </p>
+                </div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
                 <Badge
                   variant="outline"
                   className="border-[#ffb31e]/35 px-2.25 py-1 text-[0.68rem] tracking-[0.14em] text-[#ffb31e] sm:px-2.5 sm:text-[0.72rem]"
                 >
-                  Andes SolarHash
+                  Operación técnica
                 </Badge>
-                <p className="text-[0.84rem] font-medium text-foreground-muted sm:text-sm">Partner operativo</p>
+                <p className="text-[0.84rem] font-medium text-foreground-muted sm:text-sm">Infraestructura internacional</p>
               </div>
             </div>
 
             <div className="grid gap-2.5 sm:gap-3">
               <p className="text-[0.95rem] leading-6 text-foreground-muted sm:text-base sm:leading-7">
-                Andes SolarHash ejecuta la infraestructura minera, formaliza la contratación y administra la operación según la modalidad acordada.
+                La contraparte operativa coordina la infraestructura minera, la formalización según modalidad y la administración técnica de la operación.
               </p>
               <div className="rounded-[0.95rem] border border-[#ffb31e]/20 bg-[#12172f] px-3.5 py-3 sm:rounded-[1rem] sm:px-4 sm:py-3.5">
                 <p className="text-[0.95rem] leading-6 text-foreground sm:text-base sm:leading-7">
@@ -131,7 +129,7 @@ export function OperatingPartner() {
         </div>
 
         <p className="max-w-5xl text-[0.88rem] leading-5 text-foreground-muted sm:text-sm sm:leading-6">
-          La prestación del servicio minero, la operación técnica, el contrato y la facturación corresponden a Andes SolarHash. Kapa21 participa como asesor y canal comercial de la alianza, acompañando la evaluación sin prometer rentabilidad.
+          La prestación del servicio minero, la operación técnica, el contrato y la facturación corresponden a la contraparte operativa definida según la modalidad elegida. Kapa21 participa como asesor y canal comercial, acompañando la evaluación sin prometer rentabilidad.
         </p>
       </Container>
     </Section>

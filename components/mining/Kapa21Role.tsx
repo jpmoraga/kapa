@@ -18,7 +18,7 @@ const kapa21RoleBlocks = [
   },
   {
     title: "Acompañar",
-    body: "Coordinamos la cotización, resolvemos dudas y conectamos el proceso con Andes SolarHash.",
+    body: "Coordinamos la cotización, resolvemos dudas y acompañamos el siguiente paso operativo según la modalidad elegida.",
   },
 ] as const;
 

@@ -10,13 +10,14 @@ export const miningFaqItems: MiningFaqItem[] = [
       "Depende del camino elegido: un plan de minería fraccionada de 15 o 27 meses, o un ASIC propio con hosting.",
   },
   {
-    question: "¿Quién firma el contrato?",
-    answer: "El contrato operativo se celebra con Andes SolarHash.",
+    question: "¿Quién firma el contrato operativo?",
+    answer:
+      "La contratación se formaliza según la modalidad elegida y las condiciones operativas vigentes. Kapa21 acompaña la evaluación comercial y la coordinación del proceso.",
   },
   {
-    question: "¿Quién recibe el pago?",
+    question: "¿Cómo se realiza el pago?",
     answer:
-      "Andes SolarHash recibe el pago correspondiente al servicio o equipo contratado.",
+      "Los pagos se realizan según las instrucciones contractuales de la modalidad elegida, mediante los medios informados durante el proceso de contratación.",
   },
   {
     question: "¿Cuál es el rol de Kapa21?",

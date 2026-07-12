@@ -14,7 +14,7 @@ const processSteps = [
   },
   {
     title: "Formalizas contrato y pago",
-    body: "Andes SolarHash emite la propuesta, formaliza la contratación y recibe el pago.",
+    body: "Se emite la propuesta operativa correspondiente, se formaliza la contratación y se coordinan las instrucciones de pago.",
   },
   {
     title: "Activación hasta 7 días",
@@ -26,7 +26,7 @@ const processSteps = [
   },
   {
     title: "Seguimiento coordinado",
-    body: "Kapa21 acompaña el proceso comercial y Andes SolarHash reporta la operación según el plan o equipo contratado.",
+    body: "Kapa21 acompaña el proceso comercial y el operador técnico reporta la operación según el plan o equipo contratado.",
   },
 ] as const;
 
