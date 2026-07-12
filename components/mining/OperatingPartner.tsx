@@ -103,7 +103,7 @@ export function OperatingPartner() {
 
             <div className="grid gap-2.5 sm:gap-3">
               <p className="text-[0.95rem] leading-6 text-foreground-muted sm:text-base sm:leading-7">
-                La contraparte operativa coordina la infraestructura minera, la formalización según modalidad y la administración técnica de la operación.
+                La infraestructura operativa coordina el hosting, la formalización según modalidad y la administración técnica de la operación.
               </p>
               <div className="rounded-[0.95rem] border border-[#ffb31e]/20 bg-[#12172f] px-3.5 py-3 sm:rounded-[1rem] sm:px-4 sm:py-3.5">
                 <p className="text-[0.95rem] leading-6 text-foreground sm:text-base sm:leading-7">
