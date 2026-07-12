@@ -129,7 +129,7 @@ export function MiningModalityCard({
           <Button
             href={secondaryCtaHref}
             variant="secondary"
-            className="min-h-10 w-full rounded-full border-border/70 bg-background/55 px-3.5 text-[0.82rem] font-medium text-foreground-muted shadow-none hover:border-accent/20 hover:bg-background/75 hover:text-foreground sm:w-auto"
+            className="min-h-11 w-full rounded-full border-white/14 bg-white/[0.05] px-4 text-sm font-semibold text-foreground shadow-none hover:border-white/24 hover:bg-white/[0.08] sm:w-auto"
           >
             {secondaryCtaLabel}
           </Button>
