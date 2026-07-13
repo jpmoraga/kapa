@@ -1,5 +1,4 @@
 import {
-  MiningFractionalPlan,
   MiningSimulationEventType,
   MiningSimulatorType,
   Prisma,
@@ -25,10 +24,26 @@ const SIMULATOR_TYPES = [
   MiningSimulatorType.ASIC,
 ] as const;
 
-const FRACTIONAL_PLANS = [
-  MiningFractionalPlan.PLAN_15_MONTHS,
-  MiningFractionalPlan.PLAN_27_MONTHS,
+const FRACTIONAL_PLAN_CODES = [
+  "PLAN_1_YEAR",
+  "PLAN_2_YEARS",
+  "PLAN_3_YEARS",
 ] as const;
+
+const FRACTIONAL_PLAN_CONFIG = {
+  PLAN_1_YEAR: {
+    label: "Plan 1 año",
+    pricePerThUsd: 20,
+  },
+  PLAN_2_YEARS: {
+    label: "Plan 2 años",
+    pricePerThUsd: 39,
+  },
+  PLAN_3_YEARS: {
+    label: "Plan 3 años",
+    pricePerThUsd: 58,
+  },
+} as const;
 
 type MiningSimulationEventCreateData =
   Prisma.MiningSimulationEventUncheckedCreateInput;
@@ -185,33 +200,30 @@ export function validateMiningSimulationEventPayload(
   if (simulatorType === MiningSimulatorType.FRACTIONAL) {
     const fractionalPlan = parseEnumValue(
       payload.fractionalPlan,
-      FRACTIONAL_PLANS,
+      FRACTIONAL_PLAN_CODES,
       "fractionalPlan",
     );
-    const activationMinimum =
-      fractionalPlan === MiningFractionalPlan.PLAN_27_MONTHS ? 25 : 15;
+    const estimatedThs = parsePositiveDecimal(payload.estimatedThs, "estimatedThs");
+    const planConfig = FRACTIONAL_PLAN_CONFIG[fractionalPlan];
+    const mergedMetadata: Prisma.JsonObject = {
+      ...(metadata ?? {}),
+      billingModel: "single_upfront_hosting_included",
+      fractionalPlanCode: fractionalPlan,
+      fractionalPlanLabel: planConfig.label,
+      hostingIncluded: true,
+      paymentModel: "single_upfront",
+      pricePerThUsd: planConfig.pricePerThUsd,
+    };
+    const totalEstimatedUsd = new Prisma.Decimal(
+      Number(estimatedThs) * planConfig.pricePerThUsd,
+    );
 
     return {
       ...commonData,
-      fractionalPlan,
-      activationAmountUsd: parsePositiveDecimal(
-        payload.activationAmountUsd,
-        "activationAmountUsd",
-        activationMinimum,
-      ),
-      estimatedThs: parsePositiveDecimal(payload.estimatedThs, "estimatedThs"),
-      hostingMonthlyUsd: parsePositiveDecimal(
-        payload.hostingMonthlyUsd,
-        "hostingMonthlyUsd",
-      ),
-      hostingTotalUsd: parsePositiveDecimal(
-        payload.hostingTotalUsd,
-        "hostingTotalUsd",
-      ),
-      totalEstimatedUsd: parsePositiveDecimal(
-        payload.totalEstimatedUsd,
-        "totalEstimatedUsd",
-      ),
+      metadata: mergedMetadata,
+      activationAmountUsd: new Prisma.Decimal(planConfig.pricePerThUsd),
+      estimatedThs,
+      totalEstimatedUsd,
     };
   }
 

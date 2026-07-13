@@ -52,7 +52,7 @@ export type MiningSimulationReportRow = {
   planOrAsicLabel: string;
   primaryAmountLabel: string;
   thsLabel: string;
-  hostingMonthlyLabel: string;
+  hostingLabel: string;
   totalOrInitialLabel: string;
 };
 
@@ -90,6 +90,7 @@ const miningSimulationSelect = {
   estimatedThs: true,
   hostingMonthlyUsd: true,
   totalEstimatedUsd: true,
+  metadata: true,
   asicModel: true,
   equipmentPriceUsd: true,
   hashrateTotalThs: true,
@@ -166,6 +167,42 @@ function fractionalPlanLabel(value: MiningFractionalPlan | null) {
   return "Sin datos";
 }
 
+function parseFractionalMetadata(
+  value: Prisma.JsonValue | null,
+): {
+  billingModel?: string;
+  fractionalPlanLabel?: string;
+  pricePerThUsd?: number;
+} | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const billingModel =
+    typeof record.billingModel === "string" ? record.billingModel : undefined;
+  const fractionalPlanLabel =
+    typeof record.fractionalPlanLabel === "string"
+      ? record.fractionalPlanLabel
+      : undefined;
+  const rawPricePerThUsd = record.pricePerThUsd;
+  const pricePerThUsd =
+    typeof rawPricePerThUsd === "number"
+      ? rawPricePerThUsd
+      : typeof rawPricePerThUsd === "string" && rawPricePerThUsd.trim()
+        ? Number(rawPricePerThUsd)
+        : undefined;
+
+  return {
+    billingModel,
+    fractionalPlanLabel,
+    pricePerThUsd:
+      typeof pricePerThUsd === "number" && Number.isFinite(pricePerThUsd)
+        ? pricePerThUsd
+        : undefined,
+  };
+}
+
 function formatDateTime(value: Date) {
   const formatter = new Intl.DateTimeFormat("es-CL", {
     day: "2-digit",
@@ -223,6 +260,13 @@ function truncateSessionId(value: string) {
 
 function rowFromRecord(record: MiningSimulationEventRecord): MiningSimulationReportRow {
   const isFractional = record.simulatorType === MiningSimulatorType.FRACTIONAL;
+  const fractionalMetadata = parseFractionalMetadata(record.metadata);
+  const usesSingleUpfrontModel =
+    isFractional &&
+    fractionalMetadata?.billingModel === "single_upfront_hosting_included";
+  const pricePerThLabel = usesSingleUpfrontModel
+    ? `${formatUsd(record.activationAmountUsd)} por TH/s`
+    : formatUsd(record.activationAmountUsd);
 
   return {
     id: record.id,
@@ -231,13 +275,13 @@ function rowFromRecord(record: MiningSimulationEventRecord): MiningSimulationRep
     eventTypeLabel: eventTypeLabel(record.eventType),
     simulatorTypeLabel: simulatorTypeLabel(record.simulatorType),
     planOrAsicLabel: isFractional
-      ? fractionalPlanLabel(record.fractionalPlan)
+      ? fractionalMetadata?.fractionalPlanLabel ?? fractionalPlanLabel(record.fractionalPlan)
       : record.asicModel?.trim() || "Sin datos",
     primaryAmountLabel: isFractional
-      ? formatUsd(record.activationAmountUsd)
+      ? pricePerThLabel
       : formatUsd(record.equipmentPriceUsd),
     thsLabel: isFractional ? formatThs(record.estimatedThs) : formatThs(record.hashrateTotalThs),
-    hostingMonthlyLabel: formatUsd(record.hostingMonthlyUsd),
+    hostingLabel: usesSingleUpfrontModel ? "Incluido" : formatUsd(record.hostingMonthlyUsd),
     totalOrInitialLabel: isFractional
       ? formatUsd(record.totalEstimatedUsd)
       : formatUsd(record.initialCostUsd),
@@ -254,34 +298,48 @@ async function getTopFractionalPlan(
     return null;
   }
 
-  const result = await prisma.miningSimulationEvent.groupBy({
-    by: ["fractionalPlan"],
+  const result = await prisma.miningSimulationEvent.findMany({
     where: {
       ...where,
       simulatorType: MiningSimulatorType.FRACTIONAL,
-      fractionalPlan: {
-        not: null,
-      },
     },
-    _count: {
+    select: {
       fractionalPlan: true,
+      metadata: true,
     },
-    orderBy: {
-      _count: {
-        fractionalPlan: "desc",
-      },
-    },
-    take: 1,
   });
 
-  const leader = result[0];
-  if (!leader?.fractionalPlan) {
+  const counts = new Map<string, number>();
+
+  for (const record of result) {
+    const label =
+      parseFractionalMetadata(record.metadata)?.fractionalPlanLabel ??
+      fractionalPlanLabel(record.fractionalPlan);
+
+    if (!label || label === "Sin datos") {
+      continue;
+    }
+
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+
+  let leaderLabel: string | null = null;
+  let leaderCount = 0;
+
+  for (const [label, count] of counts.entries()) {
+    if (count > leaderCount) {
+      leaderLabel = label;
+      leaderCount = count;
+    }
+  }
+
+  if (!leaderLabel || leaderCount === 0) {
     return null;
   }
 
   return {
-    label: fractionalPlanLabel(leader.fractionalPlan),
-    count: leader._count.fractionalPlan,
+    label: leaderLabel,
+    count: leaderCount,
   };
 }
 

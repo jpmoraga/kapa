@@ -209,10 +209,10 @@ export default async function BackofficeMiningSimulationsPage({
                   <th className="whitespace-nowrap px-4 py-3 font-medium">Evento</th>
                   <th className="whitespace-nowrap px-4 py-3 font-medium">Tipo</th>
                   <th className="whitespace-nowrap px-4 py-3 font-medium">Plan / ASIC</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Monto principal</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">Precio / referencia</th>
                   <th className="whitespace-nowrap px-4 py-3 font-medium">TH/s</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Hosting mensual</th>
-                  <th className="whitespace-nowrap px-4 py-3 font-medium">Total / Inicial</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">Hosting</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">Total / inicial</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,7 +246,7 @@ export default async function BackofficeMiningSimulationsPage({
                       <div className="min-w-[120px]">{row.thsLabel}</div>
                     </td>
                     <td className="px-4 py-3.5 text-white/70">
-                      <div className="min-w-[140px]">{row.hostingMonthlyLabel}</div>
+                      <div className="min-w-[140px]">{row.hostingLabel}</div>
                     </td>
                     <td className="px-4 py-3.5 text-white/70">
                       <div className="min-w-[140px]">{row.totalOrInitialLabel}</div>

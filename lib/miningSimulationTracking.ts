@@ -6,7 +6,7 @@ const MINING_SIMULATION_SOURCE_PATH = "/mining";
 let fallbackSessionId: string | null = null;
 
 type MiningSimulationEventType = "SIMULATION_INTERACTION" | "CTA_CLICKED";
-type MiningFractionalPlan = "PLAN_15_MONTHS" | "PLAN_27_MONTHS";
+type MiningFractionalPlan = "PLAN_1_YEAR" | "PLAN_2_YEARS" | "PLAN_3_YEARS";
 
 type MiningSimulationBasePayload = {
   eventType: MiningSimulationEventType;
@@ -17,10 +17,7 @@ export type MiningFractionalSimulationTrackingPayload =
   MiningSimulationBasePayload & {
     simulatorType: "FRACTIONAL";
     fractionalPlan: MiningFractionalPlan;
-    activationAmountUsd: number;
     estimatedThs: number;
-    hostingMonthlyUsd: number;
-    hostingTotalUsd: number;
     totalEstimatedUsd: number;
   };
 
