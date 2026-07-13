@@ -11,6 +11,7 @@ type MiningFractionalPlan = "PLAN_1_YEAR" | "PLAN_2_YEARS" | "PLAN_3_YEARS";
 type MiningSimulationBasePayload = {
   eventType: MiningSimulationEventType;
   sourcePath?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type MiningFractionalSimulationTrackingPayload =
