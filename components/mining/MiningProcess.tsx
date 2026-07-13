@@ -6,11 +6,11 @@ import { Card } from "@/components/ui/Card";
 const processSteps = [
   {
     title: "Eliges alternativa",
-    body: "Partimos por un plan fraccionado de 15 o 27 meses, o por ASIC propio según ticket y objetivo.",
+    body: "Partimos por un plan fraccionado de 1, 2 o 3 años con hosting incluido, o por ASIC propio según ticket y objetivo.",
   },
   {
     title: "Revisamos condiciones",
-    body: "Kapa21 ordena plan, costos, plazos y criterios antes de avanzar.",
+    body: "Kapa21 ordena plan, plazo, pago inicial y criterios antes de avanzar.",
   },
   {
     title: "Formalizas contrato y pago",

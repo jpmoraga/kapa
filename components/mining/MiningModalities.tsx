@@ -14,25 +14,36 @@ type MiningModalitiesProps = {
 
 const fractionalPlans = [
   {
-    title: "Plan 15 meses",
-    price: "USD 15 por TH/s",
-    subtitle: "Contrato base 12 meses · hoy con 15 meses de acceso",
+    title: "Plan 1 año",
+    price: "USD 20 por TH/s",
+    subtitle: "IVA incluido",
     keyPoints: [
-      "Ticket flexible según cantidad de TH/s",
-      "Hosting mensual asociado al hashrate contratado",
-      "Distribuciones mensuales en Bitcoin",
-      "Operación técnica internacional",
+      "12 meses de acceso",
+      "Hosting incluido durante todo el período",
+      "Un solo pago inicial",
+      "Distribuciones periódicas en Bitcoin",
     ],
   },
   {
-    title: "Plan 27 meses",
-    price: "USD 25 por TH/s",
-    subtitle: "Contrato base 24 meses · hoy con 27 meses de acceso",
+    title: "Plan 2 años",
+    price: "USD 39 por TH/s",
+    subtitle: "IVA incluido",
     keyPoints: [
-      "Mayor plazo de exposición minera",
-      "Segundo año sin nueva activación",
-      "Hosting mensual asociado al hashrate contratado",
-      "Distribuciones mensuales en Bitcoin",
+      "24 meses de acceso",
+      "Hosting incluido durante todo el período",
+      "Un solo pago inicial",
+      "Mayor horizonte de participación",
+    ],
+  },
+  {
+    title: "Plan 3 años",
+    price: "USD 58 por TH/s",
+    subtitle: "IVA incluido",
+    keyPoints: [
+      "36 meses de acceso",
+      "Hosting incluido durante todo el período",
+      "Un solo pago inicial",
+      "Mayor plazo contratado",
     ],
   },
 ] as const;
@@ -64,20 +75,20 @@ export function MiningModalities({ fractionalHref, hostingHref }: MiningModaliti
               </Badge>
               <div className="grid gap-2">
                 <p className="text-[1.08rem] font-semibold leading-[1.15] tracking-[-0.02em] text-foreground sm:text-[1.18rem]">
-                  Dos planes para entrar desde tickets bajos
+                  Tres planes con pago único y hosting incluido
                 </p>
                 <p className="text-[0.95rem] leading-6 text-foreground-muted sm:text-base sm:leading-7">
-                  Elige entre un plan de 15 o 27 meses, con ticket flexible por TH/s y
-                  hosting mensual asociado.
+                  Elige 1, 2 o 3 años según tu horizonte. Todos los valores publicados
+                  incluyen IVA y consideran el hosting durante todo el período contratado.
                 </p>
               </div>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-3 lg:grid-cols-3">
               {fractionalPlans.map((plan) => (
                 <div
                   key={plan.title}
-                  className="grid gap-3 rounded-[1rem] border border-accent/20 bg-background/70 p-3.5 sm:p-4"
+                  className="grid h-full gap-3 rounded-[1rem] border border-accent/20 bg-background/70 p-3.5 sm:p-4"
                 >
                   <div className="grid gap-1.5">
                     <Badge
@@ -111,10 +122,11 @@ export function MiningModalities({ fractionalHref, hostingHref }: MiningModaliti
 
             <div className="grid gap-2 rounded-[1rem] border border-accent/18 bg-background/70 px-3.5 py-3 sm:px-4 sm:py-3.5">
               <p className="text-[0.95rem] leading-6 text-foreground sm:text-base sm:leading-7">
-                El monto final depende del hashrate contratado y del hosting asociado.
+                El precio incluye el acceso a la capacidad contratada y el hosting durante
+                todo el plazo seleccionado.
               </p>
               <p className="text-[0.92rem] leading-6 text-foreground-muted sm:text-[0.98rem] sm:leading-6">
-                Hosting pagadero en USDT, USDC, Bitcoin o transferencia bancaria (Chile).
+                Sin pagos mensuales adicionales. Un único pago inicial.
               </p>
             </div>
 

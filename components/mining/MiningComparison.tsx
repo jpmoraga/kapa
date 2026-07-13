@@ -5,65 +5,82 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
+const comparisonColumns = [
+  { key: "plan1", title: "Plan 1 año" },
+  { key: "plan2", title: "Plan 2 años" },
+  { key: "plan3", title: "Plan 3 años" },
+  { key: "asic", title: "ASIC propio" },
+] as const;
+
 const comparisonRows = [
   {
     label: "Qué contratas",
-    plan15: "Poder computacional por TH/s",
-    plan27: "Poder computacional por TH/s",
+    plan1: "Poder computacional por TH/s",
+    plan2: "Poder computacional por TH/s",
+    plan3: "Poder computacional por TH/s",
     asic: "Equipo completo + hosting",
   },
   {
-    label: "Plazo",
-    plan15: "15 meses promocionales",
-    plan27: "27 meses promocionales",
+    label: "Plazo contratado",
+    plan1: "12 meses",
+    plan2: "24 meses",
+    plan3: "36 meses",
     asic: "Vida útil del equipo / equipo propio",
   },
   {
-    label: "Activación / acceso",
-    plan15: "USD 15 por TH/s",
-    plan27: "USD 25 por TH/s",
+    label: "Pago inicial",
+    plan1: "USD 20 por TH/s",
+    plan2: "USD 39 por TH/s",
+    plan3: "USD 58 por TH/s",
     asic: "Según equipo",
   },
   {
-    label: "Hosting",
-    plan15: "Mensual según TH/s contratado",
-    plan27: "Mensual según TH/s contratado",
+    label: "Hosting durante el plazo",
+    plan1: "Incluido",
+    plan2: "Incluido",
+    plan3: "Incluido",
     asic: "Hosting internacional",
   },
   {
-    label: "Pago de hosting",
-    plan15: "USDT, USDC, Bitcoin o transferencia (Chile)",
-    plan27: "USDT, USDC, Bitcoin o transferencia (Chile)",
+    label: "Pagos adicionales",
+    plan1: "No aplica",
+    plan2: "No aplica",
+    plan3: "No aplica",
     asic: "Según contrato",
   },
   {
     label: "Propiedad del hardware",
-    plan15: "Operador",
-    plan27: "Operador",
+    plan1: "Operador",
+    plan2: "Operador",
+    plan3: "Operador",
     asic: "Cliente",
   },
   {
-    label: "Nivel de entrada",
-    plan15: "Desde tickets bajos",
-    plan27: "Intermedio",
+    label: "Nivel de participación",
+    plan1: "Entrada flexible",
+    plan2: "Mayor horizonte",
+    plan3: "Mayor plazo contratado",
     asic: "Mayor ticket",
   },
   {
     label: "Producción / distribución",
-    plan15: "Distribución mensual en Bitcoin",
-    plan27: "Distribución mensual en Bitcoin",
+    plan1: "Distribuciones periódicas en Bitcoin",
+    plan2: "Distribuciones periódicas en Bitcoin",
+    plan3: "Distribuciones periódicas en Bitcoin",
     asic: "Producción minera directa a tu wallet",
   },
   {
     label: "Operación técnica",
-    plan15: "Operador especializado",
-    plan27: "Operador especializado",
+    plan1: "Operador especializado",
+    plan2: "Operador especializado",
+    plan3: "Operador especializado",
     asic: "Operador especializado",
   },
   {
     label: "Acompañamiento comercial",
-    plan15: "Kapa21",
-    plan27: "Kapa21",
+    plan1: "Kapa21",
+    plan2: "Kapa21",
+    plan3: "Kapa21",
     asic: "Kapa21",
   },
 ] as const;
@@ -83,22 +100,9 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
         />
 
         <div className="grid gap-3 lg:hidden">
-          {[
-            {
-              title: "Plan 15 meses",
-              entries: comparisonRows.map((row) => ({ label: row.label, value: row.plan15 })),
-            },
-            {
-              title: "Plan 27 meses",
-              entries: comparisonRows.map((row) => ({ label: row.label, value: row.plan27 })),
-            },
-            {
-              title: "ASIC propio",
-              entries: comparisonRows.map((row) => ({ label: row.label, value: row.asic })),
-            },
-          ].map((card) => (
+          {comparisonColumns.map((column) => (
             <Card
-              key={card.title}
+              key={column.key}
               variant="elevated"
               className="grid gap-3 rounded-[1.05rem] p-4 shadow-none sm:p-5 sm:shadow-[var(--shadow)]"
             >
@@ -106,19 +110,19 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
                 variant="outline"
                 className="justify-start border-accent/30 px-2 py-1 text-[0.66rem] tracking-[0.14em] text-accent sm:px-2.25 sm:text-[0.7rem]"
               >
-                {card.title}
+                {column.title}
               </Badge>
               <dl className="grid gap-2.5">
-                {card.entries.map((entry) => (
+                {comparisonRows.map((row) => (
                   <div
-                    key={entry.label}
+                    key={row.label}
                     className="grid gap-1.5 border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0 min-[390px]:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)] min-[390px]:items-start min-[390px]:gap-3"
                   >
                     <dt className="text-[0.88rem] font-medium leading-5 text-foreground sm:text-sm">
-                      {entry.label}
+                      {row.label}
                     </dt>
                     <dd className="text-[0.95rem] leading-6 text-foreground-muted min-[390px]:text-right sm:text-base sm:leading-7">
-                      {entry.value}
+                      {row[column.key]}
                     </dd>
                   </div>
                 ))}
@@ -131,19 +135,33 @@ export function MiningComparison({ ctaHref }: MiningComparisonProps) {
           <table className="w-full table-fixed border-collapse text-left">
             <thead>
               <tr className="border-b border-border">
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">Variable</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">Plan 15 meses</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">Plan 27 meses</th>
-                <th className="px-6 py-4 text-sm font-semibold text-foreground">ASIC propio</th>
+                <th className="px-4 py-3 text-[0.82rem] font-semibold text-foreground xl:px-5 xl:py-4 xl:text-sm">
+                  Variable
+                </th>
+                {comparisonColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="px-4 py-3 text-[0.82rem] font-semibold text-foreground xl:px-5 xl:py-4 xl:text-sm"
+                  >
+                    {column.title}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {comparisonRows.map((row) => (
                 <tr key={row.label} className="border-b border-border last:border-b-0">
-                  <th className="px-6 py-4 text-sm font-semibold text-foreground">{row.label}</th>
-                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.plan15}</td>
-                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.plan27}</td>
-                  <td className="px-6 py-4 text-sm leading-7 text-foreground-muted">{row.asic}</td>
+                  <th className="px-4 py-3 text-[0.82rem] font-semibold text-foreground xl:px-5 xl:py-4 xl:text-sm">
+                    {row.label}
+                  </th>
+                  {comparisonColumns.map((column) => (
+                    <td
+                      key={column.key}
+                      className="px-4 py-3 text-[0.82rem] leading-6 text-foreground-muted xl:px-5 xl:py-4 xl:text-sm xl:leading-7"
+                    >
+                      {row[column.key]}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

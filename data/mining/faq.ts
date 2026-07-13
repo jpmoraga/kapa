@@ -7,7 +7,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Qué estoy contratando?",
     answer:
-      "Depende del camino elegido: un plan de minería fraccionada de 15 o 27 meses, o un ASIC propio con hosting.",
+      "Depende del camino elegido: un plan de minería fraccionada de 1, 2 o 3 años con hosting incluido durante todo el período, o un ASIC propio con hosting.",
   },
   {
     question: "¿Quién firma el contrato operativo?",
@@ -17,7 +17,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Cómo se realiza el pago?",
     answer:
-      "Los pagos se realizan según las instrucciones contractuales de la modalidad elegida, mediante los medios informados durante el proceso de contratación.",
+      "En minería fraccionada, el pago inicial cubre el acceso a la capacidad contratada y el hosting del plazo elegido. En cada modalidad, los pagos se realizan según las instrucciones contractuales informadas durante el proceso de contratación.",
   },
   {
     question: "¿Cuál es el rol de Kapa21?",
@@ -32,7 +32,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Cómo recibo el Bitcoin?",
     answer:
-      "En planes fraccionados, mediante distribución mensual en Bitcoin. En ASIC propio, mediante producción minera directa a la wallet indicada.",
+      "En planes fraccionados, mediante distribuciones periódicas en Bitcoin. En ASIC propio, mediante producción minera directa a la wallet indicada.",
   },
   {
     question: "¿Existe una rentabilidad garantizada?",
@@ -42,7 +42,7 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Qué incluye el hosting?",
     answer:
-      "Energía, conectividad, instalación, infraestructura y soporte según las condiciones de cada contrato. Costo energético referencial de hosting: USD 0,078/kWh.",
+      "En los planes fraccionados, el hosting queda incluido durante todo el plazo contratado. En ASIC propio, energía, conectividad, instalación, infraestructura y soporte se definen según contrato. Costo energético referencial de hosting: USD 0,078/kWh.",
   },
   {
     question: "¿Puedo ampliar mi capacidad?",
@@ -61,6 +61,6 @@ export const miningFaqItems: MiningFaqItem[] = [
   {
     question: "¿Los precios son definitivos?",
     answer:
-      "Los valores publicados o informados son referenciales hasta la emisión de una cotización vigente.",
+      "Los valores publicados incluyen IVA y son referenciales hasta la emisión de una cotización vigente.",
   },
 ];
